@@ -1331,6 +1331,17 @@ pub const TomeGame = struct {
         }
     }
 
+    fn fastestEnemyName(self: *const TomeGame) []const u8 {
+        var best: ?usize = null;
+        var i: usize = 0;
+        while (i < self.sim.enemy_count) : (i += 1) {
+            const e = self.sim.enemies[i];
+            if (!e.alive) continue;
+            if (best == null or e.speed > self.sim.enemies[best.?].speed) best = i;
+        }
+        return if (best) |idx| self.sim.enemies[idx].name else "";
+    }
+
     fn fillHudState(self: *TomeGame) void {
         self.hud_state = .{
             .menu = !self.started,
@@ -1349,6 +1360,8 @@ pub const TomeGame = struct {
             .floor = self.sim.floor,
             .floors = self.sim.floors,
             .enemy_phase = self.sim.enemy_phase_pending,
+            .initiative = .{ "玩家", self.fastestEnemyName() },
+            .initiative_count = if (self.fastestEnemyName().len > 0) 2 else 1,
             .kills = self.sim.kills,
             .enemies_left = @intCast(self.sim.enemy_count - blk: {
                 var n: u32 = 0;
@@ -1809,6 +1822,26 @@ test "tome game: held repeat is throttled to one step per 0.3s" {
     try std.testing.expectEqual(turn, g.sim.turn);
     g.update(.{ .step_x = dx, .step_y = dy }, 0.31);
     try std.testing.expect(g.sim.turn >= turn);
+}
+
+test "tome game: initiative shows the player and fastest enemy" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    defer g.destroy();
+    g.fillHudState();
+    try std.testing.expectEqualStrings("玩家", g.hud_state.initiative[0]);
+    var best: ?usize = null;
+    var i: usize = 0;
+    while (i < g.sim.enemy_count) : (i += 1) {
+        if (!g.sim.enemies[i].alive) continue;
+        if (best == null or g.sim.enemies[i].speed > g.sim.enemies[best.?].speed) best = i;
+    }
+    if (best) |idx| {
+        try std.testing.expectEqual(@as(u8, 2), g.hud_state.initiative_count);
+        try std.testing.expectEqualStrings(g.sim.enemies[idx].name, g.hud_state.initiative[1]);
+    } else {
+        try std.testing.expectEqual(@as(u8, 1), g.hud_state.initiative_count);
+    }
 }
 
 test "tome game: character panel spends a pending attribute point" {
