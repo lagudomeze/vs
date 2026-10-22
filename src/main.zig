@@ -20,6 +20,7 @@ const Options = struct {
     walk: bool = false,
     cast: bool = false,
     auto_demo: bool = false,
+    enemy_phase_shot: bool = false,
     debug: bool = false,
     lineup: bool = false,
     inventory: bool = false,
@@ -50,6 +51,7 @@ fn usage() void {
         \\  --walk            headless: hold W so the party walks into frame
         \\  --cast            headless: cast once at the end
         \\  --auto            headless demo: cast every 1.5s
+        \\  --enemy-phase     headless: wait once and capture the enemy-phase HUD
         \\  --aim N           headless: open aim on talent N for screenshots (no confirm)
         \\  --help-screen     show the in-game controls panel for screenshots
         \\  --debug           show the debug HUD
@@ -119,6 +121,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.cast = true;
         } else if (std.mem.eql(u8, a, "--auto")) {
             o.auto_demo = true;
+        } else if (std.mem.eql(u8, a, "--enemy-phase")) {
+            o.enemy_phase_shot = true;
         } else if (std.mem.eql(u8, a, "--debug")) {
             o.debug = true;
         } else if (std.mem.eql(u8, a, "--lineup")) {
@@ -256,6 +260,7 @@ fn runTomeHeadless(game: *vx.TomeGame, io: std.Io, options: Options) !void {
     var frame: u32 = 0;
     while (frame < frames) : (frame += 1) {
         var input = vx.tome_game.Input{};
+        if (options.enemy_phase_shot and frame == 0) input.wait = true;
         if (options.walk and frame % 12 == 0) input.step_y = -1;
         if (options.auto_demo and frame % 10 == 0) {
             game.autoPlayStep();
@@ -434,6 +439,8 @@ pub fn main(init: std.process.Init.Minimal) !void {
 
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
+    game.presentation = !options.auto_demo and !options.headless;
+    if (options.enemy_phase_shot) game.presentation = true;
     game.camera.yaw = options.yaw;
     game.camera.pitch = options.pitch;
     game.camera.distance = @max(options.dist, 12.0);

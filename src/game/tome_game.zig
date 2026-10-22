@@ -122,6 +122,10 @@ pub const TomeGame = struct {
     step_cooldown: f32 = 0,
     seed: u64,
     class: sim_mod.Class,
+    /// Window play presents a short "敌人行动" phase; tests/bots leave this
+    /// false so their turns resolve synchronously.
+    presentation: bool = false,
+    enemy_phase_timer: f32 = 0,
     /// False while the class-selection menu is up; the sim is already
     /// generated so the menu can preview the 3D dungeon behind the cards.
     started: bool = true,
@@ -259,6 +263,7 @@ pub const TomeGame = struct {
         self.selected = null;
         self.aim_talent = null;
         self.aim_cell = null;
+        self.enemy_phase_timer = 0;
         self.reset_armed = 0;
         self.step_cooldown = 0;
         self.show_help = false;
@@ -299,6 +304,11 @@ pub const TomeGame = struct {
     /// The parent directory is created on demand; a failure leaves the
     /// currently running game untouched and is reported in the log.
     pub fn saveRun(self: *TomeGame, io: std.Io, sim_path: []const u8, gear_path: []const u8) void {
+        if (self.sim.enemy_phase_pending) {
+            self.sim.resolvePendingEnemyPhase();
+            self.syncVisuals(false);
+            self.fillHudState();
+        }
         if (std.fs.path.dirname(sim_path)) |dir| {
             std.Io.Dir.cwd().createDirPath(io, dir) catch {};
         }
@@ -363,6 +373,7 @@ pub const TomeGame = struct {
         self.selected = null;
         self.aim_talent = null;
         self.aim_cell = null;
+        self.enemy_phase_timer = 0;
         self.reset_armed = 0;
         self.step_cooldown = 0;
         self.show_help = false;
@@ -399,6 +410,8 @@ pub const TomeGame = struct {
 
     pub fn autoPlayStep(self: *TomeGame) void {
         if (!self.started or self.sim.state != .playing or self.panel != .none) return;
+        self.sim.defer_enemies = false;
+        self.sim.resolvePendingEnemyPhase();
         self.sim.auto_allocate = true;
         defer self.sim.auto_allocate = false;
         while (self.sim.hero.pending_points > 0) {
@@ -561,6 +574,21 @@ pub const TomeGame = struct {
             self.updateVisuals(dt);
             self.followCamera();
             self.fillHudState();
+            return;
+        }
+
+        if (self.presentation) self.sim.defer_enemies = true;
+        if (self.sim.enemy_phase_pending) {
+            if (self.enemy_phase_timer <= 0) self.enemy_phase_timer = 0.30;
+            self.enemy_phase_timer -= dt;
+            if (self.enemy_phase_timer <= 0) {
+                self.enemy_phase_timer = 0;
+                self.sim.resolvePendingEnemyPhase();
+                self.syncVisuals(false);
+                self.updateVisuals(dt);
+                self.followCamera();
+                self.fillHudState();
+            }
             return;
         }
 
@@ -1320,6 +1348,7 @@ pub const TomeGame = struct {
             .turn = self.sim.turn,
             .floor = self.sim.floor,
             .floors = self.sim.floors,
+            .enemy_phase = self.sim.enemy_phase_pending,
             .kills = self.sim.kills,
             .enemies_left = @intCast(self.sim.enemy_count - blk: {
                 var n: u32 = 0;
@@ -1793,6 +1822,24 @@ test "tome game: character panel spends a pending attribute point" {
     g.update(.{ .stat = 0 }, 1.0 / 60.0);
     try std.testing.expectEqual(str + 1, g.sim.hero.stats.strength);
     try std.testing.expectEqual(@as(u8, 0), g.sim.hero.pending_points);
+}
+
+test "tome game: presentation locks input during enemy phase" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    defer g.destroy();
+    g.started = true;
+    g.presentation = true;
+    g.update(.{ .wait = true }, 1.0 / 60.0);
+    try std.testing.expect(g.sim.enemy_phase_pending);
+    try std.testing.expect(g.hud_state.enemy_phase);
+    const turn = g.sim.turn;
+    g.update(.{ .step_x = 1 }, 1.0 / 60.0);
+    try std.testing.expectEqual(turn, g.sim.turn);
+    var i: usize = 0;
+    while (i < 30) : (i += 1) g.update(.{}, 1.0 / 60.0);
+    try std.testing.expect(!g.sim.enemy_phase_pending);
+    try std.testing.expect(!g.hud_state.enemy_phase);
 }
 
 test "tome game: mouse click confirms an aimed enemy" {
