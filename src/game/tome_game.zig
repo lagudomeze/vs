@@ -20,6 +20,37 @@ const attributes = @import("attributes.zig");
 const save_mod = @import("save.zig");
 const gear_save = @import("gear_save.zig");
 
+fn detailAppend(buf: []u8, off: *usize, comptime f: []const u8, args: anytype) void {
+    const written = std.fmt.bufPrint(buf[off.*..], f, args) catch return;
+    off.* += written.len;
+}
+
+/// Compact one-line item summary for the bag: quality + up to two modifiers,
+/// or the consumable's heal/resource effect.
+fn writeItemDetail(buf: []u8, def: *const items_mod.ItemDef) []const u8 {
+    var off: usize = 0;
+    detailAppend(buf, &off, "{s}", .{items_mod.qualityLabel(def.quality)});
+    var shown: usize = 0;
+    for (def.mods) |m| {
+        if (shown >= 2) break;
+        if (m.flat != 0) {
+            const sign: []const u8 = if (m.flat > 0) "+" else "";
+            detailAppend(buf, &off, " {s}{s}{d:.0}", .{ m.stat.label(), sign, m.flat });
+            shown += 1;
+        }
+        if (m.pct != 0) {
+            const sign: []const u8 = if (m.pct > 0) "+" else "";
+            detailAppend(buf, &off, " {s}{s}{d:.0}%", .{ m.stat.label(), sign, m.pct * 100.0 });
+            shown += 1;
+        }
+    }
+    if (def.use) |u| {
+        if (u.heal > 0) detailAppend(buf, &off, " 回复{d:.0}", .{u.heal});
+        if (u.resource > 0) detailAppend(buf, &off, " 资源{d:.0}", .{u.resource});
+    }
+    return buf[0..off];
+}
+
 const FloatText = struct {
     pos: math.Vec3 = math.Vec3.zero,
     value: i32 = 0,
@@ -67,6 +98,7 @@ pub const TomeGame = struct {
     sim: sim_mod.Sim,
     content: content_mod.Content = undefined,
     inventory: items_mod.Inventory = .{},
+    item_detail_bufs: [items_mod.max_inventory][96]u8 = undefined,
     mods: items_mod.ModifierSet = .{},
     loot_rng: std.Random.DefaultPrng = undefined,
     chest_loot_seen: u32 = 0,
@@ -1381,7 +1413,14 @@ pub const TomeGame = struct {
         var ii: usize = 0;
         while (ii < self.hud_state.item_count) : (ii += 1) {
             const item = self.inventory.at(ii);
-            self.hud_state.items[ii] = if (item < self.content.items.len) self.content.items[item].name else "";
+            if (item < self.content.items.len) {
+                const def = &self.content.items[item];
+                self.hud_state.items[ii] = def.name;
+                self.hud_state.item_details[ii] = writeItemDetail(&self.item_detail_bufs[ii], def);
+            } else {
+                self.hud_state.items[ii] = "";
+                self.hud_state.item_details[ii] = "";
+            }
         }
         self.hud_state.has_minimap = true;
         self.hud_state.minimap = @splat(0);
