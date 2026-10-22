@@ -1,11 +1,15 @@
 # 存档模块（RunState v1）
 
-纯逻辑的 ToME 存档/读档，位于 `src/game/save.zig`，已通过 `zig build test`。
-**尚未接入 UI / main**；本文件同时给出 F5/F9 的接入建议。
+纯逻辑的 ToME 存档/读档，位于 `src/game/save.zig`；窗口已接入 **F5 存档 / F9 读档**（`TomeGame.saveRun/loadRun`），装备侧车在 `src/game/gear_save.zig`。
 
 ## 范围
 
-保存的是 `tome_sim.Sim` 的整局运行状态（RunState），不包含 `TomeGame` 的渲染/背包/掉落 RNG：
+保存分两部分：
+
+- `saves/tome-run.json`：`tome_sim.Sim` 的整局运行状态（RunState，含 xoshiro RNG）。
+- `saves/tome-gear.json`：`TomeGame.inventory` 的背包与装备槽（`gear_save.zig`，format `vx-tome-gear`）。
+
+渲染/相机/当前镜头不保存；掉落 RNG 不保存，读档后用 seed+turn 重新初始化。
 
 | 分类 | 字段 |
 | --- | --- |
@@ -61,41 +65,20 @@ var from_disk = try save.loadFile(io, alloc, "saves/tome.json");
 模拟只通过 `Dungeon.isWalkable` 做 LOS/A*，所以行为一致；下一层会从 seed+floor 重新生成。
 因此地图装饰（柱子/水/火盆）和敌人出生点标记不跨读档保留（不影响玩法）。
 
-## F5/F9 接入建议（TomeGame 侧）
+## F5/F9（已接入）
 
-存档（F5）：
+窗口里：
 
-```zig
-if (std.fs.path.dirname(path)) |dir| std.Io.Dir.cwd().createDirPath(io, dir) catch {};
-save.saveFile(io, self.gpa, path, &self.sim) catch |err| {
-    self.sim.pushLog("存档失败 {s}", .{@errorName(err)});
-};
-```
+- **F5**：`saves/tome-run.json` + `saves/tome-gear.json`；目录不存在会自动创建；失败写日志，不打断当前局。
+- **F9**：先完整读入并校验两半，再替换当前局；坏档/未知物品/版本不符只写日志并保留当前局。读档后重建 mesh、视觉、HUD，清空瞄准。
+- 职业菜单底部也提示 **F9 读档**；没有 gear 文件时按空背包读取。
 
-读档（F9）：
-
-```zig
-const loaded = save.loadFile(io, self.gpa, path) catch |err| {
-    self.sim.pushLog("读档失败 {s}", .{@errorName(err)});
-    return; // 保留当前局
-};
-self.sim = loaded;
-self.seed = loaded.seed;
-self.class = loaded.class;
-self.inventory = .{};                 // 背包/装备不在 RunState 里
-self.mods.clear();
-self.last_level = loaded.hero.level;
-self.chest_loot_seen = loaded.chest_loot_events;  // 防止掉落重放
-self.kill_loot_seen = loaded.kill_loot_events;
-self.rebuildMesh();                   // 地图可能来自另一层
-self.resetVisuals();
-self.fillHudState();
-```
+实现入口：`TomeGame.saveRun(io, sim_path, gear_path)` / `TomeGame.loadRun(...)`；`src/game/gear_save.zig` 有 `saveFile/loadFile`。
 
 要点：
 
-1. **背包/装备不在存档里**：`TomeGame.inventory/mods/content` 属于表现+装备层。F9 要么清空背包，要么后续把装备也做成 RunState 的一部分（并升 version）。
-2. **掉落 RNG**：`loot_rng` 是 `TomeGame` 自己的 RNG，未保存。按上面的 `*_seen = sim.*_loot_events` 赋值可避免已结算的掉落重新发放；若要严格复现掉落品质，需要把 `loot_rng` 状态和背包一起加入存档。
-3. **floor 变化**：读档后必须 `rebuildMesh()`，否则 3D 场景还是旧层。
-4. **坏档不覆盖**：`loadFile` 失败时不要动 `self.sim`；原文件也不会被改写。
-5. **R/重开**：`restart()` 会重新 `Sim.reset`，与读档互不影响；F5/F9 建议只在 `state == .playing` 时启用。
+1. **坏档不覆盖**：`loadFile` 只读，校验失败不会改写文件，也不会动 `self.sim`。
+2. **背包/装备**由 gear sidecar 保存；旧档缺 gear 时背包为空，但 Sim 状态仍可用。
+3. **掉落 RNG** 未保存：按 `*_seen = sim.*_loot_events` 赋值避免已结算掉落重放；读档后 `loot_rng = init(seed ^ turn)`，不保证与存档前完全同序。
+4. **地图**由 blocked + stairs/chests/traps 重建，装饰不跨档；不影响 LOS/A*。
+5. **R/重开**：`restart()` 重新 `Sim.reset`，与读档互不影响。
