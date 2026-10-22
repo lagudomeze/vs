@@ -911,6 +911,27 @@ test "tome sim: killing the last boss wins" {
     try std.testing.expectEqual(State.victory, s.state);
 }
 
+test "tome sim: boss AOE resolves on the telegraphed turn" {
+    var s = Sim.init(31, .warrior);
+    s.turn = 2;
+    s.enemy_count = 1;
+    s.enemies[0] = .{
+        .kind = 5,
+        .name = "深渊守卫",
+        .pos = .{ .x = 10, .y = 2 },
+        .hp = 420,
+        .hp_max = 420,
+        .attack = 16,
+        .armor = 15,
+        .speed = 90,
+        .range = 1,
+        .xp = 200,
+    };
+    const hp = s.hero.hp;
+    _ = s.wait();
+    try std.testing.expect(s.hero.hp < hp);
+}
+
 test "tome sim: same seed produces the same floor" {
     const a = Sim.init(99, .warrior);
     const b = Sim.init(99, .warrior);
