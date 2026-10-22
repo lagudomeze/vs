@@ -17,6 +17,8 @@ const hud = @import("tome_hud.zig");
 const content_mod = @import("content.zig");
 const items_mod = @import("items.zig");
 const attributes = @import("attributes.zig");
+const save_mod = @import("save.zig");
+const gear_save = @import("gear_save.zig");
 
 const FloatText = struct {
     pos: math.Vec3 = math.Vec3.zero,
@@ -241,6 +243,77 @@ pub const TomeGame = struct {
             .mage => .mage,
             .chronomancer => .chronomancer,
         };
+    }
+
+    /// F5: write the pure run snapshot and the bag/equipment sidecar.
+    /// The parent directory is created on demand; a failure leaves the
+    /// currently running game untouched and is reported in the log.
+    pub fn saveRun(self: *TomeGame, io: std.Io, sim_path: []const u8, gear_path: []const u8) void {
+        if (std.fs.path.dirname(sim_path)) |dir| {
+            std.Io.Dir.cwd().createDirPath(io, dir) catch {};
+        }
+        save_mod.saveFile(io, self.gpa, sim_path, &self.sim) catch |err| {
+            self.sim.pushLog("存档失败 {s}", .{@errorName(err)});
+            return;
+        };
+        gear_save.saveFile(io, self.gpa, gear_path, &self.inventory) catch |err| {
+            self.sim.pushLog("装备存档失败 {s}", .{@errorName(err)});
+            return;
+        };
+        self.sim.pushLog("已存档", .{});
+    }
+
+    /// F9: load both halves. A missing/corrupt gear file leaves the current
+    /// run alone; a fresh save still loads with an empty bag.
+    pub fn loadRun(self: *TomeGame, io: std.Io, sim_path: []const u8, gear_path: []const u8) void {
+        const loaded = save_mod.loadFile(io, self.gpa, sim_path) catch |err| {
+            self.sim.pushLog("读档失败 {s}", .{@errorName(err)});
+            return;
+        };
+        var gear = gear_save.loadFile(io, self.gpa, gear_path) catch |err| blk: {
+            if (err == error.FileNotFound) break :blk gear_save.GearSave{};
+            self.sim.pushLog("装备读档失败 {s}", .{@errorName(err)});
+            return;
+        };
+        for (gear.items[0..@as(usize, gear.len)]) |id| {
+            if (id >= self.content.items.len) {
+                self.sim.pushLog("读档失败：未知物品", .{});
+                return;
+            }
+        }
+        for (gear.equipped) |maybe| {
+            if (maybe) |id| {
+                if (id >= self.content.items.len) {
+                    self.sim.pushLog("读档失败：未知装备", .{});
+                    return;
+                }
+            }
+        }
+
+        var loaded_inv = items_mod.Inventory.init();
+        gear_save.restore(&gear, &loaded_inv) catch {
+            self.sim.pushLog("读档失败：背包损坏", .{});
+            return;
+        };
+        self.sim = loaded;
+        self.seed = loaded.seed;
+        self.class = loaded.class;
+        self.inventory = loaded_inv;
+        self.mods.clear();
+        self.rebuildMods();
+        self.loot_rng = std.Random.DefaultPrng.init(loaded.seed ^ 0x9e3779b97f4a7c15 ^ @as(u64, loaded.turn));
+        self.chest_loot_seen = loaded.chest_loot_events;
+        self.kill_loot_seen = loaded.kill_loot_events;
+        self.last_level = loaded.hero.level;
+        self.selected = null;
+        self.aim_talent = null;
+        self.reset_armed = 0;
+        self.panel = .none;
+        self.started = true;
+        self.rebuildMesh();
+        self.resetVisuals();
+        self.fillHudState();
+        self.sim.pushLog("读档", .{});
     }
 
     fn rebuildMods(self: *TomeGame) void {
@@ -1348,4 +1421,32 @@ test "tome game: untargeted talents still release immediately without aim" {
     try std.testing.expectEqual(turn + 1, g.sim.turn);
     try std.testing.expect(g.sim.hero.cooldowns[2] > 0);
     try std.testing.expect(g.sim.hero.buff_turns > 0);
+}
+
+test "tome game: save/load round-trips the sim and gear" {
+    const alloc = std.testing.allocator;
+    const io = std.testing.io;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const sim_path = try std.fs.path.join(alloc, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "run.json" });
+    defer alloc.free(sim_path);
+    const gear_path = try std.fs.path.join(alloc, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "gear.json" });
+    defer alloc.free(gear_path);
+
+    const g = try TomeGame.create(alloc, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.started = true;
+    _ = g.sim.wait();
+    g.sim.hero.hp = 77;
+    if (g.content.items.len == 0) return error.SkipZigTest;
+    if (!g.inventory.pickup(0)) return error.SkipZigTest;
+    const turn = g.sim.turn;
+    g.saveRun(io, sim_path, gear_path);
+
+    g.sim.hero.hp = 1;
+    g.inventory = items_mod.Inventory.init();
+    g.loadRun(io, sim_path, gear_path);
+    try std.testing.expectEqual(@as(f32, 77), g.sim.hero.hp);
+    try std.testing.expectEqual(turn, g.sim.turn);
+    try std.testing.expectEqual(@as(usize, 1), g.inventory.len);
 }

@@ -26,6 +26,8 @@ pub const FrameInput = struct {
     reset: bool = false,
     toggle_debug: bool = false,
     screenshot: bool = false,
+    save_slot: bool = false,
+    load_slot: bool = false,
 };
 
 pub const Platform = struct {
@@ -120,6 +122,8 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_R))) input.reset = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F1))) input.toggle_debug = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F12))) input.screenshot = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F5))) input.save_slot = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F9))) input.load_slot = true;
                 }
             } else if (t == @as(u32, @intCast(c.SDL_EVENT_MOUSE_WHEEL))) {
                 input.zoom_delta += ev.wheel.y * 0.55;
