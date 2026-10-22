@@ -196,7 +196,7 @@ fn runWindow(game: *vx.Game, io: std.Io, options: Options) !void {
         elapsed += dt;
 
         const pin = platform.poll(dt);
-        if (pin.quit) break;
+        if (pin.quit or pin.escape) break;
         if (pin.toggle_debug) game.debug = !game.debug;
 
         const input = vx.game.InputFrame{
@@ -289,6 +289,13 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
 
         const pin = platform.poll(dt);
         if (pin.quit) break;
+        if (pin.escape) {
+            if (game.panel != .none) {
+                game.panel = .none;
+            } else {
+                break;
+            }
+        }
         if (pin.toggle_debug) game.debug = !game.debug;
 
         var input = vx.tome_game.Input{};

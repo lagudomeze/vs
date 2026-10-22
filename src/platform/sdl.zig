@@ -5,6 +5,7 @@ const c = @import("sdl");
 
 pub const FrameInput = struct {
     quit: bool = false,
+    escape: bool = false,
     move_x: f32 = 0,
     move_z: f32 = 0,
     yaw_delta: f32 = 0,
@@ -93,12 +94,13 @@ pub const Platform = struct {
             } else if (t == @as(u32, @intCast(c.SDL_EVENT_KEY_DOWN))) {
                 if (!ev.key.repeat) {
                     const sc = ev.key.scancode;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_ESCAPE))) input.quit = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_ESCAPE))) input.escape = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_TAB))) input.toggle_hero = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_SPACE))) {
                         input.cast = true;
                         input.wait = true;
                     }
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_5)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_PERIOD))) input.wait = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_W))) input.step_n = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_S))) input.step_s = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_D))) input.step_e = true;

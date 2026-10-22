@@ -64,6 +64,7 @@ pub const TomeGame = struct {
     kill_loot_seen: u32 = 0,
     last_level: u16 = 1,
     selected: ?usize = null,
+    reset_armed: f32 = 0,
     seed: u64,
     class: sim_mod.Class,
     /// False while the class-selection menu is up; the sim is already
@@ -200,6 +201,7 @@ pub const TomeGame = struct {
         self.kill_loot_seen = 0;
         self.last_level = 1;
         self.selected = null;
+        self.reset_armed = 0;
         self.panel = .none;
         self.rebuildMesh();
         self.resetVisuals();
@@ -387,7 +389,15 @@ pub const TomeGame = struct {
             return;
         }
 
-        if (input.restart) self.restart();
+        self.reset_armed = @max(0, self.reset_armed - dt);
+        if (input.restart) {
+            if (self.sim.state != .playing or self.reset_armed > 0) {
+                self.restart();
+            } else {
+                self.reset_armed = 2.0;
+                self.sim.pushLog("再按 R 确认重开", .{});
+            }
+        }
         if (input.target_next) self.cycleTarget();
 
         if (input.inventory) {
