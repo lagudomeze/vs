@@ -523,6 +523,7 @@ pub const Sim = struct {
         self.hero.resource = @min(self.hero.resource_max, self.hero.resource + self.hero.resource_max * 0.5);
         self.turn += 1;
         self.generateFloor();
+        if (self.floor == self.floors and self.hasLivingBoss()) self.pushLog("深渊守卫封印了楼梯", .{});
         self.armBossAoe();
     }
 
