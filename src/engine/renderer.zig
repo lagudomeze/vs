@@ -627,31 +627,59 @@ pub const Renderer = struct {
 
     fn drawTextRaw(self: *Renderer, x: i32, y: i32, text: []const u8, c: u32, scale: i32) void {
         var px = x;
-        const glyph_px: i32 = @intCast(font.glyph_width);
-        const adv: i32 = @intCast(font.advance);
-        for (text) |ch| {
-            if (ch == ' ') {
-                px += adv * scale;
+        var i: usize = 0;
+        const ascii_adv: i32 = @intCast(font.advance);
+        while (font.nextCodepoint(text, &i)) |cp| {
+            if (cp == ' ') {
+                px += ascii_adv * scale;
                 continue;
             }
-            const rows = font.glyph(ch);
-            var row: usize = 0;
-            while (row < font.glyph_height) : (row += 1) {
-                var col: usize = 0;
-                while (col < font.glyph_width) : (col += 1) {
-                    const bit = (@as(u8, 1) << @intCast(4 - col));
-                    if ((rows[row] & bit) == 0) continue;
-                    self.fillRect(px + @as(i32, @intCast(col)) * scale, y + @as(i32, @intCast(row)) * scale, scale, scale, c);
+            if (cp < 0x80) {
+                const rows = font.glyph(@intCast(cp));
+                var row: usize = 0;
+                while (row < font.glyph_height) : (row += 1) {
+                    var col: usize = 0;
+                    while (col < font.glyph_width) : (col += 1) {
+                        const bit = (@as(u8, 1) << @intCast(4 - col));
+                        if ((rows[row] & bit) == 0) continue;
+                        self.fillRect(
+                            px + @as(i32, @intCast(col)) * scale,
+                            y + (3 + @as(i32, @intCast(row))) * scale,
+                            scale,
+                            scale,
+                            c,
+                        );
+                    }
                 }
+                px += ascii_adv * scale;
+                continue;
             }
-            _ = glyph_px;
-            px += adv * scale;
+            if (font.cjk.find(cp)) |glyph| {
+                const gw: usize = @intCast(font.cjk.width);
+                for (glyph.rows, 0..) |bits, row| {
+                    var col: usize = 0;
+                    while (col < gw) : (col += 1) {
+                        const mask = @as(u16, 1) << @intCast(gw - 1 - col);
+                        if ((bits & mask) == 0) continue;
+                        self.fillRect(
+                            px + @as(i32, @intCast(col)) * scale,
+                            y + @as(i32, @intCast(row)) * scale,
+                            scale,
+                            scale,
+                            c,
+                        );
+                    }
+                }
+            } else {
+                self.strokeRect(px + 2 * scale, y + 3 * scale, 9 * scale, 8 * scale, c);
+            }
+            px += @as(i32, @intCast(font.cjk.advance)) * scale;
         }
     }
 
     pub fn textWidth(text: []const u8, scale: i32) i32 {
         if (text.len == 0) return 0;
-        return (@as(i32, @intCast(text.len)) * @as(i32, @intCast(font.advance)) - 1) * scale;
+        return @intCast(font.textWidth(text, @intCast(@max(scale, 0))));
     }
 
     pub fn textCentered(self: *Renderer, cx: i32, y: i32, text: []const u8, c: u32, scale: i32, shadow: bool) void {

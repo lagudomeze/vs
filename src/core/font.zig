@@ -83,9 +83,66 @@ pub fn glyph(c: u8) [7]u8 {
     return fallback;
 }
 
+pub const cjk = @import("cjk_font.zig");
+
+/// Decode one UTF-8 codepoint at *index. Invalid bytes are skipped.
+pub fn nextCodepoint(text: []const u8, index: *usize) ?u21 {
+    if (index.* >= text.len) return null;
+    const b0 = text[index.*];
+    if (b0 < 0x80) {
+        index.* += 1;
+        return b0;
+    }
+    var len: usize = 0;
+    var cp: u21 = 0;
+    if ((b0 & 0xE0) == 0xC0) {
+        len = 2;
+        cp = b0 & 0x1F;
+    } else if ((b0 & 0xF0) == 0xE0) {
+        len = 3;
+        cp = b0 & 0x0F;
+    } else if ((b0 & 0xF8) == 0xF0) {
+        len = 4;
+        cp = b0 & 0x07;
+    } else {
+        index.* += 1;
+        return 0xFFFD;
+    }
+    if (index.* + len > text.len) {
+        index.* = text.len;
+        return 0xFFFD;
+    }
+    var k: usize = 1;
+    while (k < len) : (k += 1) {
+        const b = text[index.* + k];
+        if ((b & 0xC0) != 0x80) {
+            index.* += 1;
+            return 0xFFFD;
+        }
+        cp = (cp << 6) | (b & 0x3F);
+    }
+    index.* += len;
+    return cp;
+}
+
 pub fn textWidth(text: []const u8, scale: u32) u32 {
-    if (text.len == 0) return 0;
-    return (text.len * advance - 1) * scale;
+    var i: usize = 0;
+    var w: u32 = 0;
+    while (nextCodepoint(text, &i)) |cp| {
+        w += (if (cp < 0x80) advance else cjk.advance) * scale;
+    }
+    if (w > 0) w -= scale;
+    return w;
+}
+
+test "utf8 decoding" {
+    var i: usize = 0;
+    try std.testing.expectEqual(@as(?u21, 'A'), nextCodepoint("A", &i));
+    try std.testing.expectEqual(@as(usize, 1), i);
+    i = 0;
+    try std.testing.expectEqual(@as(?u21, 0x4EE5), nextCodepoint("以", &i));
+    try std.testing.expectEqual(@as(usize, 3), i);
+    try std.testing.expect(textWidth("以太堡", 1) == 38);
 }
 
 test "glyph lookup" {

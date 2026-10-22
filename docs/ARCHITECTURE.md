@@ -148,3 +148,50 @@ u16 part_count
 - 可优化点：按实体 AABB 视锥裁剪、把静态道具合并成一个 mesh、按材质/颜色批处理、用固定点光栅化、减少每帧 `ecs.get`。
 - 若加入大量敌人，建议把 `Pose` 只算可见实体，或按距离降频更新动画。
 - 俯仰角固定是设计需求；`lineup` 模式只用于展示，不影响游戏相机。
+## 8. 战斗层（feat/combat-prototype）
+
+战斗是叠加在 ECS/渲染切片上的一层，不改变相机与光栅器。
+
+### 组件
+
+- `Hero`：生命/AP/移速 + 普攻伤害/距离/冷却 + 技能名/倍率/范围/AOE/减速 + 倒下/复活计时。
+- `Enemy`：类型、生命、伤害、移速、攻击距离/冷却、目标、减速计时、受击闪白。
+- `Animation.state.kind`：0/1/2 英雄，3 骷髅，4 幽魂，5 石魔像，6 深渊守卫；`rig.zig` 按 kind 切换腿摆、手臂、悬浮和武器姿态。
+
+### System 顺序
+
+```text
+VX.Formation    队友目标位置 -> MoveIntent
+VX.Movement     积分/阻尼/边界/朝向/步态
+VX.EnemyAI      最近英雄、追击、攻击、分离力
+VX.HeroCombat   最近敌人、自动普攻
+VX.Animation    AnimState -> Pose 关节矩阵
+VX.Gauges       AP 回复
+VX.Motes        浮游物
+VX.Spins        装饰自转
+```
+
+战斗 system 只修改 ECS 数据，并通过 `systems.events` 固定数组发出事件（敌人受击/英雄受击/敌人死亡/英雄倒下）。`Game.update` 在 `ecs.progress` 后消费事件：伤害数字、火花、击杀计数；然后删除 hp≤0 的敌人、处理复活/换人/胜负。这样避免在 system 迭代中删除实体。
+
+### 波次
+
+`Game` 里的队列（`queueWave`/`beginWave`/`updateWave`）在场地边缘逐个刷怪；清空后进入休整，第 5 波结束判胜，全队倒下判负。`resetRun` 清怪、满血、回到第 1 波。
+
+### 目标与 HUD
+
+- `Game.target` 是当前英雄 7 单位内最近的敌人；目标脚下画红色符文环，头顶显示名字/血条。
+- 非目标敌人只画细血条，避免 5 个名字叠在一起。
+- 伤害数字是 Game 层的`FloatText`数组，投影到屏幕后绘制，不参与 3D 深度。
+- 战斗 HUD 与中文文案在 `hud.zig`；波次横幅画在标题与操作面板之间的顶部空隙。
+
+## 9. 中文像素字体
+
+- 资源：Ark Pixel Font 12px monospaced BDF（SIL OFL 1.1）。
+- `tools/gen_cjk_font.py` 扫描 `src/**/*.zig` 中所有非 ASCII 码点，加上内置的敌人/技能字符表，从 BDF 取 12×12 位图，生成 `src/core/cjk_font.zig`（112 个字形）。
+- BDF 的 `BBX` 按 `FONT_ASCENT` 映射到 12×12 单元；每行位图压成 `u16`。
+- `font.zig` 提供手写 UTF-8 解码、混合宽度 `textWidth`；`renderer.drawTextRaw` 对 ASCII 用 5×7 并垂直居中（+3px），对 CJK 用 12×12，缺字画提示框。
+- 只嵌入用到的字形，源 BDF 不需要随构建分发；许可证在 `assets/fonts/OFL.txt`。
+
+## 10. 数值调参
+
+所有占位数值集中在 `game.zig`（英雄/敌人/波次）与 `systems.zig`（伤害/暴击/事件），HUD 文案在 `hud.zig`。具体表格和下一步见 `docs/COMBAT.md`。

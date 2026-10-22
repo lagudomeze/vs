@@ -56,6 +56,12 @@ MATS = {
     "wood":            ((122, 90, 63), False),
     "wood_dark":       ((78, 56, 40), False),
     "iron":            ((74, 82, 94), False),
+    "stone":           ((96, 104, 120), False),
+    "stone_light":     ((139, 147, 165), False),
+    "stone_dark":      ((62, 71, 89), False),
+    "moss":            ((47, 107, 90), False),
+    "abyss":           ((26, 18, 32), False),
+    "blood":           ((122, 31, 85), False),
 }
 
 # ---------------------------------------------------------------------------
@@ -85,7 +91,7 @@ def joints_with(extra):
 # shared body
 # ---------------------------------------------------------------------------
 
-def add_body(b, cfg, hide_legs=False):
+def add_body(b, cfg, hide_legs=False, cape=True):
     skin = cfg["skin"]
     armor = cfg["leg_armor"]
     boot = cfg["boot"]
@@ -145,7 +151,8 @@ def add_body(b, cfg, hide_legs=False):
             b.frustum(part, cfg["boot"], (sx * 0.075, 0.19, 0.0), 0.042, 0.038, 0.13, 6)
             b.box(part, cfg["boot"], (sx * 0.075, 0.045, 0.020), (0.090, 0.090, 0.150))
 
-    add_cape(b, cfg)
+    if cape:
+        add_cape(b, cfg)
 
 
 def add_cape(b, cfg):
@@ -443,6 +450,171 @@ def build_chronomancer():
 
 
 # ---------------------------------------------------------------------------
+# enemies
+# ---------------------------------------------------------------------------
+
+def build_skeleton():
+    cfg = {
+        "skin": "bone",
+        "torso": "steel_dark",
+        "chest": "bone",
+        "belt": "leather",
+        "accent": "crimson_dark",
+        "pauldron": "steel_dark",
+        "sleeve": "steel_dark",
+        "glove": "bone",
+        "leg_armor": "bone",
+        "knee": "steel_dark",
+        "boot": "bone",
+        "cape": "crimson_dark",
+        "cape_trim": "steel",
+    }
+    b = Builder(MATS)
+    add_body(b, cfg)
+
+    # skull
+    b.frustum("head", "bone", (0.0, 0.900, 0.0), 0.098, 0.078, 0.090, 10)
+    b.frustum("head", "bone", (0.0, 0.958, 0.0), 0.078, 0.040, 0.058, 10)
+    for sx in (1.0, -1.0):
+        b.box("head", "eye_dark", (sx * 0.033, 0.890, 0.085), (0.030, 0.024, 0.014))
+    b.box("head", "bone", (0.0, 0.842, 0.072), (0.070, 0.022, 0.030))
+    b.box("head", "eye_dark", (0.0, 0.860, 0.092), (0.018, 0.010, 0.006))
+    # exposed ribs
+    for i in range(4):
+        b.box("torso", "bone", (0.0, 0.560 + i * 0.040, 0.086), (0.168 - i * 0.012, 0.018, 0.020))
+    b.box("torso", "bone", (0.0, 0.645, 0.096), (0.024, 0.130, 0.016))
+    # rusted sword and buckler
+    b.box("weapon", "leather", (-0.190, 0.395, 0.020), (0.042, 0.080, 0.044))
+    b.box("weapon", "bronze", (-0.190, 0.442, 0.020), (0.150, 0.026, 0.034))
+    b.taper_box("weapon", "steel", (-0.190, 0.650, 0.020), 0.380,
+                (0.030, 0.010), (0.010, 0.005))
+    b.frustum("offhand", "steel_dark", (0.202, 0.438, 0.090), 0.100, 0.100, 0.022, 10,
+              rot=(math.pi * 0.5, 0.0, 0.0))
+    b.annulus("offhand", "bronze", (0.202, 0.438, 0.100), 0.080, 0.102, 0.020, 10,
+              rot=(math.pi * 0.5, 0.0, 0.0))
+    # broken shoulder spike
+    b.cylinder_between("arm_l", "bone", (0.22, 0.78, 0.0), (0.27, 0.86, -0.02), 0.018, 0.004, 5)
+    return b
+
+
+def build_wraith():
+    cfg = {
+        "skin": "cyan_dark",
+        "torso": "violet_dark",
+        "chest": "cyan_dark",
+        "belt": "silver",
+        "accent": "glow_cyan",
+        "pauldron": "abyss",
+        "sleeve": "abyss",
+        "glove": "bone",
+        "leg_armor": "abyss",
+        "knee": "abyss",
+        "boot": "abyss",
+        "cape": "violet_dark",
+        "cape_trim": "cyan",
+    }
+    b = Builder(MATS)
+    add_body(b, cfg, hide_legs=True)
+
+    # long tattered shroud
+    b.frustum("hips", "abyss", (0.0, 0.300, 0.0), 0.210, 0.120, 0.440, 12)
+    b.frustum("hips", "violet_dark", (0.0, 0.225, 0.0), 0.190, 0.150, 0.300, 12)
+    for i in range(7):
+        a = 2.0 * math.pi * i / 7.0
+        r = 0.205
+        b.box("hips", "violet", (r * math.sin(a), 0.070, r * math.cos(a)),
+              (0.040, 0.100, 0.040), rot=(0.0, -a, 0.0))
+    b.annulus("hips", "cyan", (0.0, 0.090, 0.0), 0.190, 0.204, 0.018, 12)
+
+    # hood + void face
+    b.frustum("head", "abyss", (0.0, 0.905, -0.015), 0.118, 0.160, 0.100, 12)
+    b.frustum("head", "violet_dark", (0.0, 1.000, -0.030), 0.120, 0.060, 0.100, 12)
+    b.box("head", "eye_dark", (0.0, 0.882, 0.092), (0.110, 0.090, 0.030))
+    for sx in (1.0, -1.0):
+        b.octahedron("head", "glow_cyan", (sx * 0.036, 0.887, 0.112), 0.016, (1.0, 1.0, 0.5))
+    # belt chain and shoulder
+    b.annulus("torso", "silver", (0.0, 0.560, 0.0), 0.185, 0.198, 0.014, 12)
+    for sx in (1.0, -1.0):
+        b.box("arm_l" if sx > 0 else "arm_r", "silver",
+              (sx * 0.212, 0.735, 0.0), (0.050, 0.090, 0.080))
+        b.cylinder_between("arm_l" if sx > 0 else "arm_r", "bone",
+                           (sx * 0.205, 0.600, 0.020), (sx * 0.235, 0.500, 0.060),
+                           0.020, 0.014, 5)
+    # staff with a cyan soul flame
+    b.cylinder_between("weapon", "wood_dark", (-0.190, 0.020, 0.060), (-0.190, 0.980, 0.060),
+                       0.020, 0.014, 6)
+    b.annulus("weapon", "silver", (-0.190, 1.000, 0.060), 0.045, 0.060, 0.018, 8)
+    b.octahedron("weapon", "glow_cyan", (-0.190, 1.060, 0.060), 0.050, (1.0, 1.5, 1.0))
+    b.octahedron("weapon", "cyan", (-0.190, 1.060, 0.060), 0.030, (1.0, 1.5, 1.0))
+    return b
+
+
+def build_golem(boss=False):
+    stone = "abyss" if boss else "stone_dark"
+    light = "blood" if boss else "stone_light"
+    trim = "gold" if boss else "moss"
+    cfg = {
+        "skin": "stone",
+        "torso": stone,
+        "chest": light,
+        "belt": "stone_dark",
+        "accent": trim,
+        "pauldron": stone,
+        "sleeve": stone,
+        "glove": stone,
+        "leg_armor": stone,
+        "knee": light,
+        "boot": stone,
+        "cape": stone,
+        "cape_trim": trim,
+    }
+    b = Builder(MATS)
+    add_body(b, cfg, cape=False)
+
+    # boulder body plates
+    for i in range(4):
+        b.box("torso", stone, (0.0, 0.520 + i * 0.065, 0.0), (0.360 - i * 0.018, 0.060, 0.240))
+    b.box("torso", light, (0.0, 0.760, 0.020), (0.340, 0.090, 0.260))
+    b.box("torso", trim, (0.0, 0.575, 0.118), (0.220, 0.026, 0.020))
+    # massive shoulders and fists
+    for sx in (1.0, -1.0):
+        b.sphere("arm_l" if sx > 0 else "arm_r", stone, (sx * 0.225, 0.700, 0.0),
+                 0.115, 8, 4, (1.0, 0.9, 1.0))
+        b.box("arm_l" if sx > 0 else "arm_r", light,
+              (sx * 0.225, 0.780, 0.0), (0.130, 0.050, 0.120))
+        b.box("arm_l" if sx > 0 else "arm_r", stone,
+              (sx * 0.245, 0.445, 0.060), (0.140, 0.130, 0.140))
+        b.box("leg_l" if sx > 0 else "leg_r", stone,
+              (sx * 0.105, 0.170, 0.0), (0.160, 0.260, 0.160))
+        b.box("leg_l" if sx > 0 else "leg_r", light,
+              (sx * 0.105, 0.035, 0.055), (0.180, 0.070, 0.230))
+    # small head, glowing eyes
+    b.frustum("head", stone, (0.0, 0.905, 0.0), 0.100, 0.075, 0.080, 8)
+    for sx in (1.0, -1.0):
+        b.box("head", "glow_cyan" if not boss else "fire",
+              (sx * 0.034, 0.900, 0.078), (0.026, 0.018, 0.012))
+    if boss:
+        for sx in (1.0, -1.0):
+            b.cylinder_between("head", "bone",
+                               (sx * 0.075, 0.955, -0.010), (sx * 0.160, 1.080, -0.060),
+                               0.028, 0.004, 5)
+        b.box("torso", "gold", (0.0, 0.635, 0.128), (0.080, 0.080, 0.016))
+    return b
+
+
+def build_abyss_guard():
+    b = build_golem(boss=True)
+    # huge axe
+    b.cylinder_between("weapon", "wood_dark", (-0.190, 0.050, 0.060), (-0.190, 0.950, 0.060),
+                       0.026, 0.022, 6)
+    b.box("weapon", "abyss", (-0.190, 0.850, 0.060), (0.030, 0.200, 0.040))
+    b.box("weapon", "blood", (-0.190, 0.930, 0.060), (0.240, 0.090, 0.020))
+    b.cylinder_between("weapon", "gold", (-0.330, 0.970, 0.060), (0.330, 0.970, 0.060),
+                       0.018, 0.018, 6)
+    return b
+
+
+# ---------------------------------------------------------------------------
 # export
 # ---------------------------------------------------------------------------
 
@@ -532,6 +704,12 @@ CHARACTERS = {
     "chronomancer": (build_chronomancer,
                      joints_with([("focus", "weapon", (0.0, 0.590, 0.040)),
                                   ("aura", "root", (0.0, 0.600, 0.0))])),
+    "skeleton": (build_skeleton, BASE_JOINTS),
+    "wraith": (build_wraith,
+               joints_with([("focus", "root", (0.0, 0.950, 0.0)),
+                            ("aura", "root", (0.0, 0.600, 0.0))])),
+    "golem": (build_golem, BASE_JOINTS),
+    "abyss_guard": (build_abyss_guard, BASE_JOINTS),
 }
 
 

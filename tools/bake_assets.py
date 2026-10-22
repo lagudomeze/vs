@@ -494,6 +494,8 @@ def write_credits(kenney_used):
              "assets/models/*.obj and the brazier / mote / rune circle props are",
              "procedurally authored for VX by tools/characters.py and",
              "tools/bake_assets.py. They belong to this project.", "",
+             "Skeleton, wraith, golem and abyss guard meshes share the same",
+             "procedural humanoid rig as the heroes.", "",
              "## Kenney 3D kit", "",
              "The dungeon/arena props are derived from free Kenney 3D packs",
              "(CC0 1.0 Universal, public domain):", "",
@@ -506,6 +508,14 @@ def write_credits(kenney_used):
     if os.path.exists(lic):
         lines.extend(open(lic, encoding="utf-8", errors="ignore").read().splitlines())
     lines.extend(["~~~", ""])
+    lines.extend([
+        "## UI font", "",
+        "The Chinese HUD uses a subset of **Ark Pixel Font 12px** by TakWolf",
+        "(https://github.com/TakWolf/ark-pixel-font), licensed under the",
+        "SIL Open Font License 1.1. The license text is in assets/fonts/OFL.txt.",
+        "Only glyph bitmaps for characters used by the game are embedded;",
+        "the source BDF is not required at runtime.", "",
+    ])
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines))
 
@@ -518,7 +528,7 @@ def main():
     os.makedirs(OUT_BAKED, exist_ok=True)
     names = []
     print("heroes:")
-    for name in ("warrior", "archmage", "chronomancer"):
+    for name in ("warrior", "archmage", "chronomancer", "skeleton", "wraith", "golem", "abyss_guard"):
         n, nv, nt, data = bake_character(name)
         names.append(n)
         print("  {:<14} verts={:5d} tris={:5d} bytes={:7d}".format(n, nv, nt, len(data)))

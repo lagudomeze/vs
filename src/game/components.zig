@@ -45,6 +45,32 @@ pub const Hero = struct {
     ap_speed: f32 = 18,
     active: bool = false,
     move_speed: f32 = 3.1,
+    attack_damage: f32 = 12,
+    attack_range: f32 = 1.4,
+    attack_cooldown: f32 = 1.2,
+    attack_timer: f32 = 0,
+    skill_name: []const u8 = "",
+    skill_mult: f32 = 2.0,
+    skill_range: f32 = 1.8,
+    skill_aoe: f32 = 0,
+    skill_slow: f32 = 0,
+    downed: bool = false,
+    revive_timer: f32 = 0,
+};
+
+pub const Enemy = struct {
+    kind: u8 = 0, // 0 skeleton, 1 wraith, 2 golem, 3 boss
+    hp: f32 = 40,
+    hp_max: f32 = 40,
+    damage: f32 = 6,
+    move_speed: f32 = 1.8,
+    attack_range: f32 = 1.1,
+    attack_cooldown: f32 = 1.4,
+    attack_timer: f32 = 0,
+    target: ecs.entity_t = 0,
+    slow_timer: f32 = 0,
+    hit_flash: f32 = 0,
+    boss: bool = false,
 };
 
 pub const Follow = struct {
@@ -86,6 +112,7 @@ pub const all = [_]type{
     Pose,
     Renderable,
     Hero,
+    Enemy,
     Follow,
     LightSource,
     Shadow,
