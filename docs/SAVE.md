@@ -70,8 +70,8 @@ var from_disk = try save.loadFile(io, alloc, "saves/tome.json");
 窗口里：
 
 - **F5**：`saves/tome-run.json` + `saves/tome-gear.json`；目录不存在会自动创建；失败写日志，不打断当前局。
-- **F9**：先完整读入并校验两半，再替换当前局；坏档/未知物品/版本不符只写日志并保留当前局。读档后重建 mesh、视觉、HUD，清空瞄准。
-- 职业菜单底部也提示 **F9 读档**；没有 gear 文件时按空背包读取。
+- **F9**：连按两次确认后，先完整读入并校验两半，再替换当前局；坏档/未知物品/版本不符/空 gear 对象只写日志并保留当前局。读档后重建 mesh、视觉、HUD，清空瞄准。
+- 职业菜单底部提示 **F9x2 读档**；没有 gear 文件时按空背包读取，装备 sidecar 缺失不会阻断 Sim。
 
 实现入口：`TomeGame.saveRun(io, sim_path, gear_path)` / `TomeGame.loadRun(...)`；`src/game/gear_save.zig` 有 `saveFile/loadFile`。
 
@@ -79,6 +79,6 @@ var from_disk = try save.loadFile(io, alloc, "saves/tome.json");
 
 1. **坏档不覆盖**：`loadFile` 只读，校验失败不会改写文件，也不会动 `self.sim`。
 2. **背包/装备**由 gear sidecar 保存；旧档缺 gear 时背包为空，但 Sim 状态仍可用。
-3. **掉落 RNG** 未保存：按 `*_seen = sim.*_loot_events` 赋值避免已结算掉落重放；读档后 `loot_rng = init(seed ^ turn)`，不保证与存档前完全同序。
+3. **掉落 RNG**：gear sidecar 的 `loot_rng` 保存 xoshiro256 状态；读档后续接同一掉落序列。旧档没有该字段（全 0）时回退 `init(seed ^ turn)`，并靠 `*_seen = sim.*_loot_events` 防重放。
 4. **地图**由 blocked + stairs/chests/traps 重建，装饰不跨档；不影响 LOS/A*。
 5. **R/重开**：`restart()` 重新 `Sim.reset`，与读档互不影响。
