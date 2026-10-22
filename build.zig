@@ -94,4 +94,22 @@ pub fn build(b: *std.Build) void {
     const run_qa_tests = b.addRunArtifact(qa_tests);
     const qa_step = b.step("test-qa", "Run the TOME QA2 regression matrix");
     qa_step.dependOn(&run_qa_tests.step);
+
+    // QA3: game-level probes (aim state machine, save/load continuation,
+    // help/mechanics). Test/tooling only; does not change game code.
+    const qa3_mod = b.createModule(.{
+        .root_source_file = b.path("src/qa3_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    qa3_mod.addImport("assets", assets_mod);
+    qa3_mod.addAnonymousImport("data", .{
+        .root_source_file = b.path("assets/data/data.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const qa3_tests = b.addTest(.{ .root_module = qa3_mod });
+    const run_qa3_tests = b.addRunArtifact(qa3_tests);
+    const qa3_step = b.step("test-qa3", "Run the TOME QA3 game-level probes");
+    qa3_step.dependOn(&run_qa3_tests.step);
 }
