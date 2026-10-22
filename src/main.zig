@@ -6,6 +6,8 @@ const Options = struct {
     out: ?[]const u8 = null,
     frames: u32 = 0,
     hero: u32 = 0,
+    hero_set: bool = false,
+    start_menu: bool = false,
     seed: u64 = 12345,
     arena: bool = false,
     yaw: f32 = -0.35,
@@ -36,7 +38,8 @@ fn usage() void {
         \\  --out PATH        screenshot path (default: shots/vx.png)
         \\  --frames N        simulation frames before a headless capture; window auto-quit
         \\  --run-seconds S   window mode: capture and quit after S seconds
-        \\  --hero N          start controlling hero 0=Berserker 1=Archmage 2=Chronomancer
+        \\  --hero N          start as hero 0=Berserker 1=Archmage 2=Chronomancer (skips the class menu)
+        \\  --start-menu      force the class-selection cards (headless screenshots/QA)
         \\  --yaw DEG         camera yaw (default -20)
         \\  --pitch DEG       camera pitch (default 40)
         \\  --dist U          camera orbit distance (default 8.2)
@@ -83,6 +86,9 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.frames = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
         } else if (std.mem.eql(u8, a, "--hero")) {
             o.hero = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
+            o.hero_set = true;
+        } else if (std.mem.eql(u8, a, "--start-menu")) {
+            o.start_menu = true;
         } else if (std.mem.eql(u8, a, "--seed")) {
             o.seed = try std.fmt.parseInt(u64, try argAt(argv, &i), 10);
         } else if (std.mem.eql(u8, a, "--arena")) {
@@ -269,7 +275,7 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
     var elapsed: f32 = 0;
     var quit = false;
     var captured = false;
-    std.debug.print("tome: {d}x{d} logical, {d}x scale - WASD step, 1/2/3 talent, SPACE wait, I/C panels, Q/E orbit, R restart\n", .{
+    std.debug.print("tome: {d}x{d} logical, {d}x scale - class menu 1/2/3, WASD step, 1/2/3 talent, SPACE wait, I/C panels, Q/E orbit, R restart\n", .{
         options.width, options.height, options.scale,
     });
 
@@ -378,6 +384,15 @@ pub fn main(init: std.process.Init.Minimal) !void {
     game.camera.yaw = options.yaw;
     game.camera.pitch = options.pitch;
     game.camera.distance = @max(options.dist, 12.0);
+
+    // Window play starts on the class cards; headless QA keeps its old
+    // instant-start behaviour unless --start-menu is explicit. --hero always
+    // skips the menu so scripted screenshots stay stable.
+    const wants_menu = !options.hero_set and (options.start_menu or !options.headless);
+    if (wants_menu and !options.hide_hud and !options.inventory and !options.character and options.loot == 0) {
+        game.openMenu();
+    }
+
     if (options.inventory) game.panel = .inventory;
     if (options.character) game.panel = .character;
     if (options.loot > 0) game.debugGrantLoot(options.loot);

@@ -66,6 +66,9 @@ pub const TomeGame = struct {
     selected: ?usize = null,
     seed: u64,
     class: sim_mod.Class,
+    /// False while the class-selection menu is up; the sim is already
+    /// generated so the menu can preview the 3D dungeon behind the cards.
+    started: bool = true,
     hero_vis: Visual = .{},
     enemy_vis: [sim_mod.max_enemies]Visual = undefined,
     floats: [24]FloatText = .{ .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{} },
@@ -186,10 +189,13 @@ pub const TomeGame = struct {
         return 1.55;
     }
 
-    pub fn restart(self: *TomeGame) void {
+    /// Rebuild every run-scoped system from (seed, class). Shared by restart,
+    /// class selection and the menu, so R never loses the chosen class.
+    fn resetRun(self: *TomeGame) void {
         self.sim.reset(self.seed, self.class);
         self.inventory = items_mod.Inventory.init();
         self.mods.clear();
+        self.loot_rng = std.Random.DefaultPrng.init(self.seed ^ 0x9e3779b97f4a7c15);
         self.chest_loot_seen = 0;
         self.kill_loot_seen = 0;
         self.last_level = 1;
@@ -197,6 +203,26 @@ pub const TomeGame = struct {
         self.panel = .none;
         self.rebuildMesh();
         self.resetVisuals();
+        self.fillHudState();
+    }
+
+    pub fn restart(self: *TomeGame) void {
+        self.started = true;
+        self.resetRun();
+    }
+
+    /// Show the pre-run class cards. The same seed is used for the preview;
+    /// picking a class consumes it and regenerates the dungeon (see selectClass).
+    pub fn openMenu(self: *TomeGame) void {
+        self.started = false;
+        self.resetRun();
+    }
+
+    pub fn selectClass(self: *TomeGame, class: sim_mod.Class) void {
+        self.class = class;
+        self.seed = sim_mod.nextSeed(self.seed);
+        self.restart();
+        self.sim.pushLog("开始：{s}", .{sim_mod.class_names[@backingInt(self.class)]});
         self.fillHudState();
     }
 
@@ -225,7 +251,7 @@ pub const TomeGame = struct {
     }
 
     pub fn autoPlayStep(self: *TomeGame) void {
-        if (self.sim.state != .playing or self.panel != .none) return;
+        if (!self.started or self.sim.state != .playing or self.panel != .none) return;
         const hero = self.sim.hero.pos;
 
         // adjacent enemy: bump attack
@@ -352,6 +378,15 @@ pub const TomeGame = struct {
         self.camera.yaw += input.yaw_delta;
         self.camera.distance = std.math.clamp(self.camera.distance - input.zoom_delta * 0.35, 6.0, 13.0);
 
+        if (!self.started) {
+            if (input.talent >= 0) self.selectClass(sim_mod.classFromIndex(@intCast(input.talent)));
+            self.syncVisuals(false);
+            self.updateVisuals(dt);
+            self.followCamera();
+            self.fillHudState();
+            return;
+        }
+
         if (input.restart) self.restart();
         if (input.target_next) self.cycleTarget();
 
@@ -409,13 +444,17 @@ pub const TomeGame = struct {
 
         self.syncVisuals(false);
         self.updateVisuals(dt);
-        // Keep the whole room on screen while still following the hero:
-        // clamp the look-at point to the middle band and bias it toward the hero.
+        self.followCamera();
+        self.fillHudState();
+    }
+
+    /// Keep the whole room on screen while still following the hero: clamp the
+    /// look-at point to the middle band and bias it toward the hero.
+    fn followCamera(self: *TomeGame) void {
         self.camera.target.x = std.math.clamp(self.hero_vis.pos.x * 0.65, -2.8, 2.8);
         self.camera.target.z = std.math.clamp(self.hero_vis.pos.z * 0.65, -2.8, 2.8);
         self.camera.target.y = 0.35;
         self.camera_target = self.camera.target;
-        self.fillHudState();
     }
 
     fn spawnFloat(self: *TomeGame, pos: math.Vec3, value: i32, color_value: u32) void {
@@ -600,7 +639,7 @@ pub const TomeGame = struct {
         self.drawProps();
         self.renderer.resolve();
         self.drawFloats();
-        self.drawWorldBars();
+        if (self.started) self.drawWorldBars();
         if (self.show_hud) hud.draw(&self.renderer, self.hud_state);
     }
 
@@ -756,6 +795,8 @@ pub const TomeGame = struct {
 
     fn fillHudState(self: *TomeGame) void {
         self.hud_state = .{
+            .menu = !self.started,
+            .menu_seed = self.seed,
             .class_name = sim_mod.class_names[@backingInt(self.class)],
             .level = self.sim.hero.level,
             .xp = self.sim.hero.xp,
@@ -782,14 +823,36 @@ pub const TomeGame = struct {
             .dead = self.sim.state == .dead,
             .victory = self.sim.state == .victory,
         };
+        var card_i: usize = 0;
+        while (card_i < sim_mod.class_count) : (card_i += 1) {
+            const class: sim_mod.Class = @fromBackingInt(@intCast(card_i));
+            self.hud_state.menu_cards[card_i] = .{
+                .name = sim_mod.class_names[card_i],
+                .resource = sim_mod.resource_names[card_i],
+                .resource_max = sim_mod.classResourceMax(class),
+                .hp_max = sim_mod.classHpMax(class),
+                .role = sim_mod.class_roles[card_i],
+                .talents = .{
+                    sim_mod.talentNameFor(class, 0),
+                    sim_mod.talentNameFor(class, 1),
+                    sim_mod.talentNameFor(class, 2),
+                },
+                .descs = sim_mod.class_talent_descs[card_i],
+            };
+        }
         var i: usize = 0;
         while (i < 3) : (i += 1) {
+            const cost = self.sim.talentCost(i);
+            const affordable = self.sim.hero.resource >= @as(f32, @floatFromInt(cost));
             self.hud_state.hotbar[i] = .{
                 .name = self.sim.talentName(i),
-                .cost = self.sim.talentCost(i),
+                .cost = cost,
                 .cooldown = self.sim.hero.cooldowns[i],
-                .ready = self.sim.hero.cooldowns[i] == 0 and self.sim.hero.resource >= @as(f32, @floatFromInt(self.sim.talentCost(i))),
+                .cooldown_max = self.sim.talentCooldown(i),
+                .ready = self.sim.state == .playing and self.sim.hero.cooldowns[i] == 0 and affordable,
+                .affordable = affordable,
             };
+            self.hud_state.talent_descs[i] = self.sim.talentDesc(i);
         }
         const target = self.currentTarget();
         self.hud_state.target_name = "";
@@ -867,3 +930,34 @@ pub const TomeGame = struct {
         try png.writePng(io, self.gpa, path, self.renderer.width, self.renderer.height, self.renderer.color_buf);
     }
 };
+
+test "tome game: class menu selects, reseeds and keeps the class on restart" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+
+    g.openMenu();
+    try std.testing.expect(!g.started);
+    try std.testing.expect(g.hud_state.menu);
+    try std.testing.expect(g.hud_state.menu_cards[1].talents[0].len > 0);
+    try std.testing.expect(g.hud_state.talent_descs[0].len > 0);
+    const preview_seed = g.seed;
+
+    g.update(.{ .talent = 1 }, 1.0 / 60.0);
+    try std.testing.expect(g.started);
+    try std.testing.expectEqual(sim_mod.Class.mage, g.class);
+    try std.testing.expectEqual(sim_mod.Class.mage, g.sim.class);
+    try std.testing.expect(g.seed != preview_seed);
+    try std.testing.expectEqual(g.seed, g.sim.seed);
+    try std.testing.expect(!g.hud_state.menu);
+    try std.testing.expectEqualStrings("火球", g.hud_state.hotbar[0].name);
+    try std.testing.expect(g.hud_state.hotbar[0].cooldown_max > 0);
+
+    const chosen_seed = g.seed;
+    g.sim.state = .dead;
+    g.update(.{ .restart = true }, 1.0 / 60.0);
+    try std.testing.expect(g.started);
+    try std.testing.expectEqual(sim_mod.Class.mage, g.class);
+    try std.testing.expectEqual(chosen_seed, g.seed);
+    try std.testing.expectEqual(sim_mod.State.playing, g.sim.state);
+}

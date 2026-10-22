@@ -1,5 +1,6 @@
 //! ToME4-style turn-based HUD: one hero, hotbar, floor info, log and modal panels.
 const std = @import("std");
+const color = @import("../core/color.zig");
 const palette = @import("../core/palette.zig");
 const renderer = @import("../engine/renderer.zig");
 
@@ -8,11 +9,28 @@ pub const Panel = enum(u8) { none, character, inventory };
 pub const HotbarSlot = struct {
     name: []const u8 = "",
     cost: u16 = 0,
+    /// Remaining cooldown, updated every turn.
     cooldown: u16 = 0,
+    /// Base cooldown shown next to the cost.
+    cooldown_max: u16 = 0,
     ready: bool = true,
+    affordable: bool = true,
+};
+
+pub const ClassCard = struct {
+    name: []const u8 = "",
+    resource: []const u8 = "",
+    resource_max: u16 = 0,
+    hp_max: u16 = 0,
+    role: []const u8 = "",
+    talents: [3][]const u8 = .{ "", "", "" },
+    descs: [3][]const u8 = .{ "", "", "" },
 };
 
 pub const State = struct {
+    menu: bool = false,
+    menu_seed: u64 = 0,
+    menu_cards: [3]ClassCard = .{ .{}, .{}, .{} },
     class_name: []const u8 = "",
     level: u16 = 1,
     xp: u32 = 0,
@@ -30,6 +48,7 @@ pub const State = struct {
     stairs_hint: []const u8 = "",
     stairs_dist: u16 = 0,
     hotbar: [3]HotbarSlot = .{ .{}, .{}, .{} },
+    talent_descs: [3][]const u8 = .{ "", "", "" },
     target_name: []const u8 = "",
     target_hp: f32 = 0,
     target_hp_max: f32 = 1,
@@ -69,9 +88,83 @@ fn fmt(buf: []u8, comptime f: []const u8, args: anytype) []const u8 {
     return std.fmt.bufPrint(buf, f, args) catch "";
 }
 
+const menu_title = "选职业";
+const menu_hint = "按 1 / 2 / 3 开始";
+const menu_footer = "死亡按 R 重开 同职业";
+const talent_label = "天赋";
+
+/// Pre-run class selection. A checkerboard dim keeps the 3D dungeon visible
+/// behind the cards while the title and card panels stay fully readable.
+fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
+    var y: i32 = 0;
+    while (y < h) : (y += 2) {
+        var x: i32 = 0;
+        while (x < w) : (x += 2) r.putPixel(x, y, palette.deep);
+    }
+
+    const plate_w: i32 = 210;
+    backPanel(r, @divTrunc(w, 2) - @divTrunc(plate_w, 2), 4, plate_w, 48);
+    const tw = renderer.Renderer.textWidth(menu_title, 2);
+    r.drawText(@divTrunc(w, 2) - @divTrunc(tw, 2), 7, menu_title, palette.gold, 2, true);
+    var sub_buf: [64]u8 = undefined;
+    const sub = fmt(&sub_buf, "{s} | SEED {d}", .{ menu_hint, state.menu_seed });
+    const sw = renderer.Renderer.textWidth(sub, 1);
+    r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), 35, sub, palette.muted, 1, false);
+
+    const accents = [_]u32{ palette.gold, palette.cyan, color.pack(185, 128, 230) };
+    const card_w: i32 = 146;
+    const card_h: i32 = 188;
+    const gap: i32 = 6;
+    const total = card_w * 3 + gap * 2;
+    const x0 = @divTrunc(w - total, 2);
+    const y0: i32 = 58;
+
+    for (state.menu_cards, 0..) |card, i| {
+        const x = x0 + @as(i32, @intCast(i)) * (card_w + gap);
+        r.fillRect(x, y0, card_w, card_h, palette.panel);
+        r.strokeRect(x, y0, card_w, card_h, palette.border);
+        r.fillRect(x + 2, y0 + 2, card_w - 4, 2, accents[i]);
+
+        r.fillRect(x + 8, y0 + 8, 18, 18, palette.deep);
+        r.strokeRect(x + 8, y0 + 8, 18, 18, accents[i]);
+        var key_buf: [8]u8 = undefined;
+        const key = fmt(&key_buf, "{d}", .{i + 1});
+        r.drawText(x + 14, y0 + 10, key, palette.gold_light, 1, false);
+        r.drawText(x + 32, y0 + 8, card.name, palette.gold, 2, true);
+
+        var res_buf: [48]u8 = undefined;
+        const res = fmt(&res_buf, "资源 {s} {d}", .{ card.resource, card.resource_max });
+        r.drawText(x + 8, y0 + 38, res, palette.cream, 1, false);
+        var hp_buf: [24]u8 = undefined;
+        const hp = fmt(&hp_buf, "生命 {d}", .{card.hp_max});
+        r.drawText(x + 8, y0 + 52, hp, palette.muted, 1, false);
+        var role_buf: [48]u8 = undefined;
+        const role = fmt(&role_buf, "定位 {s}", .{card.role});
+        r.drawText(x + 8, y0 + 66, role, palette.cyan_light, 1, false);
+
+        r.fillRect(x + 8, y0 + 82, card_w - 16, 1, palette.border);
+        r.drawText(x + 8, y0 + 88, talent_label, palette.gold, 1, false);
+        var talent_buf: [32]u8 = undefined;
+        for (card.talents, 0..) |name, t| {
+            const ty = y0 + 104 + @as(i32, @intCast(t)) * 28;
+            const label = fmt(&talent_buf, "{d} {s}", .{ t + 1, name });
+            r.drawText(x + 8, ty, label, palette.cream, 1, false);
+            r.drawText(x + 22, ty + 13, card.descs[t], palette.muted, 1, false);
+        }
+    }
+
+    const fw = renderer.Renderer.textWidth(menu_footer, 1);
+    r.drawText(@divTrunc(w, 2) - @divTrunc(fw, 2), 252, menu_footer, palette.muted, 1, false);
+}
+
 pub fn draw(r: *renderer.Renderer, state: State) void {
     const w: i32 = @intCast(r.width);
     const h: i32 = @intCast(r.height);
+
+    if (state.menu) {
+        drawMenu(r, state, w, h);
+        return;
+    }
 
     // top-left: class / HP / resource / turn / floor
     backPanel(r, 6, 5, 190, 60);
@@ -136,19 +229,40 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         }
     }
 
-    // hotbar
-    backPanel(r, 6, h - 60, 300, 54);
-    r.drawText(10, h - 56, "天赋", palette.gold, 1, false);
+    // one-line talent effects, aligned under the three hotbar cards
+    backPanel(r, 6, h - 92, 300, 20);
+    for (state.talent_descs, 0..) |desc, i| {
+        const dx: i32 = 10 + @as(i32, @intCast(i)) * 97;
+        r.drawText(dx, h - 89, desc, palette.muted, 1, false);
+    }
+
+    // hotbar: name, cost/base cooldown, then live availability
+    backPanel(r, 6, h - 70, 300, 64);
+    r.drawText(10, h - 66, talent_label, palette.gold, 1, false);
     for (state.hotbar, 0..) |slot, i| {
-        const sx: i32 = 10 + @as(i32, @intCast(i)) * 96;
-        const sy: i32 = h - 40;
-        r.fillRect(sx, sy, 90, 32, palette.deep);
-        r.strokeRect(sx, sy, 90, 32, if (slot.ready) palette.border else palette.muted);
+        const sx: i32 = 10 + @as(i32, @intCast(i)) * 97;
+        const sy: i32 = h - 52;
+        r.fillRect(sx, sy, 94, 42, palette.deep);
+        r.strokeRect(sx, sy, 94, 42, if (slot.ready) palette.border else palette.muted);
         const key = fmt(&buf, "{d}", .{i + 1});
         r.drawText(sx + 4, sy + 3, key, palette.gold, 1, false);
         r.drawText(sx + 18, sy + 3, slot.name, if (slot.ready) palette.cream else palette.muted, 1, false);
-        const cost = fmt(&buf, "{d}  冷却{d}", .{ slot.cost, slot.cooldown });
-        r.drawText(sx + 4, sy + 18, cost, if (slot.ready) palette.cyan_light else palette.red, 1, false);
+        const cost = fmt(&buf, "消耗{d} 冷却{d}", .{ slot.cost, slot.cooldown_max });
+        r.drawText(sx + 4, sy + 16, cost, palette.muted, 1, false);
+        var status_buf: [24]u8 = undefined;
+        var status: []const u8 = "可用";
+        var status_color: u32 = palette.cyan_light;
+        if (state.dead or state.victory) {
+            status = "不可用";
+            status_color = palette.muted;
+        } else if (slot.cooldown > 0) {
+            status = fmt(&status_buf, "冷却 {d}", .{slot.cooldown});
+            status_color = palette.red;
+        } else if (!slot.affordable) {
+            status = "缺资源";
+            status_color = palette.red;
+        }
+        r.drawText(sx + 4, sy + 29, status, status_color, 1, false);
     }
 
     // bottom-right controls
@@ -203,6 +317,15 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                 const line = fmt(&ebuf, "{s}  {s}", .{ label, name });
                 r.drawText(ix + 16, ey, line, palette.cream, 1, false);
             }
+
+            // talent cheat-sheet: cost/cooldown live in the hotbar, effects here
+            r.fillRect(ix + 16, iy + 202, iw - 32, 1, palette.border);
+            var tbuf: [96]u8 = undefined;
+            for (state.hotbar, 0..) |slot, i| {
+                const prefix = if (i == 0) "天赋 " else "     ";
+                const line = fmt(&tbuf, "{s}{d} {s}：{s}", .{ prefix, i + 1, slot.name, state.talent_descs[i] });
+                r.drawText(ix + 16, iy + 204 + @as(i32, @intCast(i)) * 14, line, if (i == 0) palette.gold_light else palette.cream, 1, false);
+            }
         } else {
             if (state.item_count == 0) {
                 r.drawText(ix + 16, iy + 42, "背包是空的", palette.muted, 1, false);
@@ -223,7 +346,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     // death / victory overlay
     if (state.dead or state.victory) {
         const title = if (state.victory) "胜利" else "死亡";
-        const sub = "按 R 重开";
+        const sub = "按 R 重开 同职业";
         r.fillRect(0, @divTrunc(h, 2) - 28, w, 62, palette.panel);
         r.fillRect(0, @divTrunc(h, 2) - 29, w, 1, palette.gold);
         r.fillRect(0, @divTrunc(h, 2) + 33, w, 1, palette.gold);
@@ -231,5 +354,46 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         r.drawText(@divTrunc(w, 2) - @divTrunc(tw, 2), @divTrunc(h, 2) - 22, title, if (state.victory) palette.gold_light else palette.red, 2, true);
         const sw = renderer.Renderer.textWidth(sub, 1);
         r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), @divTrunc(h, 2) + 12, sub, palette.cream, 1, true);
+    }
+}
+
+fn expectGlyphs(text: []const u8) !void {
+    const font = @import("../core/font.zig");
+    var i: usize = 0;
+    while (font.nextCodepoint(text, &i)) |cp| {
+        if (cp < 0x80) continue;
+        try std.testing.expect(font.cjk.find(cp) != null);
+    }
+}
+
+test "tome hud: hint strings have embedded CJK glyphs" {
+    const sim = @import("tome_sim.zig");
+    const fixed = [_][]const u8{
+        menu_title,
+        menu_hint,
+        menu_footer,
+        talent_label,
+        "资源",
+        "生命",
+        "定位",
+        "消耗",
+        "冷却",
+        "可用",
+        "缺资源",
+        "不可用",
+        "按 R 重开 同职业",
+    };
+    for (fixed) |text| try expectGlyphs(text);
+    for (sim.class_names) |text| try expectGlyphs(text);
+    for (sim.resource_names) |text| try expectGlyphs(text);
+    for (sim.class_roles) |text| try expectGlyphs(text);
+    for (sim.class_talent_descs) |row| {
+        for (row) |text| try expectGlyphs(text);
+    }
+    var ci: usize = 0;
+    while (ci < sim.class_count) : (ci += 1) {
+        const class: sim.Class = @fromBackingInt(@intCast(ci));
+        var ti: usize = 0;
+        while (ti < 3) : (ti += 1) try expectGlyphs(sim.talentNameFor(class, ti));
     }
 }
