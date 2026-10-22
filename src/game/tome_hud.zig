@@ -204,13 +204,15 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                 r.drawText(ix + 16, iy + 42, "背包是空的", palette.muted, 1, false);
             } else {
                 const n = @min(state.item_count, state.items.len);
+                var ibuf: [48]u8 = undefined;
                 for (state.items[0..n], 0..) |name, i| {
                     const col = @as(i32, @intCast(i % 2));
                     const row = @as(i32, @intCast(i / 2));
-                    r.drawText(ix + 16 + col * 190, iy + 42 + row * 20, name, palette.cream, 1, false);
+                    const label = if (i < 3) fmt(&ibuf, "{d} {s}", .{ i + 1, name }) else fmt(&ibuf, "  {s}", .{name});
+                    r.drawText(ix + 16 + col * 190, iy + 42 + row * 20, label, palette.cream, 1, false);
                 }
             }
-            r.drawText(ix + 16, iy + ih - 18, "数字键 1/2/3 装备；再次进入背包取下", palette.muted, 1, false);
+            r.drawText(ix + 16, iy + ih - 18, "数字键 1/2/3 装备；I 关闭", palette.muted, 1, false);
         }
     }
 

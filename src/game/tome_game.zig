@@ -257,6 +257,23 @@ pub const TomeGame = struct {
         _ = self.sim.wait();
     }
 
+    fn equipBag(self: *TomeGame, index: usize) void {
+        if (index >= self.inventory.count()) return;
+        const item = self.inventory.at(index);
+        if (item >= self.content.items.len) return;
+        const def = &self.content.items[item];
+        if (def.slot == null) {
+            self.sim.pushLog("{s} 不能装备", .{def.name});
+            return;
+        }
+        self.inventory.equip(self.content.items, item) catch {
+            self.sim.pushLog("无法装备 {s}", .{def.name});
+            return;
+        };
+        self.rebuildMods();
+        self.sim.pushLog("装备 {s}", .{def.name});
+    }
+
     fn itemScore(def: *const items_mod.ItemDef) f32 {
         var score: f32 = 0;
         for (def.mods) |m| {
@@ -333,6 +350,9 @@ pub const TomeGame = struct {
         }
         if (input.character) {
             self.panel = if (self.panel == .character) .none else .character;
+        }
+        if (self.panel == .inventory and input.talent >= 0) {
+            self.equipBag(@intCast(input.talent));
         }
 
         var used_potion = false;
