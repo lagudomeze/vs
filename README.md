@@ -10,12 +10,15 @@
 
 - **回合制**：玩家移动/普攻/天赋/等待后，敌人按速度依次行动；冷却、资源、状态按回合结算，不按秒。
 - **单角色 + 3 职业**：狂战士（精力）、元素法师（法力）、时空法师（悖论），每职业 3 个天赋。
+- **开局职业菜单**：窗口启动先看三张职业卡（资源、生命、定位、3 个天赋及一行效果）；按 1/2/3 选职业并重新生成地牢。`--hero` 直接开局，headless 默认跳过菜单。
 - **格子与地牢**：13×13 网格；墙/柱子/水域阻挡；撞墙不消耗回合，撞敌人 = 普攻；3 层，楼梯下一层，第 3 层 Boss。
 - **确定性关卡**：同一 seed 生成同一层；入口、楼梯、宝箱、陷阱、敌人出生点由连通性校验；敌人用 A* 绕墙追击，远程用 LOS。
 - **属性/装备/掉落**：六属性、HP/资源、攻击/护甲/暴击/速度；宝箱和击杀产出版本内物品，空槽自动装备，装备即时改变面板数值。
-- **中文 HUD**：角色卡、楼层卡、目标卡、战斗日志、天赋栏、角色/背包面板；Ark Pixel 12px 子集。
+- **中文 HUD**：角色卡、楼层卡、目标卡、战斗日志、天赋栏、角色/背包面板；天赋栏显示消耗、基础冷却和当前状态（可用/冷却中/缺资源），底部一行说明天赋效果，角色面板可复查。Ark Pixel 12px 子集。
 - **3D 像素场景**：地牢地砖、墙、楼梯、宝箱、陷阱、精英和 Boss 模型；脚底环、目标血条、危险标记、楼梯光柱。
 - **无窗口验证**：headless 截图；自动跑局用于 QA。
+
+![select](docs/screenshots/tome_select.png)
 
 ![fight](docs/screenshots/tome_fight.png)
 
@@ -30,8 +33,9 @@
 ### 构建与运行
 
 ~~~powershell
-zig build run                  # 默认 ToME 回合制
+zig build run                  # 默认 ToME 回合制（先选职业）
 zig build test                 # 单元 + 集成测试
+zig build run -- --headless --start-menu --frames 2 --out shots/tome-select.png
 zig build run -- --headless --frames 2 --out shots/tome.png
 zig build run -- --headless --auto --frames 5000 --out shots/tome-auto.png
 zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照）
@@ -44,12 +48,12 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | 输入 | 行为 |
 | --- | --- |
 | WASD | 走一格；撞敌人 = 普攻；撞墙不消耗回合 |
-| 1 / 2 / 3 | 天赋 1/2/3（自动选最近目标；范围/冷却/资源校验） |
+| 1 / 2 / 3 | 开局菜单：选择职业并开始；游戏中：天赋 1/2/3（自动选最近目标；范围/冷却/资源校验） |
 | 空格 | 等待一回合；附近无敌人时休息回复 |
 | I | 背包；背包内按 1/2/3 装备前三件 |
-| C | 角色面板（六属性、装备、生命/资源、攻击/护甲/暴击/速度） |
+| C | 角色面板（六属性、装备、天赋说明、生命/资源、攻击/护甲/暴击/速度） |
 | Q/E、方向键、右键拖拽 | 旋转相机；滚轮缩放 |
-| R | 死亡/任意时候重开本 seed |
+| R | 死亡/任意时候重开本 seed；保留当前职业 |
 | F1 / F12 / ESC | 调试 / 截图 / 退出 |
 
 ![character](docs/screenshots/tome_character.png)
@@ -62,7 +66,8 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | --out PATH | 截图路径 |
 | --frames N | 模拟 N 帧后截图/退出 |
 | --run-seconds S | 窗口运行 S 秒后截图退出 |
-| --hero N | 0 狂战士 / 1 元素法师 / 2 时空法师 |
+| --hero N | 0 狂战士 / 1 元素法师 / 2 时空法师；直接开局并跳过职业菜单 |
+| --start-menu | 强制显示职业菜单（headless 截图/QA 用；headless 默认跳过） |
 | --seed N | 地牢种子（默认 12345） |
 | --auto | headless 自动向楼梯推进、打怪、放天赋 |
 | --inventory / --character | 启动时打开对应面板（截图/审查用） |
@@ -87,12 +92,16 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | 元素法师 | 法力 | 火球（5 格内 2.5× + 1.5 格溅射） | 冰锥（1.8× + 减速） | 闪现（3–5 格空地） |
 | 时空法师 | 悖论 | 时光箭（2.0× + 减速） | 时间停滞（1.2× + 跳过 2 回合） | 回溯（回到上一格） |
 
+天赋栏显示消耗、基础冷却和当前状态（可用/冷却中/缺资源），下方一行说明实际效果；角色面板里也能复查（[截图](docs/screenshots/tome_talent_panel.png)）。
+
+![talents](docs/screenshots/tome_talents.png)
+
 ### 地牢与成长
 
 - 3 层；每层入口随机在底/左/右，楼梯在对侧，保证连通。
 - 宝箱 2–4 个、陷阱 1–4 个、敌人 4–8 个，随层数增加。
 - 击杀获得 XP；升级 +1 主属性并回满；第 3 层击败深渊守卫胜利。
-- 死亡即结束，R 从同一 seed 重开（ToME4 式 roguelike）。
+- 死亡即结束，R 从同一 seed 重开并保留当前职业（ToME4 式 roguelike）。
 
 ## 代码结构
 
@@ -121,9 +130,10 @@ docs/           TOME_V1 / ART_PASS / UX_REVIEW_TOME / screenshots
 
 ## 验证
 
-- zig build / zig build test：13/13 steps、74/74 tests。
-- headless：可生成开始/战斗/角色/背包/胜利截图。
-- 自动跑局（seed 12345）：第 80 回合击败第 3 层守卫，剩 51 HP；可复现。
+- zig build / zig build test：13/13 steps、93/93 tests。
+- headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/tome_select.png`。
+- 职业菜单选择后 seed 重新生成并重置战利品 RNG；R 重开保持当前职业和 seed。
+- 自动跑局（seed 12345）：可复现地推进到第 3 层，用于 QA 回归（最新 main 的 Boss AOE 会改变最终胜负）。
 - 窗口模式：480×270、3× 最近邻、SDL 输入/截图正常。
 
 ![victory](docs/screenshots/tome_victory.png)
@@ -133,7 +143,7 @@ docs/           TOME_V1 / ART_PASS / UX_REVIEW_TOME / screenshots
 - 天赋自动选最近目标，还没有 ToME4 的选格/范围预览/确认取消。
 - 背包只能查看；空槽自动装备，手动换装/多套装备待做。
 - 敌人技能只有普攻 + Boss 模型，没有完整 Boss AOE/召唤。
-- 没有音频、存档、角色选择菜单、天赋树、随机词缀。
+- 没有音频、存档、天赋树、随机词缀。
 - 当前数值是 v1 占位，优先验证循环与可读性。
 
 ## 致谢与许可

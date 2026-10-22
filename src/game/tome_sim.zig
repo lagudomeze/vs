@@ -18,6 +18,58 @@ pub fn classFromIndex(i: u8) Class {
 
 pub const class_names = [_][]const u8{ "狂战士", "元素法师", "时空法师" };
 pub const resource_names = [_][]const u8{ "精力", "法力", "悖论" };
+/// One-line positioning hints for the class-selection cards.
+pub const class_roles = [_][]const u8{ "近战 防御", "远程 伤害", "远程 减速" };
+
+/// One-line Chinese effect text for every class talent (hotbar hint strip,
+/// class cards and the character panel). Keep each line short enough for the
+/// 92 px columns used by the HUD.
+pub const class_talent_descs = [class_count][3][]const u8{
+    .{ "近战2.2倍伤害", "4格内1.5倍", "3回合攻击+30%" },
+    .{ "5格2.5倍+范围", "1.8倍+减速", "传送3-5格" },
+    .{ "2.0倍+减速", "1.2倍+停2回合", "回到上一格" },
+};
+
+/// Deterministic reseed used after the player picks a class: the menu preview
+/// seed is consumed, the run gets a fresh (but reproducible) dungeon.
+pub fn nextSeed(seed: u64) u64 {
+    var z = seed +% 0x9e3779b97f4a7c15;
+    z = (z ^ (z >> 30)) *% 0xbf58476d1ce4e5b9;
+    z = (z ^ (z >> 27)) *% 0x94d049bb133111eb;
+    return z ^ (z >> 31);
+}
+
+pub fn classHpMax(class: Class) u16 {
+    return @intFromFloat(40 + base_stats[@backingInt(class)].constitution * 8);
+}
+
+pub fn classResourceMax(class: Class) u16 {
+    return @intFromFloat(60 + base_stats[@backingInt(class)].will * 4);
+}
+
+pub fn talentNameFor(class: Class, i: usize) []const u8 {
+    return switch (class) {
+        .warrior => switch (i) {
+            0 => "重击",
+            1 => "冲锋",
+            else => "战吼",
+        },
+        .mage => switch (i) {
+            0 => "火球",
+            1 => "冰锥",
+            else => "闪现",
+        },
+        .chronomancer => switch (i) {
+            0 => "时光箭",
+            1 => "时间停滞",
+            else => "回溯",
+        },
+    };
+}
+
+pub fn talentDescFor(class: Class, i: usize) []const u8 {
+    return class_talent_descs[@backingInt(class)][@min(i, 2)];
+}
 
 pub const GridPos = struct { x: i32, y: i32 };
 
@@ -661,23 +713,11 @@ pub const Sim = struct {
     }
 
     pub fn talentName(self: *const Sim, i: usize) []const u8 {
-        return switch (self.class) {
-            .warrior => switch (i) {
-                0 => "重击",
-                1 => "冲锋",
-                else => "战吼",
-            },
-            .mage => switch (i) {
-                0 => "火球",
-                1 => "冰锥",
-                else => "闪现",
-            },
-            .chronomancer => switch (i) {
-                0 => "时光箭",
-                1 => "时间停滞",
-                else => "回溯",
-            },
-        };
+        return talentNameFor(self.class, i);
+    }
+
+    pub fn talentDesc(self: *const Sim, i: usize) []const u8 {
+        return talentDescFor(self.class, i);
     }
 
     pub fn talentCost(self: *const Sim, i: usize) u16 {
@@ -1000,4 +1040,34 @@ test "tome sim: boss intent telegraphs its AOE on the next enemy phase" {
     s.turn = 3;
     const next = s.intentFor(0) orelse return error.MissingIntent;
     try std.testing.expectEqual(intent_mod.IntentKind.melee, next.kind);
+}
+
+test "tome sim: class menu metadata covers all three classes" {
+    var ci: usize = 0;
+    while (ci < class_count) : (ci += 1) {
+        const class: Class = @fromBackingInt(@intCast(ci));
+        try std.testing.expect(class_names[ci].len > 0);
+        try std.testing.expect(resource_names[ci].len > 0);
+        try std.testing.expect(class_roles[ci].len > 0);
+        try std.testing.expect(classHpMax(class) > 0);
+        try std.testing.expect(classResourceMax(class) > 0);
+        var ti: usize = 0;
+        while (ti < 3) : (ti += 1) {
+            try std.testing.expect(talentNameFor(class, ti).len > 0);
+            try std.testing.expect(talentDescFor(class, ti).len > 0);
+        }
+    }
+}
+
+test "tome sim: class choice reseeds deterministically" {
+    const a = nextSeed(12345);
+    const b = nextSeed(12345);
+    try std.testing.expectEqual(a, b);
+    try std.testing.expect(a != 12345);
+    try std.testing.expect(nextSeed(a) != a);
+
+    const s = Sim.init(a, .mage);
+    try std.testing.expectEqual(a, s.seed);
+    try std.testing.expectEqual(Class.mage, s.class);
+    try std.testing.expectEqual(Class.mage, s.hero.class);
 }
