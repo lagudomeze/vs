@@ -783,7 +783,7 @@ pub const TomeGame = struct {
             });
             if (self.sim.intentFor(i)) |intent| {
                 if (intent.kind == .aoe) {
-                    self.renderer.drawModel(ring_model, null, math.Mat4.compose(tilePos(intent.target.x, intent.target.y).add(math.Vec3.init(0, 0.04, 0)), -self.time * 0.6, 0, 0, 1.8), .{
+                    self.renderer.drawModel(ring_model, null, math.Mat4.compose(tilePos(intent.target.x, intent.target.y).add(math.Vec3.init(0, 0.04, 0)), -self.time * 0.6, 0, 0, 0.9), .{
                         .tint = color.pack(255, 54, 42),
                         .boost = 1.0,
                         .additive = true,
