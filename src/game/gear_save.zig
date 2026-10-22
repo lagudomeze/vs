@@ -9,8 +9,9 @@ pub const gear_version: u8 = 1;
 pub const max_bytes: usize = 16 * 1024;
 
 pub const GearSave = struct {
-    format: []const u8 = format_name,
-    version: u8 = gear_version,
+    // No defaults: a bare {} must not silently become an empty bag.
+    format: []const u8 = "",
+    version: u8 = 0,
     len: u8 = 0,
     items: [items.max_inventory]items.ItemId = @splat(0),
     equipped: [items.slot_count]?items.ItemId = @splat(null),
@@ -28,7 +29,7 @@ pub const GearError = error{
 };
 
 pub fn capture(inv: *const items.Inventory) GearSave {
-    var save = GearSave{};
+    var save = GearSave{ .format = format_name, .version = gear_version };
     save.len = @intCast(inv.len);
     for (inv.items, 0..) |id, i| save.items[i] = id;
     for (inv.equipped.slots, 0..) |maybe, i| save.equipped[i] = maybe;
@@ -126,6 +127,7 @@ test "gear save: JSON roundtrip and bad inputs" {
     try std.testing.expectEqual(@as(items.ItemId, 2), save.items[0]);
 
     try std.testing.expectError(error.Empty, fromSlice(std.testing.allocator, ""));
+    try std.testing.expectError(error.NotGearFormat, fromSlice(std.testing.allocator, "{}"));
     try std.testing.expectError(error.NotGearFormat, fromSlice(std.testing.allocator, "{\"format\":\"x\",\"version\":1}"));
     try std.testing.expectError(error.UnsupportedVersion, fromSlice(std.testing.allocator, "{\"format\":\"vx-tome-gear\",\"version\":9}"));
 }

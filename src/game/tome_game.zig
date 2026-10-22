@@ -74,6 +74,9 @@ pub const TomeGame = struct {
     /// itself never spends a turn, only a successful confirmation does.
     aim_talent: ?usize = null,
     reset_armed: f32 = 0,
+    /// Throttles OS key-repeat so holding a direction does not burn a turn
+    /// for every repeat event (critic P0).
+    step_cooldown: f32 = 0,
     seed: u64,
     class: sim_mod.Class,
     /// False while the class-selection menu is up; the sim is already
@@ -213,6 +216,7 @@ pub const TomeGame = struct {
         self.selected = null;
         self.aim_talent = null;
         self.reset_armed = 0;
+        self.step_cooldown = 0;
         self.show_help = false;
         self.panel = .none;
         self.rebuildMesh();
@@ -226,7 +230,7 @@ pub const TomeGame = struct {
     }
 
     /// Show the pre-run class cards. The same seed is used for the preview;
-    /// picking a class consumes it and regenerates the dungeon (see selectClass).
+    /// picking a class keeps it and regenerates the dungeon for that class.
     pub fn openMenu(self: *TomeGame) void {
         self.started = false;
         self.resetRun();
@@ -234,7 +238,6 @@ pub const TomeGame = struct {
 
     pub fn selectClass(self: *TomeGame, class: sim_mod.Class) void {
         self.class = class;
-        self.seed = sim_mod.nextSeed(self.seed);
         self.restart();
         self.sim.pushLog("开始：{s}", .{sim_mod.class_names[@backingInt(self.class)]});
         self.fillHudState();
@@ -270,12 +273,13 @@ pub const TomeGame = struct {
     /// run alone; a fresh save still loads with an empty bag.
     pub fn loadRun(self: *TomeGame, io: std.Io, sim_path: []const u8, gear_path: []const u8) void {
         const loaded = save_mod.loadFile(io, self.gpa, sim_path) catch |err| {
-            self.sim.pushLog("读档失败 {s}", .{@errorName(err)});
+            const msg = if (err == error.FileNotFound) "没有存档" else @errorName(err);
+            self.sim.pushLog("读档失败：{s}", .{msg});
             return;
         };
         var gear = gear_save.loadFile(io, self.gpa, gear_path) catch |err| blk: {
             if (err == error.FileNotFound) break :blk gear_save.GearSave{};
-            self.sim.pushLog("装备读档失败 {s}", .{@errorName(err)});
+            self.sim.pushLog("装备读档失败：{s}", .{@errorName(err)});
             return;
         };
         for (gear.items[0..@as(usize, gear.len)]) |id| {
@@ -315,6 +319,7 @@ pub const TomeGame = struct {
         self.selected = null;
         self.aim_talent = null;
         self.reset_armed = 0;
+        self.step_cooldown = 0;
         self.show_help = false;
         self.panel = .none;
         self.started = true;
@@ -490,6 +495,7 @@ pub const TomeGame = struct {
 
         self.camera.yaw += input.yaw_delta;
         self.camera.distance = std.math.clamp(self.camera.distance - input.zoom_delta * 0.35, 6.0, 13.0);
+        self.step_cooldown = @max(0, self.step_cooldown - dt);
 
         if (!self.started) {
             if (input.talent >= 0) self.selectClass(sim_mod.classFromIndex(@intCast(input.talent)));
@@ -541,10 +547,11 @@ pub const TomeGame = struct {
         }
 
         if (!used_potion and self.panel == .none and self.sim.state == .playing) {
-            if (input.step_x != 0 or input.step_y != 0) {
+            if ((input.step_x != 0 or input.step_y != 0) and self.step_cooldown <= 0) {
                 // Walking away abandons the pending aim (no turn spent on the
                 // cancel itself; the step below costs its usual turn).
                 self.clearAim();
+                self.step_cooldown = 0.30;
                 const before_hero = self.sim.hero.hp;
                 var before: [sim_mod.max_enemies]f32 = undefined;
                 var bi: usize = 0;
@@ -554,8 +561,17 @@ pub const TomeGame = struct {
                 if (input.step_x != 0 or input.step_y != 0) {
                     self.hero_vis.target_yaw = std.math.atan2(@as(f32, @floatFromInt(input.step_x)), @as(f32, @floatFromInt(input.step_y)));
                 }
-            } else if (self.aim_talent != null and (input.confirm or input.wait)) {
-                _ = self.confirmAim();
+            } else if (self.aim_talent != null) {
+                if (input.confirm) {
+                    _ = self.confirmAim();
+                } else if (input.wait) {
+                    // 5/. is a wait, not a confirm; leave aim and spend the turn
+                    // on resting instead of trapping the player in a red box.
+                    self.clearAim();
+                    _ = self.sim.wait();
+                } else if (input.talent >= 0) {
+                    self.talentKey(@intCast(input.talent));
+                }
             } else if (input.talent >= 0) {
                 self.talentKey(@intCast(input.talent));
             } else if (input.wait) {
@@ -916,11 +932,14 @@ pub const TomeGame = struct {
             if (sp.depth > 0.1) {
                 const sx: i32 = @intFromFloat(sp.x);
                 const sy: i32 = @intFromFloat(sp.y);
-                const label = "楼梯";
+                const sealed = self.sim.floor >= self.sim.floors and self.sim.hasLivingBoss();
+                const label = if (sealed) "楼梯 封印" else "楼梯";
                 const tw = renderer.Renderer.textWidth(label, 1);
-                self.renderer.fillRect(sx - @divTrunc(tw, 2) - 3, sy - 12, tw + 6, 12, palette.panel);
-                self.renderer.strokeRect(sx - @divTrunc(tw, 2) - 3, sy - 12, tw + 6, 12, palette.cyan);
-                self.renderer.drawText(sx - @divTrunc(tw, 2), sy - 11, label, palette.cyan_light, 1, true);
+                const lx = std.math.clamp(sx - @divTrunc(tw, 2), 3, w - tw - 3);
+                const ly = @max(68, sy - 12);
+                self.renderer.fillRect(lx - 3, ly, tw + 6, 12, palette.panel);
+                self.renderer.strokeRect(lx - 3, ly, tw + 6, 12, if (sealed) palette.red else palette.cyan);
+                self.renderer.drawText(lx, ly + 1, label, if (sealed) palette.red else palette.cyan_light, 1, true);
             }
         }
         const target = self.currentTarget();
@@ -942,19 +961,27 @@ pub const TomeGame = struct {
             if (self.sim.intentFor(i)) |intent| {
                 var ibuf: [24]u8 = undefined;
                 const label = switch (intent.kind) {
-                    .aoe => "深渊斩",
+                    .aoe => std.fmt.bufPrint(&ibuf, "深渊斩 -{d:.0}", .{intent.damage_preview}) catch "",
                     .melee, .ranged => std.fmt.bufPrint(&ibuf, "-{d:.0}", .{intent.damage_preview}) catch "",
                     .chase => "!",
                     .wait => "晕",
                 };
-                if (label.len > 0) self.renderer.drawText(x - @divTrunc(renderer.Renderer.textWidth(label, 1), 2), y + 5, label, if (intent.kind == .aoe) palette.red else palette.gold_light, 1, true);
+                if (label.len > 0) {
+                    const ix = std.math.clamp(x - @divTrunc(renderer.Renderer.textWidth(label, 1), 2), 2, w - 2);
+                    self.renderer.drawText(ix, y + 5, label, if (intent.kind == .aoe) palette.red else palette.gold_light, 1, true);
+                }
             }
             if (target != null and target.? == i) {
                 const aiming = self.aim_talent != null;
-                const tw = renderer.Renderer.textWidth(e.name, 1);
-                self.renderer.fillRect(x - @divTrunc(tw, 2) - 3, y - 13, tw + 6, 11, palette.panel);
-                self.renderer.strokeRect(x - @divTrunc(tw, 2) - 3, y - 13, tw + 6, 11, if (aiming) palette.gold else palette.border);
-                self.renderer.drawText(x - @divTrunc(tw, 2), y - 12, e.name, if (aiming) palette.gold_light else palette.red, 1, true);
+                var tbuf: [64]u8 = undefined;
+                const speed_mark = if (e.speed >= 150) " x2" else if (e.speed <= 75) " 慢" else "";
+                const tname = std.fmt.bufPrint(&tbuf, "{s} {d:.0}/{d:.0}{s}", .{ e.name, e.hp, e.hp_max, speed_mark }) catch e.name;
+                const tw = renderer.Renderer.textWidth(tname, 1);
+                const lx = std.math.clamp(x - @divTrunc(tw, 2), 2, w - tw - 2);
+                const ly = @max(68, y - 13);
+                self.renderer.fillRect(lx - 3, ly, tw + 6, 11, palette.panel);
+                self.renderer.strokeRect(lx - 3, ly, tw + 6, 11, if (aiming) palette.gold else palette.border);
+                self.renderer.drawText(lx, ly + 1, tname, if (aiming) palette.gold_light else palette.red, 1, true);
             }
         }
     }
@@ -1248,7 +1275,7 @@ pub const TomeGame = struct {
     }
 };
 
-test "tome game: class menu selects, reseeds and keeps the class on restart" {
+test "tome game: class menu selects and keeps the class on restart" {
     const gpa = std.testing.allocator;
     const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
     defer g.destroy();
@@ -1264,7 +1291,7 @@ test "tome game: class menu selects, reseeds and keeps the class on restart" {
     try std.testing.expect(g.started);
     try std.testing.expectEqual(sim_mod.Class.mage, g.class);
     try std.testing.expectEqual(sim_mod.Class.mage, g.sim.class);
-    try std.testing.expect(g.seed != preview_seed);
+    try std.testing.expectEqual(preview_seed, g.seed);
     try std.testing.expectEqual(g.seed, g.sim.seed);
     try std.testing.expect(!g.hud_state.menu);
     try std.testing.expectEqualStrings("火球", g.hud_state.hotbar[0].name);
@@ -1524,4 +1551,27 @@ test "tome game: aim refuses cooldown/resource-blocked talents" {
     g.sim.hero.resource = 0;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expect(!g.isAiming());
+}
+
+test "tome game: held repeat is throttled to one step per 0.3s" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    var dx: i32 = 0;
+    var dy: i32 = 0;
+    const dirs = [_][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
+    for (dirs) |d| {
+        if (g.sim.canMove(d[0], d[1])) {
+            dx = d[0];
+            dy = d[1];
+            break;
+        }
+    }
+    if (dx == 0 and dy == 0) return error.SkipZigTest;
+    g.update(.{ .step_x = dx, .step_y = dy }, 1.0 / 60.0);
+    const turn = g.sim.turn;
+    g.update(.{ .step_x = dx, .step_y = dy }, 1.0 / 60.0);
+    try std.testing.expectEqual(turn, g.sim.turn);
+    g.update(.{ .step_x = dx, .step_y = dy }, 0.31);
+    try std.testing.expect(g.sim.turn >= turn);
 }

@@ -107,7 +107,7 @@ fn fmt(buf: []u8, comptime f: []const u8, args: anytype) []const u8 {
 
 const menu_title = "选职业";
 const menu_hint = "按 1 / 2 / 3 开始";
-const menu_footer = "1/2/3 选择  F9 读档  R 重开同职业";
+const menu_footer = "1/2/3 选择  F9x2 读档  R 重开同职业";
 const talent_label = "天赋";
 const help_title = "操作说明";
 const help_footer = "H 关闭";
@@ -191,21 +191,21 @@ fn drawHelp(r: *renderer.Renderer, w: i32, h: i32) void {
         "移动  WASD / 方向键 / 小键盘",
         "天赋  1/2/3 进入瞄准",
         "确认  空格 或 按同一个数字键",
-        "等待  空格 / 5 / .",
+        "等待  5 / .（瞄准中空格=确认）",
         "瞄准  Tab 换目标   Esc 取消",
+        "Esc 取消瞄准 / 关闭面板 / 退出",
         "背包 I     角色 C",
-        "存档 F5    读档 F9",
+        "存档 F5    读档 F9x2",
         "相机 Q/E 或右键调整",
         "重开 R（游戏中按两次确认）",
         "目标  击杀第 3 层深渊守卫",
         "楼梯在 Boss 存活时被封印",
         "战利品自动装备，背包内 1/2/3 换装",
-        "截图 F12   调试 F1",
     };
-    var y = py + 42;
+    var y = py + 38;
     for (lines) |line| {
         r.drawText(px + 18, y, line, palette.cream, 1, false);
-        y += 13;
+        y += 14;
     }
     const fw = renderer.Renderer.textWidth(help_footer, 1);
     r.drawText(px + @divTrunc(pw - fw, 2), py + ph - 18, help_footer, palette.muted, 1, false);
@@ -271,14 +271,14 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         r.strokeRect(mx0, my0, 26, 26, palette.border);
     }
 
-    // combat log
+    // combat log, low-left above the hotbar (not across the battlefield)
     if (state.log_count > 0) {
-        backPanel(r, 6, 122, 160, 40);
+        backPanel(r, 6, h - 106, 160, 40);
         var shown: usize = 0;
         var li = state.log_count - @min(state.log_count, 3);
         while (li < state.log_count) : (li += 1) {
             const line = state.log_lines[li];
-            r.drawText(10, 126 + @as(i32, @intCast(shown)) * 11, line, if (li + 1 == state.log_count) palette.cream else palette.muted, 1, false);
+            r.drawText(10, h - 102 + @as(i32, @intCast(shown)) * 11, line, if (li + 1 == state.log_count) palette.cream else palette.muted, 1, false);
             shown += 1;
         }
     }
@@ -419,17 +419,22 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         }
     }
 
-    // death / victory overlay
+    // death / victory overlay; keep the last log line as the cause
     if (state.dead or state.victory) {
         const title = if (state.victory) "胜利" else "死亡";
         const sub = "按 R 重开 同职业";
-        r.fillRect(0, @divTrunc(h, 2) - 28, w, 62, palette.panel);
+        const cause = if (state.log_count > 0) state.log_lines[state.log_count - 1] else "";
+        r.fillRect(0, @divTrunc(h, 2) - 28, w, 70, palette.panel);
         r.fillRect(0, @divTrunc(h, 2) - 29, w, 1, palette.gold);
-        r.fillRect(0, @divTrunc(h, 2) + 33, w, 1, palette.gold);
+        r.fillRect(0, @divTrunc(h, 2) + 41, w, 1, palette.gold);
         const tw = renderer.Renderer.textWidth(title, 2);
         r.drawText(@divTrunc(w, 2) - @divTrunc(tw, 2), @divTrunc(h, 2) - 22, title, if (state.victory) palette.gold_light else palette.red, 2, true);
+        if (cause.len > 0) {
+            const cw = renderer.Renderer.textWidth(cause, 1);
+            r.drawText(@divTrunc(w, 2) - @divTrunc(cw, 2), @divTrunc(h, 2) + 8, cause, palette.cream, 1, true);
+        }
         const sw = renderer.Renderer.textWidth(sub, 1);
-        r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), @divTrunc(h, 2) + 12, sub, palette.cream, 1, true);
+        r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), @divTrunc(h, 2) + 23, sub, palette.muted, 1, true);
     }
 }
 

@@ -291,6 +291,7 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
     var elapsed: f32 = 0;
     var quit = false;
     var captured = false;
+    var load_armed: f32 = 0;
     std.debug.print("tome: {d}x{d} logical, {d}x scale - class menu 1/2/3, WASD step, 1/2/3 aim, SPACE confirm, ESC cancel, I/C panels, Q/E orbit, R restart\n", .{
         options.width, options.height, options.scale,
     });
@@ -319,8 +320,17 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
             }
         }
         if (pin.toggle_debug) game.debug = !game.debug;
+        load_armed = @max(0, load_armed - dt);
         if (pin.save_slot) game.saveRun(io, "saves/tome-run.json", "saves/tome-gear.json");
-        if (pin.load_slot) game.loadRun(io, "saves/tome-run.json", "saves/tome-gear.json");
+        if (pin.load_slot) {
+            if (load_armed > 0) {
+                game.loadRun(io, "saves/tome-run.json", "saves/tome-gear.json");
+                load_armed = 0;
+            } else {
+                load_armed = 2.0;
+                game.sim.pushLog("再按 F9 确认读档", .{});
+            }
+        }
 
         var input = vx.tome_game.Input{};
         input.step_x = @as(i32, @intFromBool(pin.step_e)) - @as(i32, @intFromBool(pin.step_w));

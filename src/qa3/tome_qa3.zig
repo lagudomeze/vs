@@ -175,7 +175,7 @@ test "qa3: same key currently confirms (spec text says cancel)" {
     std.debug.print("[qa3] FINDING P1: same-key aim release = confirm (turn+1, res-25), not cancel; README documents confirm, acceptance text asks cancel\n", .{});
 }
 
-test "qa3: invalid confirms leave aim active without cost" {
+test "qa3: range/LOS confirm stays; missing resource refuses aim" {
     const gpa = std.testing.allocator;
     const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
@@ -209,23 +209,22 @@ test "qa3: invalid confirms leave aim active without cost" {
     try std.testing.expectEqual(res, g.sim.hero.resource);
     _ = g.cancelAim();
 
-    // No resource.
+    // No resource: refuse to enter aim at all.
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
     g.sim.hero.resource = 0;
     g.update(.{ .talent = 0 }, dt);
-    try std.testing.expect(!g.hud_state.aim.valid);
-    try std.testing.expectEqualStrings("缺资源", g.hud_state.aim.reason);
+    try std.testing.expect(!g.isAiming());
     turn = g.sim.turn;
     res = g.sim.hero.resource;
     g.update(.{ .talent = 0 }, dt);
-    try std.testing.expect(g.isAiming());
+    try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(turn, g.sim.turn);
     try std.testing.expectEqual(res, g.sim.hero.resource);
-    std.debug.print("[qa3] invalid confirms (range/LOS/resource): 0 turn, 0 resource, aim stays active\n", .{});
+    std.debug.print("[qa3] range/LOS confirms stay in aim; missing resource refuses aim, 0 turn/resource\n", .{});
 }
 
-test "qa3: wait key while aiming confirms (P2 finding)" {
+test "qa3: wait key while aiming cancels and waits" {
     const gpa = std.testing.allocator;
     const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
@@ -234,11 +233,11 @@ test "qa3: wait key while aiming confirms (P2 finding)" {
     const turn = g.sim.turn;
     const res = g.sim.hero.resource;
     g.update(.{ .talent = 0 }, dt);
-    g.update(.{ .wait = true }, dt); // 5 / . is wired to wait, not confirm
+    g.update(.{ .wait = true }, dt); // 5 / . cancels aim and waits
     try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(turn + 1, g.sim.turn);
-    try std.testing.expectEqual(res - 25.0, g.sim.hero.resource);
-    std.debug.print("[qa3] FINDING P2: 5/. (wait) while aiming also confirms and spends a turn\n", .{});
+    try std.testing.expect(g.sim.hero.resource >= res);
+    std.debug.print("[qa3] 5/. while aiming: aim cancelled, wait consumed one turn, no talent cost\n", .{});
 }
 
 test "qa3: tab cycles aim target without a turn" {
@@ -349,7 +348,7 @@ test "qa3: save/load preserves state and gear" {
     });
 }
 
-test "qa3: loot rng is not saved (P1 finding)" {
+test "qa3: loot rng survives save/load" {
     const alloc = std.testing.allocator;
     const io = std.testing.io;
     var tmp = std.testing.tmpDir(.{});
@@ -369,7 +368,7 @@ test "qa3: loot rng is not saved (P1 finding)" {
     defer g2.destroy();
     g2.loadRun(io, sim_path, gear_path);
 
-    try std.testing.expect(!std.meta.eql(g1.loot_rng.s, g2.loot_rng.s));
+    try std.testing.expect(std.meta.eql(g1.loot_rng.s, g2.loot_rng.s));
     g1.update(.{ .step_x = a.step_x, .step_y = a.step_y }, dt);
     g2.update(.{ .step_x = a.step_x, .step_y = a.step_y }, dt);
     const ga = try gearBytes(alloc, g1);
@@ -377,7 +376,8 @@ test "qa3: loot rng is not saved (P1 finding)" {
     const gb = try gearBytes(alloc, g2);
     defer alloc.free(gb);
     try std.testing.expectEqual(g1.sim.turn, g2.sim.turn);
-    std.debug.print("[qa3] FINDING P1: loot_rng not saved; same chest -> orig gear {s} vs loaded {s}\n", .{ ga, gb });
+    try std.testing.expectEqualStrings(ga, gb);
+    std.debug.print("[qa3] loot_rng restored; same chest -> identical gear\n", .{});
 }
 
 test "qa3: corrupt save and missing gear leave the current run alone" {
@@ -433,7 +433,7 @@ test "qa3: corrupt save and missing gear leave the current run alone" {
     std.debug.print("[qa3] corrupt sim/gear: current run untouched; missing gear: loaded with empty bag\n", .{});
 }
 
-test "qa3: empty gear object is accepted as empty bag (P1 finding)" {
+test "qa3: empty gear object is rejected without clearing the bag" {
     const alloc = std.testing.allocator;
     const io = std.testing.io;
     var tmp = std.testing.tmpDir(.{});
@@ -449,14 +449,13 @@ test "qa3: empty gear object is accepted as empty bag (P1 finding)" {
     g.saveRun(io, sim_path, gear_path);
     const turn = g.sim.turn;
 
-    // GearSave has defaults for every field, so {} parses as an empty loadout
-    // instead of being rejected as a corrupt/partial file.
+    // A bare {} must be rejected as a corrupt/partial sidecar, not treated as
+    // "empty bag"; the current run and its inventory stay untouched.
     try tmp.dir.writeFile(io, .{ .sub_path = "empty-gear.json", .data = "{}" });
     g.loadRun(io, sim_path, gear_path);
     try std.testing.expectEqual(turn, g.sim.turn);
-    std.debug.print("[qa3] FINDING P1: gear file {{}} accepted as empty loadout; inventory len={d}, equipped={any}\n", .{
-        g.inventory.len, g.inventory.equipped.slots,
-    });
+    try std.testing.expectEqual(@as(usize, 1), g.inventory.len);
+    std.debug.print("[qa3] empty gear object rejected; bag retained (len={d})\n", .{g.inventory.len});
 }
 
 // ---------------------------------------------------------------- mechanics
