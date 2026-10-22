@@ -60,6 +60,9 @@ pub const State = struct {
     floor: u8 = 1,
     floors: u8 = 3,
     enemy_phase: bool = false,
+    /// Player + at most one fastest living enemy, matching enemyPhase order.
+    initiative: [2][]const u8 = .{ "", "" },
+    initiative_count: u8 = 0,
     kills: u32 = 0,
     enemies_left: u32 = 0,
     stairs_hint: []const u8 = "",
@@ -240,18 +243,25 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     const res = fmt(&buf, "{s} {d:.0}/{d:.0}", .{ state.resource_label, state.resource, state.resource_max });
     r.drawText(14, 49, res, palette.muted, 1, false);
 
-    // top-right: floor / enemies / stairs / turn
+    // top-right: floor / enemies / stairs / turn / initiative
     backPanel(r, w - 154, 5, 154, 60);
-    const floor = fmt(&buf, "第 {d}/{d} 层", .{ state.floor, state.floors });
+    var floor_buf: [96]u8 = undefined;
+    const dir = if (state.stairs_hint.len >= 3) state.stairs_hint[state.stairs_hint.len - 3 ..] else "";
+    const floor = if (state.stairs_hint.len > 0)
+        fmt(&floor_buf, "第{d}/{d}层 {s}{d}", .{ state.floor, state.floors, dir, state.stairs_dist })
+    else
+        fmt(&floor_buf, "第 {d}/{d} 层", .{ state.floor, state.floors });
     r.drawText(w - 154, 9, floor, palette.gold_light, 1, false);
     const enemies = fmt(&buf, "敌人 {d}", .{state.enemies_left});
     r.drawText(w - 154, 23, enemies, palette.cream, 1, false);
-    if (state.stairs_hint.len > 0) {
-        const stairs = fmt(&buf, "{s} {d}", .{ state.stairs_hint, state.stairs_dist });
-        r.drawText(w - 154, 37, stairs, palette.muted, 1, false);
-    }
     const turn = if (state.enemy_phase) "敌人行动" else fmt(&buf, "玩家回合 {d}", .{state.turn});
-    r.drawText(w - 154, 51, turn, if (state.enemy_phase) palette.red else palette.gold_light, 1, false);
+    r.drawText(w - 154, 37, turn, if (state.enemy_phase) palette.red else palette.gold_light, 1, false);
+    var init_buf: [96]u8 = undefined;
+    const order = if (state.initiative_count >= 2)
+        fmt(&init_buf, "先攻 {s}>{s}", .{ state.initiative[0], state.initiative[1] })
+    else
+        fmt(&init_buf, "先攻 {s}", .{state.initiative[0]});
+    r.drawText(w - 154, 51, order, palette.muted, 1, false);
     if (state.has_minimap) {
         const mx0 = w - 40;
         const my0 = 8;
