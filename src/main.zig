@@ -18,6 +18,7 @@ const Options = struct {
     auto_demo: bool = false,
     debug: bool = false,
     lineup: bool = false,
+    inventory: bool = false,
     hide_hud: bool = false,
     help: bool = false,
 };
@@ -102,6 +103,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.debug = true;
         } else if (std.mem.eql(u8, a, "--lineup")) {
             o.lineup = true;
+        } else if (std.mem.eql(u8, a, "--inventory")) {
+            o.inventory = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
             o.hide_hud = true;
         } else if (std.mem.eql(u8, a, "--help") or std.mem.eql(u8, a, "-h")) {
@@ -249,6 +252,9 @@ pub fn main(init: std.process.Init.Minimal) !void {
     game.show_hud = !options.hide_hud;
     if (options.lineup) {
         game.lineup();
+    }
+    if (options.inventory) {
+        game.inventory_open = true;
     }
 
     if (options.headless) {

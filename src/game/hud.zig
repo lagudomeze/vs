@@ -41,6 +41,16 @@ pub const State = struct {
     skill: []const u8 = "",
     banner: []const u8 = "",
     banner_time: f32 = 0,
+    mode: u8 = 1, // 0 frozen, 1 flowing, 2 threat
+    threat: []const u8 = "",
+    threat_time: f32 = 0,
+    log_lines: [4][]const u8 = .{ "", "", "", "" },
+    log_count: usize = 0,
+    inventory_open: bool = false,
+    attr_values: [6]i32 = .{ 0, 0, 0, 0, 0, 0 },
+    equip_names: [3][]const u8 = .{ "", "", "" },
+    item_names: [8][]const u8 = .{ "", "", "", "", "", "", "", "" },
+    item_count: usize = 0,
     victory: bool = false,
     defeat: bool = false,
 };
@@ -87,24 +97,45 @@ pub fn draw(r: *renderer.Renderer, cam: math.OrbitCamera, state: State) void {
         r.textCentered(x, y - 2, label, color, 1, true);
     }
 
-    // title
-    backPanel(r, 6, 5, 178, 53);
+    // title + tactical time state
+    backPanel(r, 6, 5, 178, 66);
     r.drawText(10, 8, "VX / 以太堡", palette.gold, 1, false);
-    r.drawText(10, 23, "真3D 像素渲染", palette.cream, 1, false);
-    r.drawText(10, 38, "SDL3 + ZFLECS", palette.muted, 1, false);
+    r.drawText(10, 22, "真3D 像素渲染", palette.cream, 1, false);
+    r.drawText(10, 36, "SDL3 + ZFLECS", palette.muted, 1, false);
+    const mode_text = switch (state.mode) {
+        0 => "时间 冻结",
+        2 => "时间 威胁",
+        else => "时间 流动",
+    };
+    const mode_color = switch (state.mode) {
+        0 => palette.cyan_light,
+        2 => palette.red,
+        else => palette.gold_light,
+    };
+    r.drawText(10, 50, mode_text, mode_color, 1, false);
+
+    // combat log
+    if (state.log_count > 0) {
+        backPanel(r, 6, 74, 178, 50);
+        for (state.log_lines, 0..) |line, i| {
+            if (i >= state.log_count) break;
+            r.drawText(10, 78 + @as(i32, @intCast(i)) * 11, line, if (i == state.log_count - 1) palette.cream else palette.muted, 1, false);
+        }
+    }
 
     // controls (two columns)
     const controls_x = w - 212;
-    backPanel(r, controls_x, 5, 206, 82);
+    backPanel(r, controls_x, 5, 206, 94);
     r.drawText(controls_x + 5, 8, "操作", palette.gold, 1, false);
     const c1 = [_][]const u8{ "WASD 移动", "Q/E 转动", "WHEEL 缩放", "TAB 切换" };
-    const c2 = [_][]const u8{ "空格 技能", "R 重开", "F1 调试", "ESC 退出" };
+    const c2 = [_][]const u8{ "空格 技能", "F 反制", "I 背包", "R 重开" };
     for (c1, 0..) |line, i| {
         r.drawText(controls_x + 5, 23 + @as(i32, @intCast(i)) * 15, line, palette.cream, 1, false);
     }
     for (c2, 0..) |line, i| {
         r.drawText(controls_x + 112, 23 + @as(i32, @intCast(i)) * 15, line, palette.cream, 1, false);
     }
+    r.drawText(controls_x + 5, 82, "F1 调试   ESC 退出", palette.muted, 1, false);
 
     // party
     backPanel(r, 6, bottom_y, 234, 82);
@@ -146,14 +177,73 @@ pub fn draw(r: *renderer.Renderer, cam: math.OrbitCamera, state: State) void {
         r.drawText(stats_x + 4, bottom_y + 66, skill, palette.cyan_light, 1, false);
     }
 
-    // transient banner
-    if (state.banner_time > 0 and state.banner.len > 0) {
+    // threat prompt takes over the centre of the screen
+    if (state.threat_time > 0 and state.threat.len > 0) {
+        const tw = renderer.Renderer.textWidth(state.threat, 1);
+        const center = @divTrunc(w, 2);
+        const bx = center - @divTrunc(tw, 2) - 9;
+        const by = 92;
+        r.fillRect(bx, by, tw + 18, 22, palette.panel);
+        r.fillRect(bx, by, tw + 18, 2, palette.red);
+        r.strokeRect(bx, by, tw + 18, 22, palette.red);
+        r.textCentered(center, by + 5, state.threat, palette.gold_light, 1, true);
+    }
+
+    // transient wave banner, in the gap between the title and controls panels
+    if (state.threat_time <= 0 and state.banner_time > 0 and state.banner.len > 0) {
         const tw = renderer.Renderer.textWidth(state.banner, 1);
         const center = @divTrunc(184 + (w - 212), 2) - 4;
         const bx = center - @divTrunc(tw, 2) - 9;
         const by = 7;
         backPanel(r, bx, by, tw + 18, 22);
         r.textCentered(center, by + 5, state.banner, palette.gold_light, 1, true);
+    }
+
+    // character / inventory panel
+    if (state.inventory_open) {
+        r.fillRect(0, 0, w, h, palette.deep);
+        const ix: i32 = 16;
+        const iy: i32 = 12;
+        const iw: i32 = w - 32;
+        const ih: i32 = h - 24;
+        r.fillRect(ix, iy, iw, ih, palette.panel);
+        r.strokeRect(ix, iy, iw, ih, palette.border);
+        r.fillRect(ix + 2, iy + 2, 54, 2, palette.gold);
+        r.drawText(ix + 12, iy + 10, "角色 / 背包", palette.gold, 1, false);
+        r.drawText(ix + iw - 62, iy + 10, "I 关闭", palette.muted, 1, false);
+
+        const attr_labels = [_][]const u8{ "力量", "敏捷", "体质", "感知", "魔力", "意志" };
+        var abuf: [24]u8 = undefined;
+        for (attr_labels, 0..) |label, i| {
+            const col = @as(i32, @intCast(i % 2));
+            const row = @as(i32, @intCast(i / 2));
+            const ax = ix + 16 + col * 150;
+            const ay = iy + 42 + row * 22;
+            r.drawText(ax, ay, label, palette.cream, 1, false);
+            const val = fmt(&abuf, "{d}", .{state.attr_values[i]});
+            r.drawText(ax + 48, ay, val, palette.gold_light, 1, false);
+        }
+
+        r.drawText(ix + 16, iy + 126, "装备", palette.gold, 1, false);
+        const slot_labels = [_][]const u8{ "主手", "身体", "饰品" };
+        var ebuf: [40]u8 = undefined;
+        for (slot_labels, 0..) |label, i| {
+            const ey = iy + 148 + @as(i32, @intCast(i)) * 20;
+            const name = if (state.equip_names[i].len > 0) state.equip_names[i] else "-";
+            const line = fmt(&ebuf, "{s}  {s}", .{ label, name });
+            r.drawText(ix + 16, ey, line, palette.cream, 1, false);
+        }
+
+        r.drawText(ix + 260, iy + 42, "物品", palette.gold, 1, false);
+        if (state.item_count == 0) {
+            r.drawText(ix + 260, iy + 64, "空", palette.muted, 1, false);
+        } else {
+            const n = @min(state.item_count, state.item_names.len);
+            for (state.item_names[0..n], 0..) |name, i| {
+                r.drawText(ix + 260, iy + 64 + @as(i32, @intCast(i)) * 18, name, palette.cream, 1, false);
+            }
+        }
+        r.drawText(ix + 16, iy + ih - 18, "数字键 1/2/3 装备或替换；掉落自动进入背包", palette.muted, 1, false);
     }
 
     // victory / defeat overlay
