@@ -436,12 +436,23 @@ pub const Sim = struct {
         return true;
     }
 
+    pub fn hasLivingBoss(self: *const Sim) bool {
+        for (self.enemies[0..self.enemy_count]) |e| {
+            if (e.alive and e.kind == intent_mod.boss_kind) return true;
+        }
+        return false;
+    }
+
     pub fn move(self: *Sim, dx: i32, dy: i32) bool {
         if (self.state != .playing) return false;
         if (dx == 0 and dy == 0) return false;
         const nx = self.hero.pos.x + dx;
         const ny = self.hero.pos.y + dy;
         if (self.isBlocked(nx, ny)) return false;
+        if (nx == self.stairs.x and ny == self.stairs.y and self.hasLivingBoss()) {
+            self.pushLog("深渊守卫封印了楼梯", .{});
+            return false;
+        }
         if (self.enemyAt(nx, ny)) |idx| {
             self.playerAttack(idx, 1.0);
             self.endTurn();
@@ -1000,6 +1011,43 @@ test "tome sim: boss AOE resolves on the telegraphed turn" {
     const hp = s.hero.hp;
     _ = s.wait();
     try std.testing.expect(s.hero.hp < hp);
+}
+
+test "tome sim: boss seals the stairs until defeated" {
+    var s = Sim.init(37, .warrior);
+    s.floor = 3;
+    s.turn = 1;
+    const dirs = [_][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
+    var start: ?GridPos = null;
+    for (dirs) |d| {
+        const p = dungeon_mod.GridPos{ .x = s.stairs.x + d[0], .y = s.stairs.y + d[1] };
+        if (s.map.isWalkable(p)) {
+            start = .{ .x = p.x, .y = p.y };
+            break;
+        }
+    }
+    const from = start orelse return error.SkipZigTest;
+    s.hero.pos = from;
+    s.enemy_count = 1;
+    s.enemies[0] = .{
+        .kind = 5,
+        .name = "深渊守卫",
+        .pos = .{ .x = 0, .y = 0 },
+        .hp = 420,
+        .hp_max = 420,
+        .attack = 16,
+        .armor = 15,
+        .speed = 90,
+        .range = 1,
+        .xp = 200,
+    };
+    const dx = s.stairs.x - s.hero.pos.x;
+    const dy = s.stairs.y - s.hero.pos.y;
+    try std.testing.expect(!s.move(dx, dy));
+    try std.testing.expectEqual(@as(u8, 3), s.floor);
+    try std.testing.expectEqual(@as(u32, 1), s.turn);
+    s.enemies[0].alive = false;
+    try std.testing.expect(s.move(dx, dy));
 }
 
 test "tome sim: stepping away dodges the telegraphed boss AOE" {
