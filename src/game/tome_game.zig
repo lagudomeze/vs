@@ -658,9 +658,30 @@ pub const TomeGame = struct {
         return self.currentTarget();
     }
 
+    /// Prefer the current target when it is already legal; otherwise snap to
+    /// the nearest legal enemy so pressing 1/2/3 does not open on a red
+    /// out-of-range preview when a valid target is available.
+    fn bestAimTarget(self: *const TomeGame, talent: usize) ?usize {
+        if (self.aimTarget()) |cur| {
+            if (target_mod.preview(&self.sim, talent, cur).valid()) return cur;
+        }
+        var best: ?usize = null;
+        var best_d: i32 = 0;
+        for (self.sim.enemies[0..self.sim.enemy_count], 0..) |e, i| {
+            if (!e.alive) continue;
+            const p = target_mod.preview(&self.sim, talent, i);
+            if (!p.valid()) continue;
+            if (best == null or p.distance < best_d) {
+                best = i;
+                best_d = p.distance;
+            }
+        }
+        return best orelse self.aimTarget();
+    }
+
     fn beginAim(self: *TomeGame, talent: usize) void {
         self.aim_talent = talent;
-        self.selected = self.aimTarget();
+        self.selected = self.bestAimTarget(talent);
         self.sim.pushLog("瞄准 {s}：空格确认", .{self.sim.talentName(talent)});
     }
 
