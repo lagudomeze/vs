@@ -87,6 +87,8 @@ pub const Input = struct {
     mouse_x: f32 = 0,
     mouse_y: f32 = 0,
     click: bool = false,
+    /// 0..5 while the character panel is open (keys 1..6).
+    stat: i8 = -1,
     yaw_delta: f32 = 0,
     zoom_delta: f32 = 0,
 };
@@ -388,8 +390,21 @@ pub const TomeGame = struct {
         }
     }
 
+    fn spendPendingPoint(self: *TomeGame, stat: usize) void {
+        if (!self.sim.spendPoint(stat)) return;
+        self.rebuildMods();
+        self.sim.pushLog("属性点已分配", .{});
+        self.fillHudState();
+    }
+
     pub fn autoPlayStep(self: *TomeGame) void {
         if (!self.started or self.sim.state != .playing or self.panel != .none) return;
+        self.sim.auto_allocate = true;
+        defer self.sim.auto_allocate = false;
+        while (self.sim.hero.pending_points > 0) {
+            if (!self.sim.spendPoint(self.sim.mainStatIndex())) break;
+        }
+        self.rebuildMods();
         // The headless bot releases talents directly; never leave it aiming.
         self.clearAim();
         const hero = self.sim.hero.pos;
@@ -611,6 +626,9 @@ pub const TomeGame = struct {
         if (input.character) {
             self.clearAim();
             self.panel = if (self.panel == .character) .none else .character;
+        }
+        if (self.panel == .character and input.stat >= 0) {
+            self.spendPendingPoint(@intCast(input.stat));
         }
         if (self.panel == .inventory and input.talent >= 0) {
             self.equipBag(@intCast(input.talent));
@@ -1401,6 +1419,7 @@ pub const TomeGame = struct {
             @intFromFloat(self.sim.hero.eff_stats[5]),
         };
         self.hud_state.attrs = attrs;
+        self.hud_state.pending_points = self.sim.hero.pending_points;
         self.hud_state.attack = self.sim.hero.attack;
         self.hud_state.armor = self.sim.hero.armor;
         self.hud_state.crit = self.sim.hero.crit;
@@ -1761,6 +1780,19 @@ test "tome game: held repeat is throttled to one step per 0.3s" {
     try std.testing.expectEqual(turn, g.sim.turn);
     g.update(.{ .step_x = dx, .step_y = dy }, 0.31);
     try std.testing.expect(g.sim.turn >= turn);
+}
+
+test "tome game: character panel spends a pending attribute point" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    defer g.destroy();
+    g.started = true;
+    g.panel = .character;
+    g.sim.hero.pending_points = 1;
+    const str = g.sim.hero.stats.strength;
+    g.update(.{ .stat = 0 }, 1.0 / 60.0);
+    try std.testing.expectEqual(str + 1, g.sim.hero.stats.strength);
+    try std.testing.expectEqual(@as(u8, 0), g.sim.hero.pending_points);
 }
 
 test "tome game: mouse click confirms an aimed enemy" {

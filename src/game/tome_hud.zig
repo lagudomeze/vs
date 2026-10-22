@@ -76,6 +76,7 @@ pub const State = struct {
     has_minimap: bool = false,
     panel: Panel = .none,
     attrs: [6]i32 = .{ 0, 0, 0, 0, 0, 0 },
+    pending_points: u8 = 0,
     attack: f32 = 0,
     armor: f32 = 0,
     crit: f32 = 0,
@@ -198,7 +199,7 @@ fn drawHelp(r: *renderer.Renderer, w: i32, h: i32) void {
         "背包 I     角色 C",
         "存档 F5    读档 F9x2",
         "相机 Q/E/右键   鼠标悬停选目标",
-        "重开 R（游戏中按两次确认）",
+        "升级 C 面板 1-6 加点  R 重开",
         "目标  击杀第 3 层深渊守卫",
         "楼梯在 Boss 存活时被封印",
         "战利品自动装备，背包内 1/2/3 换装",
@@ -389,6 +390,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
             r.drawText(ix + 278, iy + 164, fmt(&dbuf, "速度 {d:.0}", .{state.speed}), palette.cream, 1, false);
             r.drawText(ix + 278, iy + 184, fmt(&dbuf, "回复 {d:.1}/回合", .{state.res_per_turn}), palette.cream, 1, false);
 
+            r.drawText(ix + 16, iy + 106, fmt(&dbuf, "属性点 {d}  按 1-6 加点", .{state.pending_points}), palette.gold_light, 1, false);
             r.drawText(ix + 16, iy + 126, "装备", palette.gold, 1, false);
             const slot_labels = [_][]const u8{ "主手", "身体", "饰品" };
             var ebuf: [40]u8 = undefined;

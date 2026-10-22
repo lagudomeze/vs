@@ -32,6 +32,10 @@ pub const FrameInput = struct {
     mouse_x: f32 = 0,
     mouse_y: f32 = 0,
     click: bool = false,
+    /// 0..5 when 1..6 was pressed; the character panel uses it to allocate
+    /// level-up points. Talent keys 1..3 also set this, but gameplay only reads
+    /// it while the character panel is open.
+    stat: i8 = -1,
 };
 
 pub const Platform = struct {
@@ -123,9 +127,21 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_S)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_DOWN)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_2))) input.step_s = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_D)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_RIGHT)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_6))) input.step_e = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_A)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_LEFT)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_4))) input.step_w = true;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_1))) input.talent_1 = true;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_2))) input.talent_2 = true;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_3))) input.talent_3 = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_1))) {
+                        input.talent_1 = true;
+                        input.stat = 0;
+                    }
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_2))) {
+                        input.talent_2 = true;
+                        input.stat = 1;
+                    }
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_3))) {
+                        input.talent_3 = true;
+                        input.stat = 2;
+                    }
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_4))) input.stat = 3;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_5))) input.stat = 4;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_6))) input.stat = 5;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_C))) input.character = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F))) input.interrupt = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_I))) input.inventory = true;

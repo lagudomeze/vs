@@ -126,6 +126,7 @@ pub const Hero = struct {
     res_per_turn: f32 = 8,
     level: u16 = 1,
     xp: u32 = 0,
+    pending_points: u8 = 0,
     cooldowns: [3]u16 = .{ 0, 0, 0 },
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -189,6 +190,10 @@ pub const Sim = struct {
     floors: u8 = 3,
     turn: u32 = 1,
     state: State = .playing,
+    /// Bots set this for the duration of one action so level-ups keep the
+    /// historical automatic main-stat growth. Human play leaves it false and
+    /// allocates via Sim.spendPoint.
+    auto_allocate: bool = false,
     kills: u32 = 0,
     chest_loot_events: u32 = 0,
     kill_loot_events: u32 = 0,
@@ -228,6 +233,30 @@ pub const Sim = struct {
         self.hero.resource = self.hero.resource_max;
         self.generateFloor();
         self.pushLog("进入第 1 层", .{});
+    }
+
+    /// Spend one pending level-up point. The caller must re-apply equipment
+    /// modifiers (TomeGame.rebuildMods) after this base-stat change.
+    pub fn spendPoint(self: *Sim, stat: usize) bool {
+        if (self.hero.pending_points == 0 or stat >= 6) return false;
+        switch (stat) {
+            0 => self.hero.stats.strength += 1,
+            1 => self.hero.stats.agility += 1,
+            2 => self.hero.stats.constitution += 1,
+            3 => self.hero.stats.perception += 1,
+            4 => self.hero.stats.magic += 1,
+            else => self.hero.stats.will += 1,
+        }
+        self.hero.pending_points -= 1;
+        self.recomputeHero();
+        return true;
+    }
+
+    pub fn mainStatIndex(self: *const Sim) usize {
+        return switch (self.class) {
+            .warrior => 0,
+            .mage, .chronomancer => 4,
+        };
     }
 
     pub fn recomputeHero(self: *Sim) void {
@@ -724,16 +753,22 @@ pub const Sim = struct {
         while (self.hero.xp >= 100 * self.hero.level and self.hero.level < 50) {
             self.hero.xp -= 100 * self.hero.level;
             self.hero.level += 1;
-            const main = self.hero.stats.mainStat(self.class);
-            _ = main;
-            switch (self.class) {
-                .warrior => self.hero.stats.strength += 1,
-                .mage, .chronomancer => self.hero.stats.magic += 1,
+            if (self.auto_allocate) {
+                switch (self.class) {
+                    .warrior => self.hero.stats.strength += 1,
+                    .mage, .chronomancer => self.hero.stats.magic += 1,
+                }
+            } else {
+                self.hero.pending_points +|= 1;
             }
             self.recomputeHero();
             self.hero.hp = self.hero.hp_max;
             self.hero.resource = self.hero.resource_max;
-            self.pushLog("升级到 {d} 级", .{self.hero.level});
+            if (self.hero.pending_points > 0) {
+                self.pushLog("升级到 {d} 级 +1 属性点", .{self.hero.level});
+            } else {
+                self.pushLog("升级到 {d} 级", .{self.hero.level});
+            }
         }
         var any = false;
         for (self.enemies[0..self.enemy_count]) |en| {
@@ -1029,6 +1064,45 @@ test "tome sim: killing the last boss wins" {
     s.playerAttack(0, 1.0);
     try std.testing.expect(s.enemies[0].hp <= 0);
     try std.testing.expectEqual(State.victory, s.state);
+}
+
+test "tome sim: level-up banks a point and auto allocate spends it" {
+    var s = Sim.init(22, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = .{
+        .kind = 0,
+        .name = "骷髅兵",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 1,
+        .hp_max = 70,
+        .attack = 8,
+        .armor = 0,
+        .speed = 100,
+        .range = 1,
+        .xp = 200,
+    };
+    const str = s.hero.stats.strength;
+    s.hero.attack = 100;
+    s.playerAttack(0, 1.0);
+    try std.testing.expectEqual(@as(u16, 2), s.hero.level);
+    try std.testing.expectEqual(@as(u8, 1), s.hero.pending_points);
+    try std.testing.expectEqual(str, s.hero.stats.strength);
+    try std.testing.expect(s.spendPoint(0));
+    try std.testing.expectEqual(str + 1, s.hero.stats.strength);
+    try std.testing.expectEqual(@as(u8, 0), s.hero.pending_points);
+
+    var auto = Sim.init(23, .warrior);
+    auto.auto_allocate = true;
+    auto.enemy_count = 1;
+    auto.enemies[0] = s.enemies[0];
+    auto.enemies[0].hp = 1;
+    auto.enemies[0].alive = true;
+    auto.enemies[0].xp = 200;
+    const base = auto.hero.stats.strength;
+    auto.hero.attack = 100;
+    auto.playerAttack(0, 1.0);
+    try std.testing.expectEqual(base + 1, auto.hero.stats.strength);
+    try std.testing.expectEqual(@as(u8, 0), auto.hero.pending_points);
 }
 
 test "tome sim: boss AOE resolves on the telegraphed turn" {
