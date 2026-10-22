@@ -142,7 +142,7 @@ docs/           TOME_V1 / SAVE / ART_PASS / UX_REVIEW_TOME / screenshots
 
 ## 验证
 
-- zig build / zig build test：13/13 steps、128/128 tests。
+- zig build / zig build test：13/13 steps、129/129 tests。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/tome_select.png`。
 - 职业菜单显示的 SEED 就是本局真实 seed；选择职业只按同一 seed 重开，R 重开保持职业和 seed。
 - 自动跑局（seed 12345）：三职业均可通关；狂战士约第 100 回合剩 66 HP，元素法师第 75 回合、时空法师第 84 回合。

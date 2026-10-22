@@ -1552,3 +1552,26 @@ test "tome game: aim refuses cooldown/resource-blocked talents" {
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expect(!g.isAiming());
 }
+
+test "tome game: held repeat is throttled to one step per 0.3s" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    var dx: i32 = 0;
+    var dy: i32 = 0;
+    const dirs = [_][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
+    for (dirs) |d| {
+        if (g.sim.canMove(d[0], d[1])) {
+            dx = d[0];
+            dy = d[1];
+            break;
+        }
+    }
+    if (dx == 0 and dy == 0) return error.SkipZigTest;
+    g.update(.{ .step_x = dx, .step_y = dy }, 1.0 / 60.0);
+    const turn = g.sim.turn;
+    g.update(.{ .step_x = dx, .step_y = dy }, 1.0 / 60.0);
+    try std.testing.expectEqual(turn, g.sim.turn);
+    g.update(.{ .step_x = dx, .step_y = dy }, 0.31);
+    try std.testing.expect(g.sim.turn >= turn);
+}

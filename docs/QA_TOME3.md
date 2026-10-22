@@ -350,3 +350,20 @@ zig build run -- --headless --hero 2 --seed 12345 --auto --frames 5000 --out doc
 - docs/screenshots/qa3_*.png：本轮证据截图。
 
 未修改任何 src/game/* 游戏逻辑。
+## 12. 修复对账（本轮之后合并）
+
+QA3 开 PR 后，主分支继续合并了以下修复；本节把上面 P1/P2 的状态更新掉：
+
+| 发现 | 状态 | 修复 |
+| --- | --- | --- |
+| 按住方向键每个 repeat 消耗一回合 | 已修 | TomeGame.step_cooldown，约 0.3 秒一步；新增回归测试 |
+| 瞄准中 5/. 被当成确认 | 已修 | 5/. 取消瞄准并等待；空格/同键才是确认 |
+| 同键确认 vs 取消口径 | 定为确认 | README/帮助/QA 验收统一为“同键确认，Esc 取消” |
+| 菜单 SEED 是预览种子 | 已修 | selectClass 不再改写 seed，菜单 SEED 即本局 seed |
+| F9 无确认覆盖 | 已修 | F9 两次确认；菜单/帮助都写 F9x2 |
+| loot_rng 未保存 | 已修 | gear sidecar 保存 xoshiro 状态，F9 精确续接掉落 |
+| gear `{}` 被当空背包 | 已修 | format/version 无默认值，`{}` 返回 NotGearFormat，坏档不覆盖 |
+| 目标无 HP/距离/速度提示 | 部分 | 目标名字牌加 HP 数字、速度 x2/慢；AOE 标签带预计伤害；平台/日志下移 |
+| 日志压战场/死因被盖 | 已修 | 日志移到左下；死亡/胜利结算显示最后一条日志作为死因 |
+
+最新测试：`zig build test` 129/129，`test-qa` 76/76，`test-qa3` 129/129；QA3 测试已改为新行为的回归断言。
