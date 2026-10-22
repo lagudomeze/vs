@@ -25,6 +25,7 @@ const Options = struct {
     inventory: bool = false,
     character: bool = false,
     loot: u32 = 0,
+    aim: ?u32 = null,
     hide_hud: bool = false,
     help: bool = false,
 };
@@ -48,13 +49,16 @@ fn usage() void {
         \\  --walk            headless: hold W so the party walks into frame
         \\  --cast            headless: cast once at the end
         \\  --auto            headless demo: cast every 1.5s
+        \\  --aim N           headless: open aim on talent N for screenshots (no confirm)
         \\  --debug           show the debug HUD
         \\  --lineup          class showcase camera (for documentation shots)
         \\  --hide-hud        render without the HUD
         \\  --help            this text
         \\
-        \\Controls: WASD move, Q/E or right-drag orbit, wheel zoom,
-        \\          TAB switch, SPACE skill, F interrupt, I inventory, R reset, F1 debug, F12 shot, ESC quit.
+        \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
+        \\          TAB switch target, ESC cancel aim/close panel/quit,
+        \\          Q/E or right-drag orbit, wheel zoom, I inventory, C character,
+        \\          R reset, F1 debug, F12 shot.
         \\
     , .{});
 }
@@ -123,6 +127,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.character = true;
         } else if (std.mem.eql(u8, a, "--loot")) {
             o.loot = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
+        } else if (std.mem.eql(u8, a, "--aim")) {
+            o.aim = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
             o.hide_hud = true;
         } else if (std.mem.eql(u8, a, "--help") or std.mem.eql(u8, a, "-h")) {
@@ -250,7 +256,13 @@ fn runTomeHeadless(game: *vx.TomeGame, io: std.Io, options: Options) !void {
         if (options.auto_demo and frame % 10 == 0) {
             game.autoPlayStep();
         }
-        if (options.cast and frame + 1 == frames) input.talent = 0;
+        // Casting a targeted talent is two key events now: aim on the
+        // penultimate frame, confirm on the last one.
+        if (options.cast and frame + 2 == frames) input.talent = 0;
+        if (options.cast and frame + 1 == frames) input.confirm = true;
+        if (options.aim) |aim_talent| {
+            if (frame + 1 == frames) input.talent = @intCast(aim_talent);
+        }
         game.update(input, 1.0 / 60.0);
     }
     game.render();
@@ -275,7 +287,7 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
     var elapsed: f32 = 0;
     var quit = false;
     var captured = false;
-    std.debug.print("tome: {d}x{d} logical, {d}x scale - class menu 1/2/3, WASD step, 1/2/3 talent, SPACE wait, I/C panels, Q/E orbit, R restart\n", .{
+    std.debug.print("tome: {d}x{d} logical, {d}x scale - class menu 1/2/3, WASD step, 1/2/3 aim, SPACE confirm, ESC cancel, I/C panels, Q/E orbit, R restart\n", .{
         options.width, options.height, options.scale,
     });
 
@@ -289,11 +301,15 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
 
         const pin = platform.poll(dt);
         if (pin.quit) break;
+        // Escape is hierarchical: cancel aim first (never lose the run just
+        // for cancelling a target), then close a modal panel, then quit.
         if (pin.escape) {
-            if (game.panel != .none) {
-                game.panel = .none;
-            } else {
-                break;
+            if (!game.cancelAim()) {
+                if (game.panel != .none) {
+                    game.panel = .none;
+                } else {
+                    break;
+                }
             }
         }
         if (pin.toggle_debug) game.debug = !game.debug;
@@ -304,6 +320,7 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
         if (pin.talent_1) input.talent = 0;
         if (pin.talent_2) input.talent = 1;
         if (pin.talent_3) input.talent = 2;
+        input.confirm = pin.cast;
         input.wait = pin.wait;
         input.target_next = pin.toggle_hero;
         input.inventory = pin.inventory;
@@ -357,6 +374,12 @@ pub fn main(init: std.process.Init.Minimal) !void {
     if (options.hero > 2) {
         std.debug.print("vx: --hero must be 0, 1 or 2\n", .{});
         return error.BadHero;
+    }
+    if (options.aim) |aim| {
+        if (aim > 2) {
+            std.debug.print("vx: --aim must be 0, 1 or 2\n", .{});
+            return error.BadAim;
+        }
     }
 
     var threaded: std.Io.Threaded = .init(gpa, .{});

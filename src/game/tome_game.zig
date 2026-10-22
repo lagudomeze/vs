@@ -11,6 +11,7 @@ const arena_mesh = @import("../engine/arena_mesh.zig");
 const renderer = @import("../engine/renderer.zig");
 const assets = @import("assets");
 const sim_mod = @import("tome_sim.zig");
+const target_mod = @import("tome_target.zig");
 const intent_mod = @import("intent.zig");
 const hud = @import("tome_hud.zig");
 const content_mod = @import("content.zig");
@@ -38,6 +39,8 @@ pub const Input = struct {
     step_x: i32 = 0,
     step_y: i32 = 0,
     talent: i8 = -1,
+    /// Space while aiming confirms the pending talent.
+    confirm: bool = false,
     wait: bool = false,
     inventory: bool = false,
     character: bool = false,
@@ -64,6 +67,9 @@ pub const TomeGame = struct {
     kill_loot_seen: u32 = 0,
     last_level: u16 = 1,
     selected: ?usize = null,
+    /// Talent index while the player is aiming; null when not aiming. Aiming
+    /// itself never spends a turn, only a successful confirmation does.
+    aim_talent: ?usize = null,
     reset_armed: f32 = 0,
     seed: u64,
     class: sim_mod.Class,
@@ -201,6 +207,7 @@ pub const TomeGame = struct {
         self.kill_loot_seen = 0;
         self.last_level = 1;
         self.selected = null;
+        self.aim_talent = null;
         self.reset_armed = 0;
         self.panel = .none;
         self.rebuildMesh();
@@ -254,6 +261,8 @@ pub const TomeGame = struct {
 
     pub fn autoPlayStep(self: *TomeGame) void {
         if (!self.started or self.sim.state != .playing or self.panel != .none) return;
+        // The headless bot releases talents directly; never leave it aiming.
+        self.clearAim();
         const hero = self.sim.hero.pos;
         const dirs = [_][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
 
@@ -412,6 +421,7 @@ pub const TomeGame = struct {
 
         self.reset_armed = @max(0, self.reset_armed - dt);
         if (input.restart) {
+            self.clearAim();
             if (self.sim.state != .playing or self.reset_armed > 0) {
                 self.restart();
             } else {
@@ -422,9 +432,11 @@ pub const TomeGame = struct {
         if (input.target_next) self.cycleTarget();
 
         if (input.inventory) {
+            self.clearAim();
             self.panel = if (self.panel == .inventory) .none else .inventory;
         }
         if (input.character) {
+            self.clearAim();
             self.panel = if (self.panel == .character) .none else .character;
         }
         if (self.panel == .inventory and input.talent >= 0) {
@@ -438,6 +450,9 @@ pub const TomeGame = struct {
 
         if (!used_potion and self.panel == .none and self.sim.state == .playing) {
             if (input.step_x != 0 or input.step_y != 0) {
+                // Walking away abandons the pending aim (no turn spent on the
+                // cancel itself; the step below costs its usual turn).
+                self.clearAim();
                 const before_hero = self.sim.hero.hp;
                 var before: [sim_mod.max_enemies]f32 = undefined;
                 var bi: usize = 0;
@@ -447,20 +462,12 @@ pub const TomeGame = struct {
                 if (input.step_x != 0 or input.step_y != 0) {
                     self.hero_vis.target_yaw = std.math.atan2(@as(f32, @floatFromInt(input.step_x)), @as(f32, @floatFromInt(input.step_y)));
                 }
+            } else if (self.aim_talent != null and (input.confirm or input.wait)) {
+                _ = self.confirmAim();
+            } else if (input.talent >= 0) {
+                self.talentKey(@intCast(input.talent));
             } else if (input.wait) {
                 _ = self.sim.wait();
-            } else if (input.talent >= 0) {
-                const idx: usize = @intCast(input.talent);
-                const before_hero = self.sim.hero.hp;
-                var before: [sim_mod.max_enemies]f32 = undefined;
-                var bi: usize = 0;
-                while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].hp;
-                if (self.sim.useTalentOn(idx, self.selected)) {
-                    self.hero_vis.anim.cast = 1.0;
-                    self.flashAfter(before_hero, before[0..self.sim.enemy_count]);
-                } else {
-                    self.sim.pushLog("技能不可用", .{});
-                }
             }
         }
 
@@ -470,7 +477,10 @@ pub const TomeGame = struct {
             self.rebuildMods();
         }
 
+        if (self.sim.state != .playing) self.clearAim();
+
         if (self.sim.floor != self.mesh_floor) {
+            self.clearAim();
             self.rebuildMesh();
             self.syncVisuals(true);
         }
@@ -535,6 +545,106 @@ pub const TomeGame = struct {
             }
         }
         self.selected = null;
+    }
+
+    pub fn isAiming(self: *const TomeGame) bool {
+        return self.aim_talent != null;
+    }
+
+    /// Escape path: aim is consumed first, so Esc never drops the run while
+    /// the player is only cancelling a target. Returns true when consumed.
+    pub fn cancelAim(self: *TomeGame) bool {
+        if (self.aim_talent == null) return false;
+        self.aim_talent = null;
+        self.sim.pushLog("取消瞄准", .{});
+        return true;
+    }
+
+    fn clearAim(self: *TomeGame) void {
+        self.aim_talent = null;
+    }
+
+    /// Currently highlighted enemy. Falls back to the nearest living enemy at
+    /// any distance so an out-of-range target can still be previewed in red.
+    fn aimTarget(self: *const TomeGame) ?usize {
+        return self.currentTarget();
+    }
+
+    fn beginAim(self: *TomeGame, talent: usize) void {
+        self.aim_talent = talent;
+        self.selected = self.aimTarget();
+        self.sim.pushLog("瞄准 {s}：空格确认", .{self.sim.talentName(talent)});
+    }
+
+    fn switchAim(self: *TomeGame, talent: usize) void {
+        if (target_mod.needsTarget(self.class, talent)) {
+            self.beginAim(talent);
+            return;
+        }
+        // Non-targeted talent: leave aim and release it right away.
+        self.clearAim();
+        _ = self.releaseTalent(talent);
+    }
+
+    /// One number key. While aiming the same key confirms and another key
+    /// switches; while idle a target talent starts aim and a self talent is
+    /// released immediately (the old hotbar behaviour).
+    fn talentKey(self: *TomeGame, talent: usize) void {
+        if (self.aim_talent) |aim| {
+            if (aim == talent) {
+                _ = self.confirmAim();
+            } else {
+                self.switchAim(talent);
+            }
+            return;
+        }
+        if (target_mod.needsTarget(self.class, talent)) {
+            self.beginAim(talent);
+        } else {
+            _ = self.releaseTalent(talent);
+        }
+    }
+
+    fn castTalentAt(self: *TomeGame, talent: usize, target: ?usize) bool {
+        const before_hero = self.sim.hero.hp;
+        var before: [sim_mod.max_enemies]f32 = undefined;
+        var bi: usize = 0;
+        while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].hp;
+        const used = self.sim.useTalentOn(talent, target);
+        if (used) {
+            self.hero_vis.anim.cast = 1.0;
+            self.flashAfter(before_hero, before[0..bi]);
+        }
+        return used;
+    }
+
+    fn releaseTalent(self: *TomeGame, talent: usize) bool {
+        if (self.castTalentAt(talent, self.selected)) return true;
+        self.sim.pushLog("技能不可用", .{});
+        return false;
+    }
+
+    /// Confirm the pending aim. Validation failure logs a reason and leaves
+    /// the turn and resource untouched; success spends exactly one turn.
+    fn confirmAim(self: *TomeGame) bool {
+        const talent = self.aim_talent orelse return false;
+        const p = target_mod.preview(&self.sim, talent, self.aimTarget());
+        if (!p.valid()) {
+            self.sim.pushLog("瞄准：{s}", .{p.reason()});
+            return false;
+        }
+        const turn_before = self.sim.turn;
+        if (!self.castTalentAt(talent, p.target)) {
+            self.sim.pushLog("技能不可用", .{});
+            return false;
+        }
+        self.aim_talent = null;
+        if (self.sim.turn == turn_before) {
+            // Defensive: a confirmed talent must always spend a turn.
+            self.sim.pushLog("技能未生效", .{});
+            return false;
+        }
+        return true;
     }
 
     fn flashAfter(self: *TomeGame, hero_before: f32, enemies_before: []const f32) void {
@@ -646,6 +756,7 @@ pub const TomeGame = struct {
             self.renderer.drawShadow(self.enemy_vis[i].pos.add(math.Vec3.init(0.06, 0, -0.04)), 0.32 * enemyScale(self.sim.enemies[i].kind));
         }
         self.drawRings();
+        self.drawAimMarkers();
 
         // hero
         var pose: rig.Pose = .{};
@@ -717,10 +828,11 @@ pub const TomeGame = struct {
                 if (label.len > 0) self.renderer.drawText(x - @divTrunc(renderer.Renderer.textWidth(label, 1), 2), y + 5, label, if (intent.kind == .aoe) palette.red else palette.gold_light, 1, true);
             }
             if (target != null and target.? == i) {
+                const aiming = self.aim_talent != null;
                 const tw = renderer.Renderer.textWidth(e.name, 1);
                 self.renderer.fillRect(x - @divTrunc(tw, 2) - 3, y - 13, tw + 6, 11, palette.panel);
-                self.renderer.strokeRect(x - @divTrunc(tw, 2) - 3, y - 13, tw + 6, 11, palette.border);
-                self.renderer.drawText(x - @divTrunc(tw, 2), y - 12, e.name, palette.red, 1, true);
+                self.renderer.strokeRect(x - @divTrunc(tw, 2) - 3, y - 13, tw + 6, 11, if (aiming) palette.gold else palette.border);
+                self.renderer.drawText(x - @divTrunc(tw, 2), y - 12, e.name, if (aiming) palette.gold_light else palette.red, 1, true);
             }
         }
     }
@@ -790,6 +902,39 @@ pub const TomeGame = struct {
                         .alpha = 0.75,
                     });
                 }
+            }
+        }
+    }
+
+    /// World-space aim preview: a pulsing ring on the highlighted enemy and
+    /// one ring per cell covered by an area talent. Valid targets glow cyan,
+    /// blocked ones red; nothing is drawn when the player is not aiming.
+    fn drawAimMarkers(self: *TomeGame) void {
+        const talent = self.aim_talent orelse return;
+        const ring_index = self.models.indexOf("rune_circle") orelse return;
+        const ring_model = self.models.at(ring_index);
+        const p = target_mod.preview(&self.sim, talent, self.aimTarget());
+        const accent: u32 = if (p.valid()) color.pack(110, 235, 200) else color.pack(255, 84, 66);
+        if (p.target) |ti| {
+            const e = self.sim.enemies[ti];
+            const pos = tilePos(e.pos.x, e.pos.y).add(math.Vec3.init(0, 0.055, 0));
+            self.renderer.drawModel(ring_model, null, math.Mat4.compose(pos, self.time * 0.9, 0, 0, 0.54), .{
+                .tint = accent,
+                .boost = 1.0,
+                .additive = true,
+                .alpha = 0.95,
+            });
+        }
+        if (p.target != null and p.spec.aoe_radius > 0) {
+            const aoe_tint: u32 = if (p.valid()) color.pack(255, 168, 74) else color.pack(220, 70, 50);
+            for (p.aoeSlice()) |cell| {
+                const pos = tilePos(cell.x, cell.y).add(math.Vec3.init(0, 0.045, 0));
+                self.renderer.drawModel(ring_model, null, math.Mat4.compose(pos, -self.time * 0.35, 0, 0, 0.40), .{
+                    .tint = aoe_tint,
+                    .boost = 0.8,
+                    .additive = true,
+                    .alpha = 0.55,
+                });
             }
         }
     }
@@ -901,6 +1046,22 @@ pub const TomeGame = struct {
             const dy = e.pos.y - self.sim.hero.pos.y;
             self.hud_state.target_range = @intCast(@abs(dx) + @abs(dy));
         }
+        self.hud_state.aim = .{};
+        if (self.aim_talent) |talent| {
+            const p = target_mod.preview(&self.sim, talent, target);
+            var aim = hud.AimInfo{
+                .active = true,
+                .valid = p.valid(),
+                .talent_index = talent,
+                .talent = self.sim.talentName(talent),
+                .distance = p.distance,
+                .damage = p.damageInt(),
+                .aoe_radius = p.spec.aoe_radius,
+                .reason = if (p.valid()) "" else p.reason(),
+            };
+            if (p.target) |ti| aim.target = self.sim.enemies[ti].name;
+            self.hud_state.aim = aim;
+        }
         const attrs = [_]i32{
             @intFromFloat(self.sim.hero.eff_stats[0]),
             @intFromFloat(self.sim.hero.eff_stats[1]),
@@ -993,4 +1154,198 @@ test "tome game: class menu selects, reseeds and keeps the class on restart" {
     try std.testing.expectEqual(sim_mod.Class.mage, g.class);
     try std.testing.expectEqual(chosen_seed, g.seed);
     try std.testing.expectEqual(sim_mod.State.playing, g.sim.state);
+}
+
+fn setGameEnemy(g: *TomeGame, index: usize, pos: sim_mod.GridPos, name: []const u8, hp: f32) void {
+    g.sim.enemies[index] = .{
+        .kind = 0,
+        .name = name,
+        .pos = pos,
+        .hp = hp,
+        .hp_max = hp,
+        .attack = 8,
+        .armor = 4,
+        .speed = 100,
+        .range = 1,
+        .xp = 20,
+    };
+}
+
+fn addGameEnemy(g: *TomeGame, dx: i32, dy: i32, name: []const u8) void {
+    const p = g.sim.hero.pos;
+    setGameEnemy(g, g.sim.enemy_count, .{ .x = p.x + dx, .y = p.y + dy }, name, 999);
+    g.sim.enemy_count += 1;
+}
+
+test "tome game: aiming waits for confirmation and spends one turn" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    addGameEnemy(g, 1, 0, "骷髅兵");
+
+    const turn = g.sim.turn;
+    const res = g.sim.hero.resource;
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expect(g.isAiming());
+    try std.testing.expectEqual(turn, g.sim.turn);
+    try std.testing.expectEqual(res, g.sim.hero.resource);
+    try std.testing.expect(g.hud_state.aim.active);
+    try std.testing.expect(g.hud_state.aim.valid);
+    try std.testing.expectEqualStrings("重击", g.hud_state.aim.talent);
+    try std.testing.expectEqualStrings("骷髅兵", g.hud_state.aim.target);
+    try std.testing.expectEqual(@as(i32, 1), g.hud_state.aim.distance);
+    try std.testing.expect(g.hud_state.aim.damage > 0);
+
+    // Same key confirms: exactly one turn and one resource payment.
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expect(!g.isAiming());
+    try std.testing.expectEqual(@as(?usize, null), g.aim_talent);
+    try std.testing.expectEqual(turn + 1, g.sim.turn);
+    try std.testing.expect(g.sim.hero.resource < res);
+    try std.testing.expect(g.sim.hero.cooldowns[0] > 0);
+    try std.testing.expect(!g.hud_state.aim.active);
+
+    // Re-aiming during cooldown previews red; confirming again spends nothing.
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expect(g.isAiming());
+    try std.testing.expect(!g.hud_state.aim.valid);
+    try std.testing.expectEqualStrings("冷却中", g.hud_state.aim.reason);
+    const turn_after = g.sim.turn;
+    const res_after = g.sim.hero.resource;
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expectEqual(turn_after, g.sim.turn);
+    try std.testing.expectEqual(res_after, g.sim.hero.resource);
+    try std.testing.expect(g.isAiming());
+}
+
+test "tome game: space confirms, switch key changes aim, self talent releases" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    addGameEnemy(g, 1, 0, "骷髅兵");
+
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    const turn = g.sim.turn;
+    g.update(.{ .talent = 1 }, 1.0 / 60.0); // switch to 冲锋, no cast
+    try std.testing.expect(g.isAiming());
+    try std.testing.expectEqual(turn, g.sim.turn);
+    try std.testing.expectEqualStrings("冲锋", g.hud_state.aim.talent);
+    try std.testing.expectEqual(@as(u16, 0), g.sim.hero.cooldowns[1]);
+
+    g.update(.{ .confirm = true }, 1.0 / 60.0); // SPACE confirms
+    try std.testing.expect(!g.isAiming());
+    try std.testing.expectEqual(turn + 1, g.sim.turn);
+    try std.testing.expect(g.sim.hero.cooldowns[1] > 0);
+    try std.testing.expectEqual(@as(u16, 0), g.sim.hero.cooldowns[0]);
+
+    // 战吼 is not targeted: pressed while aiming it releases immediately.
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expect(g.isAiming());
+    const turn2 = g.sim.turn;
+    g.update(.{ .talent = 2 }, 1.0 / 60.0);
+    try std.testing.expect(!g.isAiming());
+    try std.testing.expectEqual(turn2 + 1, g.sim.turn);
+    try std.testing.expect(g.sim.hero.cooldowns[2] > 0);
+}
+
+test "tome game: tab cycles the aim target without spending a turn" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    addGameEnemy(g, 1, 0, "骷髅兵");
+    addGameEnemy(g, -1, 0, "幽魂");
+
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    const turn = g.sim.turn;
+    try std.testing.expectEqualStrings("骷髅兵", g.hud_state.aim.target);
+    g.update(.{ .target_next = true }, 1.0 / 60.0);
+    try std.testing.expect(g.isAiming());
+    try std.testing.expectEqual(turn, g.sim.turn);
+    try std.testing.expectEqualStrings("幽魂", g.hud_state.aim.target);
+}
+
+test "tome game: cancel and invalid confirms never spend a turn or resource" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+
+    // No living enemy at all.
+    g.sim.enemy_count = 0;
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expect(g.isAiming());
+    try std.testing.expect(!g.hud_state.aim.valid);
+    try std.testing.expectEqualStrings("无效目标", g.hud_state.aim.reason);
+    const t0 = g.sim.turn;
+    const r0 = g.sim.hero.resource;
+    g.update(.{ .confirm = true }, 1.0 / 60.0);
+    try std.testing.expectEqual(t0, g.sim.turn);
+    try std.testing.expectEqual(r0, g.sim.hero.resource);
+    try std.testing.expect(g.isAiming());
+
+    // Esc path: consume the aim, spend nothing, stay in the run.
+    try std.testing.expect(g.cancelAim());
+    try std.testing.expect(!g.isAiming());
+    try std.testing.expectEqual(t0, g.sim.turn);
+    try std.testing.expectEqual(r0, g.sim.hero.resource);
+    try std.testing.expect(!g.cancelAim());
+    try std.testing.expectEqual(sim_mod.State.playing, g.sim.state);
+    g.update(.{}, 1.0 / 60.0);
+    try std.testing.expect(!g.hud_state.aim.active);
+
+    // Out of range (5 cells for 重击).
+    g.restart();
+    const hero = g.sim.hero.pos;
+    const far_dx: i32 = if (hero.x + 5 < sim_mod.grid_w) 5 else -5;
+    addGameEnemy(g, far_dx, 0, "骷髅兵");
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expect(!g.hud_state.aim.valid);
+    try std.testing.expectEqualStrings("超出范围", g.hud_state.aim.reason);
+    var turn = g.sim.turn;
+    var res = g.sim.hero.resource;
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expectEqual(turn, g.sim.turn);
+    try std.testing.expectEqual(res, g.sim.hero.resource);
+    try std.testing.expect(g.isAiming());
+
+    // Wall between hero and target: LOS blocks confirmation. 冲锋 has enough
+    // range to reach the cell, so line of sight is the failing check.
+    g.restart();
+    addGameEnemy(g, 2, 0, "骷髅兵");
+    const wall_x = g.sim.hero.pos.x + 1;
+    g.sim.blocked[@as(usize, @intCast(g.sim.hero.pos.y)) * sim_mod.grid_w + @as(usize, @intCast(wall_x))] = true;
+    g.update(.{ .talent = 1 }, 1.0 / 60.0);
+    try std.testing.expect(!g.hud_state.aim.valid);
+    try std.testing.expectEqualStrings("视线受阻", g.hud_state.aim.reason);
+    turn = g.sim.turn;
+    res = g.sim.hero.resource;
+    g.update(.{ .talent = 1 }, 1.0 / 60.0);
+    try std.testing.expectEqual(turn, g.sim.turn);
+    try std.testing.expectEqual(res, g.sim.hero.resource);
+
+    // Insufficient resource.
+    g.restart();
+    addGameEnemy(g, 1, 0, "骷髅兵");
+    g.sim.hero.resource = 0;
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expect(!g.hud_state.aim.valid);
+    try std.testing.expectEqualStrings("缺资源", g.hud_state.aim.reason);
+    turn = g.sim.turn;
+    res = g.sim.hero.resource;
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expectEqual(turn, g.sim.turn);
+    try std.testing.expectEqual(res, g.sim.hero.resource);
+}
+
+test "tome game: untargeted talents still release immediately without aim" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    addGameEnemy(g, 1, 0, "骷髅兵");
+
+    const turn = g.sim.turn;
+    g.update(.{ .talent = 2 }, 1.0 / 60.0);
+    try std.testing.expect(!g.isAiming());
+    try std.testing.expectEqual(turn + 1, g.sim.turn);
+    try std.testing.expect(g.sim.hero.cooldowns[2] > 0);
+    try std.testing.expect(g.sim.hero.buff_turns > 0);
 }

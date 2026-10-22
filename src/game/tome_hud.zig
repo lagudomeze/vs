@@ -17,6 +17,21 @@ pub const HotbarSlot = struct {
     affordable: bool = true,
 };
 
+/// Live aim preview: which talent is pending, which enemy is highlighted
+/// and why confirmation would fail. Filled by TomeGame each frame.
+pub const AimInfo = struct {
+    active: bool = false,
+    valid: bool = false,
+    talent_index: usize = 0,
+    talent: []const u8 = "",
+    target: []const u8 = "",
+    distance: i32 = 0,
+    damage: i32 = 0,
+    aoe_radius: i32 = 0,
+    /// Why confirmation is blocked (empty when valid).
+    reason: []const u8 = "",
+};
+
 pub const ClassCard = struct {
     name: []const u8 = "",
     resource: []const u8 = "",
@@ -53,6 +68,7 @@ pub const State = struct {
     target_hp: f32 = 0,
     target_hp_max: f32 = 1,
     target_range: u16 = 0,
+    aim: AimInfo = .{},
     log_lines: [4][]const u8 = .{ "", "", "", "" },
     log_count: usize = 0,
     minimap: [169]u8 = @splat(0),
@@ -92,6 +108,7 @@ const menu_title = "选职业";
 const menu_hint = "按 1 / 2 / 3 开始";
 const menu_footer = "死亡按 R 重开 同职业";
 const talent_label = "天赋";
+const aim_hint = "空格/同键确认  Esc取消  Tab换目标";
 
 /// Pre-run class selection. A checkerboard dim keeps the 3D dungeon visible
 /// behind the cards while the title and card panels stay fully readable.
@@ -225,14 +242,47 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         }
     }
 
+    // aim line: preview sits just above the hotbar, red when the highlighted
+    // target cannot be confirmed.
+    if (state.aim.active) {
+        var aim_buf: [128]u8 = undefined;
+        var line: []const u8 = undefined;
+        if (state.aim.valid) {
+            line = if (state.aim.aoe_radius > 0)
+                fmt(&aim_buf, "瞄准：{s} -> {s} 距离{d} 预计{d}伤害 范围{d}", .{
+                    state.aim.talent, state.aim.target, state.aim.distance, state.aim.damage, state.aim.aoe_radius,
+                })
+            else
+                fmt(&aim_buf, "瞄准：{s} -> {s} 距离{d} 预计{d}伤害", .{
+                    state.aim.talent, state.aim.target, state.aim.distance, state.aim.damage,
+                });
+        } else if (state.aim.target.len > 0) {
+            line = fmt(&aim_buf, "瞄准：{s} -> {s} {s}", .{ state.aim.talent, state.aim.target, state.aim.reason });
+        } else {
+            line = fmt(&aim_buf, "瞄准：{s} {s}", .{ state.aim.talent, state.aim.reason });
+        }
+        const line_w = renderer.Renderer.textWidth(line, 1);
+        const hint_w = renderer.Renderer.textWidth(aim_hint, 1);
+        const box_w = @max(line_w, hint_w) + 16;
+        const box_x = @divTrunc(w - box_w, 2);
+        const box_y = h - 90;
+        const accent: u32 = if (state.aim.valid) palette.cyan else palette.red;
+        r.fillRect(box_x, box_y, box_w, 26, palette.panel);
+        r.strokeRect(box_x, box_y, box_w, 26, accent);
+        r.fillRect(box_x + 2, box_y + 2, 24, 1, accent);
+        r.drawText(box_x + 8, box_y + 4, line, if (state.aim.valid) palette.cyan_light else palette.red, 1, false);
+        r.drawText(box_x + 8, box_y + 15, aim_hint, palette.muted, 1, false);
+    }
+
     // hotbar: name, cost/base cooldown, then live availability
     backPanel(r, 6, h - 60, 270, 54);
     r.drawText(10, h - 56, talent_label, palette.gold, 1, false);
     for (state.hotbar, 0..) |slot, i| {
         const sx: i32 = 10 + @as(i32, @intCast(i)) * 87;
         const sy: i32 = h - 45;
+        const aiming = state.aim.active and state.aim.talent_index == i;
         r.fillRect(sx, sy, 84, 38, palette.deep);
-        r.strokeRect(sx, sy, 84, 38, if (slot.ready) palette.border else palette.muted);
+        r.strokeRect(sx, sy, 84, 38, if (aiming) palette.gold else if (slot.ready) palette.border else palette.muted);
         const key = fmt(&buf, "{d}", .{i + 1});
         r.drawText(sx + 4, sy + 3, key, palette.gold, 1, false);
         r.drawText(sx + 18, sy + 3, slot.name, if (slot.ready) palette.cream else palette.muted, 1, false);
@@ -244,6 +294,9 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         if (state.dead or state.victory) {
             status = "不可用";
             status_color = palette.muted;
+        } else if (aiming) {
+            status = "瞄准中";
+            status_color = palette.gold_light;
         } else if (slot.cooldown > 0) {
             status = fmt(&status_buf, "冷却 {d}", .{slot.cooldown});
             status_color = palette.red;
@@ -355,6 +408,7 @@ test "tome hud: hint strings have embedded CJK glyphs" {
         menu_hint,
         menu_footer,
         talent_label,
+        aim_hint,
         "资源",
         "生命",
         "定位",
@@ -364,8 +418,22 @@ test "tome hud: hint strings have embedded CJK glyphs" {
         "缺资源",
         "不可用",
         "按 R 重开 同职业",
+        "瞄准",
+        "预计",
+        "伤害",
+        "距离",
+        "范围",
+        "瞄准中",
+        "无效目标",
+        "超出范围",
+        "视线受阻",
+        "取消瞄准",
     };
     for (fixed) |text| try expectGlyphs(text);
+    const targeting = @import("tome_target.zig");
+    inline for (std.meta.tags(targeting.Verdict)) |verdict| {
+        try expectGlyphs(targeting.verdictText(verdict));
+    }
     for (sim.class_names) |text| try expectGlyphs(text);
     for (sim.resource_names) |text| try expectGlyphs(text);
     for (sim.class_roles) |text| try expectGlyphs(text);
