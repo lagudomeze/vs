@@ -122,9 +122,11 @@ docs/           TOME_V1 / ART_PASS / UX_REVIEW_TOME / screenshots
 ## 验证
 
 - zig build / zig build test：13/13 steps、74/74 tests。
-- headless：可生成开始/战斗/角色/背包截图。
-- 自动跑局：能推进到第 2–3 层；当前平衡仍偏难，属于 roguelike 原型。
+- headless：可生成开始/战斗/角色/背包/胜利截图。
+- 自动跑局（seed 12345）：第 80 回合击败第 3 层守卫，剩 51 HP；可复现。
 - 窗口模式：480×270、3× 最近邻、SDL 输入/截图正常。
+
+![victory](docs/screenshots/tome_victory.png)
 
 ## 已知限制 / 下一步
 
