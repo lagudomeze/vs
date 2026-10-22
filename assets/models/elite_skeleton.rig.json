@@ -1,0 +1,174 @@
+{
+  "name": "elite_skeleton",
+  "height": 1.0,
+  "up_axis": "Y",
+  "forward_axis": "+Z",
+  "joints": [
+    {
+      "name": "root",
+      "parent": null,
+      "rest": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "hips",
+      "parent": "root",
+      "rest": [
+        0.0,
+        0.44,
+        0.0
+      ],
+      "world": [
+        0.0,
+        0.44,
+        0.0
+      ]
+    },
+    {
+      "name": "torso",
+      "parent": "hips",
+      "rest": [
+        0.0,
+        0.06,
+        0.0
+      ],
+      "world": [
+        0.0,
+        0.5,
+        0.0
+      ]
+    },
+    {
+      "name": "head",
+      "parent": "torso",
+      "rest": [
+        0.0,
+        0.27,
+        0.0
+      ],
+      "world": [
+        0.0,
+        0.77,
+        0.0
+      ]
+    },
+    {
+      "name": "arm_l",
+      "parent": "torso",
+      "rest": [
+        0.17,
+        0.23,
+        0.0
+      ],
+      "world": [
+        0.17,
+        0.73,
+        0.0
+      ]
+    },
+    {
+      "name": "arm_r",
+      "parent": "torso",
+      "rest": [
+        -0.17,
+        0.23,
+        0.0
+      ],
+      "world": [
+        -0.17,
+        0.73,
+        0.0
+      ]
+    },
+    {
+      "name": "cape",
+      "parent": "torso",
+      "rest": [
+        0.0,
+        0.23,
+        -0.075
+      ],
+      "world": [
+        0.0,
+        0.73,
+        -0.075
+      ]
+    },
+    {
+      "name": "leg_l",
+      "parent": "hips",
+      "rest": [
+        0.075,
+        0.0,
+        0.0
+      ],
+      "world": [
+        0.075,
+        0.44,
+        0.0
+      ]
+    },
+    {
+      "name": "leg_r",
+      "parent": "hips",
+      "rest": [
+        -0.075,
+        0.0,
+        0.0
+      ],
+      "world": [
+        -0.075,
+        0.44,
+        0.0
+      ]
+    },
+    {
+      "name": "weapon",
+      "parent": "arm_r",
+      "rest": [
+        0.0,
+        -0.3,
+        0.02
+      ],
+      "world": [
+        -0.17,
+        0.43,
+        0.02
+      ]
+    },
+    {
+      "name": "offhand",
+      "parent": "arm_l",
+      "rest": [
+        0.0,
+        -0.3,
+        0.02
+      ],
+      "world": [
+        0.17,
+        0.43,
+        0.02
+      ]
+    }
+  ],
+  "parts": [
+    "hips",
+    "torso",
+    "head",
+    "arm_l",
+    "arm_r",
+    "cape",
+    "leg_l",
+    "leg_r",
+    "weapon",
+    "offhand"
+  ]
+}

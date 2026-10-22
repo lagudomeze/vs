@@ -13,6 +13,15 @@ pub const arena_mesh = @import("engine/arena_mesh.zig");
 pub const renderer = @import("engine/renderer.zig");
 
 pub const components = @import("game/components.zig");
+pub const turn = @import("game/turn.zig");
+pub const attributes = @import("game/attributes.zig");
+pub const items = @import("game/items.zig");
+pub const content = @import("game/content.zig");
+pub const dungeon = @import("game/dungeon.zig");
+pub const tome_sim = @import("game/tome_sim.zig");
+pub const tome_hud = @import("game/tome_hud.zig");
+pub const tome_game = @import("game/tome_game.zig");
+pub const TomeGame = @import("game/tome_game.zig").TomeGame;
 pub const systems = @import("game/systems.zig");
 pub const hud = @import("game/hud.zig");
 pub const game = @import("game/game.zig");

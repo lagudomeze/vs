@@ -7,3 +7,6 @@ shots
 __pycache__/
 *.pyc
 .tmp-font/
+.tmp-*
+qa-results/
+.qa-tmp/

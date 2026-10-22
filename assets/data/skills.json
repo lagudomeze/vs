@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "id": "heavy_strike",
+      "name": "重击",
+      "kind": "player",
+      "class": "warrior",
+      "effect": "damage",
+      "cost": 25,
+      "cooldown_turns": 4,
+      "damage_mult": 2.0,
+      "range_cells": 1,
+      "description": "狂战士：近战 2.0 倍伤害，冷却 4 回合。"
+    },
+    {
+      "id": "charge",
+      "name": "冲锋",
+      "kind": "player",
+      "class": "warrior",
+      "effect": "damage_knockback",
+      "cost": 20,
+      "cooldown_turns": 6,
+      "damage_mult": 1.5,
+      "range_cells": 2,
+      "knockback_cells": 2,
+      "description": "狂战士：直线 2 格冲锋并击退 2 格，冷却 6 回合。"
+    },
+    {
+      "id": "war_cry",
+      "name": "战吼",
+      "kind": "player",
+      "class": "warrior",
+      "effect": "attack_buff",
+      "cost": 15,
+      "cooldown_turns": 8,
+      "buff_pct": 0.3,
+      "duration_turns": 3,
+      "description": "狂战士：3 回合内攻击 +30%，冷却 8 回合。"
+    },
+    {
+      "id": "fireball",
+      "name": "火球",
+      "kind": "player",
+      "class": "mage",
+      "effect": "damage",
+      "cost": 30,
+      "cooldown_turns": 5,
+      "damage_mult": 2.5,
+      "range_cells": 5,
+      "aoe_cells": 1.5,
+      "description": "元素法师：范围 1.5 格，2.5 倍伤害，冷却 5 回合。"
+    },
+    {
+      "id": "ice_cone",
+      "name": "冰锥",
+      "kind": "player",
+      "class": "mage",
+      "effect": "damage_slow",
+      "cost": 25,
+      "cooldown_turns": 6,
+      "damage_mult": 1.5,
+      "range_cells": 3,
+      "duration_turns": 2,
+      "slow_pct": 0.5,
+      "description": "元素法师：锥形 3 格，减速 2 回合（50%），冷却 6 回合。"
+    },
+    {
+      "id": "blink",
+      "name": "闪现",
+      "kind": "player",
+      "class": "mage",
+      "effect": "blink",
+      "cost": 20,
+      "cooldown_turns": 10,
+      "range_cells": 5,
+      "teleport_cells": 5,
+      "description": "元素法师：传送到 5 格内空地，冷却 10 回合。"
+    },
+    {
+      "id": "time_arrow",
+      "name": "时光箭",
+      "kind": "player",
+      "class": "chronomancer",
+      "effect": "damage_slow",
+      "cost": 25,
+      "cooldown_turns": 4,
+      "damage_mult": 2.0,
+      "range_cells": 5,
+      "duration_turns": 2,
+      "slow_pct": 0.5,
+      "description": "时空法师：2.0 倍伤害并减速 2 回合，冷却 4 回合。"
+    },
+    {
+      "id": "time_stop",
+      "name": "时间停滞",
+      "kind": "player",
+      "class": "chronomancer",
+      "effect": "stun",
+      "cost": 30,
+      "cooldown_turns": 8,
+      "range_cells": 5,
+      "duration_turns": 1,
+      "description": "时空法师：目标跳过 1 回合，冷却 8 回合。"
+    },
+    {
+      "id": "recall",
+      "name": "回溯",
+      "kind": "player",
+      "class": "chronomancer",
+      "effect": "recall",
+      "cost": 35,
+      "cooldown_turns": 12,
+      "range_cells": 0,
+      "duration_turns": 2,
+      "description": "时空法师：回到 2 回合前的位置，冷却 12 回合。"
+    },
+    {
+      "id": "abyss_cleave",
+      "name": "深渊斩",
+      "kind": "enemy",
+      "effect": "damage",
+      "cooldown_turns": 3,
+      "flat_damage": 45,
+      "range_cells": 1,
+      "aoe_cells": 2.2,
+      "description": "深渊守卫：近战 AOE，伤害 45，2.2 格范围。"
+    }
+  ]
+}

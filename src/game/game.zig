@@ -29,6 +29,8 @@ pub const InputFrame = struct {
     zoom_delta: f32 = 0,
     toggle_hero: bool = false,
     cast: bool = false,
+    interrupt: bool = false,
+    inventory: bool = false,
     reset: bool = false,
 };
 
@@ -89,6 +91,7 @@ pub const Game = struct {
     frame_ms: f32 = 16.6,
     debug: bool = false,
     show_hud: bool = true,
+    inventory_open: bool = false,
     prop_seq: u16 = 0,
     braziers: [4]math.Vec3 = undefined,
 
@@ -118,6 +121,15 @@ pub const Game = struct {
     target: ecs.entity_t = 0,
     floats: [max_floats]FloatText = undefined,
     float_cursor: usize = 0,
+
+    // tactical layer (populated by the action/time module)
+    tactical_mode: u8 = 1, // 0 frozen, 1 flowing, 2 threat
+    threat_text: []const u8 = "",
+    threat_time: f32 = 0,
+    log_buf: [6][72]u8 = undefined,
+    log_len: [6]u16 = .{ 0, 0, 0, 0, 0, 0 },
+    log_head: usize = 0,
+    log_total: usize = 0,
 
     pub fn create(gpa: std.mem.Allocator, width: u32, height: u32) !*Game {
         const self = try gpa.create(Game);
@@ -463,6 +475,14 @@ pub const Game = struct {
     }
 
     // ------------------------------------------------------------ combat/waves
+    fn pushLog(self: *Game, comptime fmt: []const u8, args: anytype) void {
+        const slot = self.log_head;
+        const text = std.fmt.bufPrint(&self.log_buf[slot], fmt, args) catch return;
+        self.log_len[slot] = @intCast(text.len);
+        self.log_head = (slot + 1) % self.log_buf.len;
+        if (self.log_total < self.log_buf.len) self.log_total += 1;
+    }
+
     fn resetRun(self: *Game) void {
         self.clearEnemies();
         self.kills = 0;
@@ -514,6 +534,7 @@ pub const Game = struct {
 
     fn beginWave(self: *Game, wave: u8) void {
         self.wave = wave;
+        self.pushLog("第{d}波来袭", .{wave});
         self.spawn_index = 0;
         self.spawn_timer = 0;
         self.intermission = 0;
@@ -656,6 +677,7 @@ pub const Game = struct {
         }
         if (self.enemyCount() == 0) {
             if (self.wave >= self.max_waves) {
+                if (!self.victory) self.pushLog("胜利", .{});
                 self.victory = true;
                 self.ctx.combat_active = false;
                 self.banner_time = 0;
@@ -732,6 +754,7 @@ pub const Game = struct {
                 },
                 .enemy_died => {
                     self.kills += 1;
+                    self.pushLog("击杀 +1", .{});
                     self.spawnBurst(ev.pos, palette.gold_light, 20, 1.6);
                     self.spawnBurst(ev.pos, palette.red, 8, 1.1);
                     for (self.party) |e| {
@@ -741,6 +764,7 @@ pub const Game = struct {
                     }
                 },
                 .hero_down => {
+                    self.pushLog("英雄倒下", .{});
                     self.spawnBurst(ev.pos, color.pack(220, 70, 70), 16, 1.2);
                 },
             }
@@ -767,6 +791,7 @@ pub const Game = struct {
                     h.hp = h.hp_max * 0.5;
                     h.ap = @min(h.ap_max, 60);
                     h.revive_timer = 0;
+                    self.pushLog("英雄复活", .{});
                     if (ecs.get(self.world, e, comp.Transform)) |tr| {
                         self.spawnBurst(tr.pos.add(math.Vec3.init(0, 0.6, 0)), palette.cyan_light, 14, 1.0);
                     }
@@ -781,6 +806,7 @@ pub const Game = struct {
             }
         }
         if (living == 0) {
+            if (!self.defeat) self.pushLog("全灭", .{});
             self.defeat = true;
             self.ctx.combat_active = false;
             return;
@@ -957,6 +983,7 @@ pub const Game = struct {
 
         if (input.reset) self.resetRun();
         if (input.toggle_hero) self.cycleHero();
+        if (input.inventory) self.inventory_open = !self.inventory_open;
         if (input.cast) self.tryCast();
 
         self.camera.yaw += input.yaw_delta;
@@ -1349,6 +1376,26 @@ pub const Game = struct {
         self.hud_state.banner_time = self.banner_time;
         if (self.banner_time > 0 and !self.victory and !self.defeat) {
             self.hud_state.banner = std.fmt.bufPrint(&self.banner_buf, "第{d}波来袭", .{self.wave}) catch "";
+        }
+        self.hud_state.mode = self.tactical_mode;
+        self.hud_state.inventory_open = self.inventory_open;
+        self.hud_state.item_count = 0;
+        const active_class: u8 = if (ecs.get(self.world, self.active, comp.Hero)) |h| h.class else 0;
+        const base_attrs = [_][6]i32{
+            .{ 14, 10, 16, 8, 4, 10 },
+            .{ 6, 8, 8, 12, 18, 12 },
+            .{ 7, 10, 9, 14, 14, 13 },
+        };
+        self.hud_state.attr_values = base_attrs[@min(active_class, 2)];
+        self.hud_state.equip_names = .{ "", "", "" };
+        self.hud_state.threat = if (self.threat_time > 0) self.threat_text else "";
+        self.hud_state.threat_time = self.threat_time;
+        const visible = @min(self.log_total, self.hud_state.log_lines.len);
+        self.hud_state.log_count = visible;
+        var li: usize = 0;
+        while (li < visible) : (li += 1) {
+            const slot = (self.log_head + self.log_buf.len - visible + li) % self.log_buf.len;
+            self.hud_state.log_lines[li] = self.log_buf[slot][0..@as(usize, self.log_len[slot])];
         }
         self.hud_state.victory = self.victory;
         self.hud_state.defeat = self.defeat;

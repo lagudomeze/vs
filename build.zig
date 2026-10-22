@@ -35,6 +35,11 @@ pub fn build(b: *std.Build) void {
     mod.addImport("zflecs", zflecs_dep.module("root"));
     mod.addImport("sdl", sdl_mod);
     mod.addImport("assets", assets_mod);
+    mod.addAnonymousImport("data", .{
+        .root_source_file = b.path("assets/data/data.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
 
     const exe = b.addExecutable(.{
         .name = "vx",

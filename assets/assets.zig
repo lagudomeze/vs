@@ -15,6 +15,11 @@ pub const chronomancer = @embedFile("baked/chronomancer.vxm");
 pub const coin = @embedFile("baked/coin.vxm");
 pub const column = @embedFile("baked/column.vxm");
 pub const column_damaged = @embedFile("baked/column_damaged.vxm");
+pub const dungeon_chest = @embedFile("baked/dungeon_chest.vxm");
+pub const dungeon_floor = @embedFile("baked/dungeon_floor.vxm");
+pub const dungeon_floor_cracked = @embedFile("baked/dungeon_floor_cracked.vxm");
+pub const elite_skeleton = @embedFile("baked/elite_skeleton.vxm");
+pub const elite_wraith = @embedFile("baked/elite_wraith.vxm");
 pub const gate = @embedFile("baked/gate.vxm");
 pub const golem = @embedFile("baked/golem.vxm");
 pub const mote = @embedFile("baked/mote.vxm");
@@ -24,12 +29,17 @@ pub const pylon = @embedFile("baked/pylon.vxm");
 pub const rocks = @embedFile("baked/rocks.vxm");
 pub const rune_circle = @embedFile("baked/rune_circle.vxm");
 pub const skeleton = @embedFile("baked/skeleton.vxm");
+pub const stairs_down = @embedFile("baked/stairs_down.vxm");
 pub const statue = @embedFile("baked/statue.vxm");
 pub const table = @embedFile("baked/table.vxm");
+pub const threat_ring = @embedFile("baked/threat_ring.vxm");
+pub const trap_rune = @embedFile("baked/trap_rune.vxm");
+pub const trap_spikes = @embedFile("baked/trap_spikes.vxm");
 pub const tree = @embedFile("baked/tree.vxm");
 pub const trophy = @embedFile("baked/trophy.vxm");
 pub const wall = @embedFile("baked/wall.vxm");
 pub const wall_gate = @embedFile("baked/wall_gate.vxm");
+pub const wall_segment = @embedFile("baked/wall_segment.vxm");
 pub const warrior = @embedFile("baked/warrior.vxm");
 pub const weapon_rack = @embedFile("baked/weapon_rack.vxm");
 pub const weapon_spear = @embedFile("baked/weapon_spear.vxm");
@@ -51,6 +61,11 @@ pub const all = [_]Entry{
     .{ .name = "coin", .bytes = coin },
     .{ .name = "column", .bytes = column },
     .{ .name = "column_damaged", .bytes = column_damaged },
+    .{ .name = "dungeon_chest", .bytes = dungeon_chest },
+    .{ .name = "dungeon_floor", .bytes = dungeon_floor },
+    .{ .name = "dungeon_floor_cracked", .bytes = dungeon_floor_cracked },
+    .{ .name = "elite_skeleton", .bytes = elite_skeleton },
+    .{ .name = "elite_wraith", .bytes = elite_wraith },
     .{ .name = "gate", .bytes = gate },
     .{ .name = "golem", .bytes = golem },
     .{ .name = "mote", .bytes = mote },
@@ -60,12 +75,17 @@ pub const all = [_]Entry{
     .{ .name = "rocks", .bytes = rocks },
     .{ .name = "rune_circle", .bytes = rune_circle },
     .{ .name = "skeleton", .bytes = skeleton },
+    .{ .name = "stairs_down", .bytes = stairs_down },
     .{ .name = "statue", .bytes = statue },
     .{ .name = "table", .bytes = table },
+    .{ .name = "threat_ring", .bytes = threat_ring },
+    .{ .name = "trap_rune", .bytes = trap_rune },
+    .{ .name = "trap_spikes", .bytes = trap_spikes },
     .{ .name = "tree", .bytes = tree },
     .{ .name = "trophy", .bytes = trophy },
     .{ .name = "wall", .bytes = wall },
     .{ .name = "wall_gate", .bytes = wall_gate },
+    .{ .name = "wall_segment", .bytes = wall_segment },
     .{ .name = "warrior", .bytes = warrior },
     .{ .name = "weapon_rack", .bytes = weapon_rack },
     .{ .name = "weapon_spear", .bytes = weapon_spear },

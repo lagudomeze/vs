@@ -266,6 +266,110 @@ pub fn buildArena(gpa: std.mem.Allocator) !Mesh {
     return b.finish();
 }
 
+pub fn buildDungeon(
+    gpa: std.mem.Allocator,
+    blocked: []const bool,
+    width: usize,
+    height: usize,
+    stairs_cell: ?[2]i32,
+) !Mesh {
+    std.debug.assert(blocked.len == width * height);
+    var b = Builder{ .gpa = gpa };
+    errdefer b.deinit();
+
+    const hw: f32 = @as(f32, @floatFromInt(width)) * 0.5;
+    const hh: f32 = @as(f32, @floatFromInt(height)) * 0.5;
+    const half_world = @max(hw, hh) + 0.55;
+
+    // floating dungeon slab
+    try b.box(.{ .x = 0, .y = -0.38, .z = 0 }, math.Vec3.init(half_world + 0.15, 0.34, half_world + 0.15), color.pack(31, 37, 51), color.pack(26, 30, 42), color.pack(20, 23, 32));
+    try b.box(.{ .x = 0, .y = -0.92, .z = 0 }, math.Vec3.init(half_world - 0.55, 0.50, half_world - 0.55), color.pack(31, 37, 51), color.pack(22, 26, 36), color.pack(16, 19, 26));
+    try b.box(.{ .x = 0, .y = -1.52, .z = 0 }, math.Vec3.init(half_world - 1.7, 0.60, half_world - 1.7), color.pack(24, 28, 38), color.pack(18, 21, 30), color.pack(12, 14, 20));
+
+    var row: usize = 0;
+    while (row < height) : (row += 1) {
+        var col: usize = 0;
+        while (col < width) : (col += 1) {
+            const x: f32 = @as(f32, @floatFromInt(col)) - @as(f32, @floatFromInt(width - 1)) * 0.5;
+            const z: f32 = @as(f32, @floatFromInt(row)) - @as(f32, @floatFromInt(height - 1)) * 0.5;
+            const idx = row * width + col;
+            if (blocked[idx]) {
+                const h = color.hashU32(@as(u32, @intCast(idx)) * 97 + 13);
+                const top = stoneColor(@intCast(h % 1000 + 17));
+                const side = color.pack(74, 79, 92);
+                try b.box(.{ .x = x, .y = 0.30, .z = z }, math.Vec3.init(0.5, 0.30, 0.5), top, side, color.pack(45, 52, 68));
+                try b.box(.{ .x = x, .y = 0.62, .z = z }, math.Vec3.init(0.5, 0.04, 0.5), color.pack(112, 120, 138), side, side);
+            } else {
+                if (stairs_cell) |sc| {
+                    if (col == @as(usize, @intCast(sc[0])) and row == @as(usize, @intCast(sc[1]))) continue;
+                }
+                const c = stoneColor(@as(u32, @intCast(idx)) * 131 + 29);
+                try b.quad(
+                    math.Vec3.init(x - 0.5, 0.002, z - 0.5),
+                    math.Vec3.init(x - 0.5, 0.002, z + 0.5),
+                    math.Vec3.init(x + 0.5, 0.002, z + 0.5),
+                    math.Vec3.init(x + 0.5, 0.002, z - 0.5),
+                    c,
+                    math.Vec3.init(0, 1, 0),
+                );
+                // subtle tile seam
+                try b.quad(
+                    math.Vec3.init(x - 0.5, 0.004, z - 0.5),
+                    math.Vec3.init(x - 0.5, 0.004, z - 0.42),
+                    math.Vec3.init(x + 0.5, 0.004, z - 0.42),
+                    math.Vec3.init(x + 0.5, 0.004, z - 0.5),
+                    color.pack(45, 52, 68),
+                    math.Vec3.init(0, 1, 0),
+                );
+            }
+        }
+    }
+    // grid seams: make the 13x13 cells readable under the 3D models
+    const gx0: f32 = -@as(f32, @floatFromInt(width)) * 0.5;
+    const gz0: f32 = -@as(f32, @floatFromInt(height)) * 0.5;
+    var gi: usize = 0;
+    while (gi <= width) : (gi += 1) {
+        const gx = gx0 + @as(f32, @floatFromInt(gi));
+        try b.quad(
+            math.Vec3.init(gx - 0.009, 0.007, gz0),
+            math.Vec3.init(gx - 0.009, 0.007, gz0 + @as(f32, @floatFromInt(height))),
+            math.Vec3.init(gx + 0.009, 0.007, gz0 + @as(f32, @floatFromInt(height))),
+            math.Vec3.init(gx + 0.009, 0.007, gz0),
+            color.pack(43, 50, 66),
+            math.Vec3.init(0, 1, 0),
+        );
+    }
+    gi = 0;
+    while (gi <= height) : (gi += 1) {
+        const gz = gz0 + @as(f32, @floatFromInt(gi));
+        try b.quad(
+            math.Vec3.init(gx0, 0.007, gz - 0.009),
+            math.Vec3.init(gx0, 0.007, gz + 0.009),
+            math.Vec3.init(gx0 + @as(f32, @floatFromInt(width)), 0.007, gz + 0.009),
+            math.Vec3.init(gx0 + @as(f32, @floatFromInt(width)), 0.007, gz - 0.009),
+            color.pack(43, 50, 66),
+            math.Vec3.init(0, 1, 0),
+        );
+    }
+    return b.finish();
+}
+
+test "dungeon mesh builds" {
+    const gpa = std.testing.allocator;
+    var blocked: [169]bool = @splat(false);
+    for (0..13) |i| {
+        blocked[i] = true;
+        blocked[12 * 13 + i] = true;
+        blocked[i * 13] = true;
+        blocked[i * 13 + 12] = true;
+    }
+    const mesh = try buildDungeon(gpa, &blocked, 13, 13, null);
+    defer gpa.free(mesh.verts);
+    defer gpa.free(mesh.tris);
+    try std.testing.expect(mesh.tris.len > 300);
+    try std.testing.expect(mesh.verts.len > 800);
+}
+
 test "arena mesh builds" {
     const gpa = std.testing.allocator;
     const mesh = try buildArena(gpa);

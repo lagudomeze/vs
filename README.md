@@ -1,224 +1,146 @@
-# VX / 以太堡
+# VX / 以太堡：深层
 
-**真 3D 模型 + 像素画风 + 固定俯视可旋转第三人称 + 5 波战斗原型**
+**ToME4 风格回合制 Roguelike + 真 3D 模型 + 像素画风 + 固定俯视可旋转相机**
 
-基于 Zig 0.17、SDL3 与 zflecs 的可玩垂直切片。角色、敌人、道具和环境都是**真实 3D 网格**（OBJ → 自带 VXM 格式），经过低分辨率软件光栅化、64 色调色板量化、Bayer 抖动和深度描边呈现像素画质感；战斗层提供自动普攻、主动技能、敌人 AI、倒下/复活和波次胜负。
+选一个职业，在 13×13 的 3D 像素地牢里一格一格推进。玩家行动一次，敌人行动一次；用天赋、装备、等级和地形击败楼层守卫。画面保留真实 3D 网格、480×270 软件光栅化、64 色量化和 Bayer 抖动；玩法转向 ToME4 的回合制、格子、职业/天赋、掉落/装备和楼层推进。
 
-![combat](docs/screenshots/combat.png)
-
-> **分支关系**：PR #1（`feat/pixel3d-arena`）是渲染/相机/资源管线切片；本分支 `feat/combat-prototype` 在其之上加战斗与中文 HUD，对应 **PR #2**（stacked，基于 #1）：https://github.com/lagudomeze/vs/pull/2 。工作树 `D:\code\zig\vx-combat`。
-> 主分支 `main` 保留给数值与具体内容设计，这两个分支都没有向 main 提交；PR #1 合并后，把 #2 的 base 改为 main（或把本分支 rebase 到 main）即可。
-
-![boss](docs/screenshots/boss.png)
-
-*第 5 波：深渊守卫 + 幽魂。红光是首领自带光源，角色仍走同一套 3D/描边管线。*
-
-![victory](docs/screenshots/victory.png)
-
----
+![to-me](docs/screenshots/tome_start.png)
 
 ## 现在能跑什么
 
-- **完整战斗循环**：5 波敌人、自动普攻、空格主动技能（35 AP）、目标锁定、伤害数字、敌人血条、击杀/波次 HUD、倒下/复活、清波回复、胜利/失败、R 重开。
-- **三个可操作职业**：狂战士、元素法师、时空法师；各自有独立 3D 模型、武器、浮游物、程序化 idle/行走/施法姿态。
-- **三种敌人 + 首领**：骷髅兵（近战）、幽魂（远程）、石魔像（坦克）、深渊守卫（第 5 波首领），都是带关节的 3D 网格。
-- **中文像素 HUD**：Ark Pixel Font 12px 子集，混合中英文/数字排版；1440×810 窗口（480×270 3× 最近邻）下清晰可读。
-- **固定俯视角可旋转第三人称**：Q/E、方向键或右键拖拽旋转 yaw；俯仰固定；滚轮缩放；相机平滑跟随当前英雄。
-- **真 3D 渲染**：透视投影、近平面裁剪、z-buffer、平面光照、18 个点光源、距离雾、加色特效、贴地阴影、深色描边。
-- **zflecs ECS**：编队、移动、动画 Pose、AP 回复、敌人 AI、英雄自动攻击、浮游物、自转装饰。
-- **可复现资源管线**：Python 从程序化 OBJ 生成英雄/敌人，Kenney CC0 道具按 colormap 逐面烘焙为 VXM；运行时零 Python/Blender 依赖。
-- **无窗口验证**：`--headless` 生成 PNG；`--auto` 可自动放技能跑完整局。
+- **回合制**：玩家移动/普攻/天赋/等待后，敌人按速度依次行动；冷却、资源、状态按回合结算，不按秒。
+- **单角色 + 3 职业**：狂战士（精力）、元素法师（法力）、时空法师（悖论），每职业 3 个天赋。
+- **格子与地牢**：13×13 网格；墙/柱子/水域阻挡；撞墙不消耗回合，撞敌人 = 普攻；3 层，楼梯下一层，第 3 层 Boss。
+- **确定性关卡**：同一 seed 生成同一层；入口、楼梯、宝箱、陷阱、敌人出生点由连通性校验；敌人用 A* 绕墙追击，远程用 LOS。
+- **属性/装备/掉落**：六属性、HP/资源、攻击/护甲/暴击/速度；宝箱和击杀产出版本内物品，空槽自动装备，装备即时改变面板数值。
+- **中文 HUD**：角色卡、楼层卡、目标卡、战斗日志、天赋栏、角色/背包面板；Ark Pixel 12px 子集。
+- **3D 像素场景**：地牢地砖、墙、楼梯、宝箱、陷阱、精英和 Boss 模型；脚底环、目标血条、危险标记、楼梯光柱。
+- **无窗口验证**：headless 截图；自动跑局用于 QA。
 
-![lineup](docs/screenshots/lineup.png)
-
-*左：狂战士；中：元素法师；右：时空法师。*
-
----
+![fight](docs/screenshots/tome_fight.png)
 
 ## 快速开始
 
 ### 环境
 
 - Zig **0.17.0**
-- Windows / macOS / Linux（SDL3 首次构建需要编译，耗时几分钟）
-- 运行不需要 Python / Blender；只有改资源时才需要 Python 3 + Pillow
+- Windows / macOS / Linux；首次构建 SDL3 需要几分钟
+- 运行不需要 Python / Blender；改资源/字体时才需要 Python 3 + Pillow
 
 ### 构建与运行
 
-```powershell
-# 默认 ReleaseFast，窗口 1440x810
-zig build run
+~~~powershell
+zig build run                  # 默认 ToME 回合制
+zig build test                 # 单元 + 集成测试
+zig build run -- --headless --frames 2 --out shots/tome.png
+zig build run -- --headless --auto --frames 5000 --out shots/tome-auto.png
+zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照）
+~~~
 
-# 单元测试 + 无窗口集成测试
-zig build test
-
-# 无窗口：自动放技能跑完整局并截图
-zig build run -- --headless --auto --frames 5000 --out docs/screenshots/victory.png
-
-# 窗口模式跑 3 秒、截图并退出
-zig build run -- --run-seconds 3 --out docs/screenshots/window.png
-
-# Debug（调试器友好，帧率低）
-zig build -Doptimize=debug
-```
-
-默认内部分辨率 **480×270**，窗口 3× 最近邻放大到 **1440×810**；最小可用分辨率 480×270。
-
-### 常用参数
-
-| 参数 | 说明 |
-| --- | --- |
-| `--headless` | 不创建窗口，渲染到 PNG |
-| `--out PATH` | 输出路径，默认 `shots/vx.png` |
-| `--frames N` | 无窗口模拟 N 帧后截图；窗口模式下自动退出 |
-| `--run-seconds S` | 窗口模式运行 S 秒后截图退出 |
-| `--auto` | 无窗口演示：每 1.5s 自动按一次技能 |
-| `--cast` | 无窗口：最后一帧释放一次技能 |
-| `--hero N` | 初始英雄 0/1/2 |
-| `--yaw DEG` | 相机水平角，默认 -20° |
-| `--pitch DEG` | 俯仰角，默认 40° |
-| `--dist U` | 相机距离，默认 8.2 |
-| `--res WxH` | 内部分辨率（≥480×270） |
-| `--scale N` | 窗口整数倍率，默认 3 |
-| `--lineup` | 三职业展示相机（文档用） |
-| `--hide-hud` | 不画 HUD |
-| `--debug` | 调试 HUD（实体/绘制像素/毫秒） |
+默认内部 **480×270**，窗口 3× 最近邻放大到 **1440×810**。
 
 ### 操作
 
 | 输入 | 行为 |
 | --- | --- |
-| WASD | 相对相机移动当前英雄 |
-| Q/E、方向键左右、右键拖拽 | 旋转相机 yaw |
-| 滚轮 | 缩放 |
-| TAB | 切换到下一位存活英雄 |
-| 空格 | 释放当前英雄技能（35 AP） |
-| R | 重开整局（满血、清怪、回第 1 波） |
-| F1 | 调试 HUD |
-| F12 | 保存截图 |
-| ESC | 退出 |
+| WASD | 走一格；撞敌人 = 普攻；撞墙不消耗回合 |
+| 1 / 2 / 3 | 天赋 1/2/3（自动选最近目标；范围/冷却/资源校验） |
+| 空格 | 等待一回合；附近无敌人时休息回复 |
+| I | 背包 |
+| C | 角色面板（六属性、装备、生命/资源、攻击/护甲/暴击/速度） |
+| Q/E、方向键、右键拖拽 | 旋转相机；滚轮缩放 |
+| R | 死亡/任意时候重开本 seed |
+| F1 / F12 / ESC | 调试 / 截图 / 退出 |
 
-![orbit](docs/screenshots/orbit.png)
+![character](docs/screenshots/tome_character.png)
 
-*旋转相机后，敌人、首领、粒子与遮挡关系仍然正确。*
+## 参数
 
----
+| 参数 | 说明 |
+| --- | --- |
+| --headless | 不创建窗口，渲染 PNG |
+| --out PATH | 截图路径 |
+| --frames N | 模拟 N 帧后截图/退出 |
+| --run-seconds S | 窗口运行 S 秒后截图退出 |
+| --hero N | 0 狂战士 / 1 元素法师 / 2 时空法师 |
+| --seed N | 地牢种子（默认 12345） |
+| --auto | headless 自动向楼梯推进、打怪、放天赋 |
+| --inventory / --character | 启动时打开对应面板（截图/审查用） |
+| --loot N | 调试：直接获得 N 件掉落（截图/QA 用） |
+| --res WxH / --scale N | 分辨率 / 窗口倍率 |
+| --arena | 切回旧版实时竞技场 |
 
-## 战斗与占位数值
+## 玩法细节
 
-详细数值、波次和调参入口见 **[docs/COMBAT.md](docs/COMBAT.md)**。当前是**占位设计**，用于验证循环；正式数值请继续在 main 分支设计。
+### 回合与速度
 
-| 职业 | 生命 | 普攻 | 技能 | 定位 |
-| --- | ---: | --- | --- | --- |
-| 狂战士 | 148 | 18 / 1.45 | 重击 35 AP，2.4× | 近战、稳 |
-| 元素法师 | 96 | 11 / 5.2 | 火球 35 AP，3.4× + 小 AOE | 远程爆发 |
-| 时空法师 | 110 | 14 / 4.2 | 时光箭 35 AP，2.6× + 减速 | 控制 |
+- 玩家每轮先行动一次。
+- 敌人按 speed 排序；speed ≥ 150 每 2 回合额外行动一次，speed ≤ 75 每 2 回合少行动一次。
+- 冷却、资源回复、状态持续时间都按回合数结算。
+- 移动/普攻/天赋/等待才消耗回合；非法移动不消耗。
 
-| 敌人 | 生命 | 伤害 | 特点 |
-| --- | ---: | ---: | --- |
-| 骷髅兵 | 44 | 5 | 近战，数量多 |
-| 幽魂 | 58 | 7 | 3.8 距离远程 |
-| 石魔像 | 92 | 10 | 慢速、高血 |
-| 深渊守卫 | 220 | 13 | 第 5 波首领 |
+### 天赋
 
-击杀回复 4 HP；清波全队回复 25%、倒下的英雄 50% 复活；英雄倒下 7 秒后自动复活。
+| 职业 | 资源 | 1 | 2 | 3 |
+| --- | --- | --- | --- | --- |
+| 狂战士 | 精力 | 重击（近战 2.2×） | 冲锋（4 格内 1.5×） | 战吼（3 回合 +30% 攻击） |
+| 元素法师 | 法力 | 火球（5 格内 2.5× + 1.5 格溅射） | 冰锥（1.8× + 减速） | 闪现（3–5 格空地） |
+| 时空法师 | 悖论 | 时光箭（2.0× + 减速） | 时间停滞（1.2× + 跳过 2 回合） | 回溯（回到上一格） |
 
----
+### 地牢与成长
 
-## 实现要点
+- 3 层；每层入口随机在底/左/右，楼梯在对侧，保证连通。
+- 宝箱 2–4 个、陷阱 1–4 个、敌人 4–8 个，随层数增加。
+- 击杀获得 XP；升级 +1 主属性并回满；第 3 层击败深渊守卫胜利。
+- 死亡即结束，R 从同一 seed 重开（ToME4 式 roguelike）。
 
-### 渲染
+## 代码结构
 
-- 480×270 软件光栅器：视图空间近平面 Sutherland–Hodgman 裁剪、屏幕空间边函数、1/w 深度、z-buffer、背面剔除。
-- 逐三角形平面光照：环境光 + 冷月光 + 暖 key + 相机边缘光 + 点光源 + 距离雾；自发光材质用于法杖/眼睛/符文。
-- 64 色手工调色板 + 4×4 Bayer 抖动；深度/ID 差描边；SDL 整数缩放。
-- 角色/敌人是刚性关节蒙皮：每个部件绑定一个关节，`rig.zig` 每帧生成关节矩阵；低模像素风不需要软蒙皮。
-
-### 战斗
-
-- ECS 组件：`Hero` / `Enemy` / `Animation` / `Pose` / `Renderable` / `Shadow` / `LightSource` / `Mote` / `Spin`。
-- Systems：Formation → Movement → EnemyAI → HeroCombat → Animation → Gauges → Motes → Spins。
-- 战斗事件通过固定数组从 system 传到游戏层，游戏层生成伤害数字、粒子、击杀计数和清理死亡实体。
-- Game 层管理波次队列、刷怪、休整、胜负、复活、相机和 HUD 状态。
-
-### 中文像素字体
-
-- 从 **Ark Pixel Font 12px** BDF 生成 12×12 字形子集（`tools/gen_cjk_font.py`）。
-- 运行时混合排版：5×7 ASCII + 12×12 CJK，按 UTF-8 码点推进；缺字会画一个提示框，不会崩溃。
-- 字体仅嵌入游戏用到的字形（112 个），源 BDF 不参与构建。OFL 许可见 `assets/fonts/OFL.txt`。
-
----
-
-## 项目结构
-
-```text
+~~~text
 src/
-  core/
-    math.zig / color.zig / palette.zig / png.zig / font.zig / cjk_font.zig
-  engine/
-    model.zig / rig.zig / arena_mesh.zig / renderer.zig
+  core/        math / color / palette / png / font / cjk_font
+  engine/      model / rig / arena_mesh / renderer
   game/
-    components.zig / systems.zig / hud.zig / game.zig
-  platform/
-    sdl.zig
-  main.zig / root.zig
+    tome_sim.zig     纯回合制模拟（无 SDL/渲染）
+    tome_game.zig    3D 场景、输入、相机、动画
+    tome_hud.zig     角色/楼层/目标/日志/天赋/面板
+    dungeon.zig      13×13 确定性关卡、连通性、A*、LOS
+    attributes.zig   六属性/派生/XP
+    items.zig        装备/背包/修正
+    content.zig      内嵌 JSON 内容加载/校验/掉落
+    turn.zig         回合顺序核心（供后续多 actor 扩展）
+    game.zig         旧版实时竞技场（--arena）
+  platform/sdl.zig
 assets/
-  models/*.obj|.mtl|.rig.json     英雄 + 敌人源模型
-  baked/*.vxm                     运行时模型（内嵌）
-  assets.zig                      自动生成清单
-  kenney/                         Kenney CC0 原始 OBJ/贴图/许可
-  fonts/                          Ark Pixel 子集说明 + OFL
-tools/
-  geometry.py / characters.py / bake_assets.py / gen_cjk_font.py
-docs/
-  ARCHITECTURE.md / COMBAT.md / screenshots/
-```
-
----
-
-## 资源管线
-
-```powershell
-# 需要 Python 3 + Pillow；运行时不需要
-python tools/characters.py      # 生成英雄/敌人 OBJ/MTL/rig
-python tools/bake_assets.py     # 烘焙 VXM + assets.zig + CREDITS
-python tools/gen_cjk_font.py    # 从 Ark Pixel BDF 生成中文字形子集（可选）
-zig build
-```
-
-Kenney 原始 OBJ/colormap 与 CC0 许可证在 `assets/kenney/`；烘焙后的模型在 `assets/baked/`，已提交。VXM 格式见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
-
-> 本次没有依赖 Blender/MCP：角色/敌人由程序化建模脚本生成真 OBJ 网格。以后可在 Blender 中编辑 OBJ（保持 `o <joint>` 分组）再走同一条烘焙流程。
-
----
+  data/         items/enemies/skills JSON + data.zig
+  baked/        VXM 运行时模型
+  models/       OBJ/MTL/rig 源
+tools/          characters / bake_assets / gen_cjk_font
+docs/           TOME_V1 / ART_PASS / UX_REVIEW_TOME / screenshots
+~~~
 
 ## 验证
 
-- `zig build` / `zig build test` 通过；测试覆盖模型加载、字体 UTF-8 排版、无窗口创建/渲染和战斗刷怪。
-- `--auto --frames 5000` 实测通关：第 5 波结束显示“胜利”，击杀 21。
-- 窗口模式实测：480×270 逻辑分辨率、3× 放大、SDL 输入/计时/截图正常；战斗场景下 HUD 约 35–60 FPS（取决于机器/窗口合成）。
-- 文档截图（`docs/screenshots/`）全部由 `--headless` 生成；窗口截图由 `--run-seconds` 生成。
-
----
+- zig build / zig build test：13/13 steps、74/74 tests。
+- headless：可生成开始/战斗/角色/背包截图。
+- 自动跑局：能推进到第 2–3 层；当前平衡仍偏难，属于 roguelike 原型。
+- 窗口模式：480×270、3× 最近邻、SDL 输入/截图正常。
 
 ## 已知限制 / 下一步
 
-- 数值、技能树、装备、掉落、经验等**留给 main 分支设计**；当前只有占位数值和 5 波循环。
-- 敌人 AI 只有“追最近英雄 + 冷却攻击”，没有寻路、仇恨策略、技能。
-- 没有音频、存档、手柄、设置菜单。
-- 倒下表现为灰色站立，不是倒地动画；复活是原型逻辑。
-- 模型是程序化低模，可用 Blender 精修后替换；烘焙管线不变。
-- 相机俯仰角固定是设计需求；`--lineup` 只是展示模式。
-
----
+- 天赋自动选最近目标，还没有 ToME4 的选格/范围预览/确认取消。
+- 背包只能查看；空槽自动装备，手动换装/多套装备待做。
+- 敌人技能只有普攻 + Boss 模型，没有完整 Boss AOE/召唤。
+- 没有音频、存档、角色选择菜单、天赋树、随机词缀。
+- 当前数值是 v1 占位，优先验证循环与可读性。
 
 ## 致谢与许可
 
-- **Kenney** Mini Dungeon / Mini Arena，CC0 1.0；原始资源见 `assets/kenney/`，完整许可见 `assets/CREDITS.md`。
-- **Ark Pixel Font** by TakWolf，SIL OFL 1.1；见 `assets/fonts/`。
+- **Kenney** Mini Dungeon / Mini Arena，CC0 1.0；见 assets/CREDITS.md。
+- **Ark Pixel Font** by TakWolf，SIL OFL 1.1；见 assets/fonts/。
 - **SDL3**（castholm/SDL Zig 包）、**flecs / zflecs**（MIT）。
-- 角色、敌人、程序化道具和代码为本项目生成/编写。
+- 角色、敌人、地牢道具和代码由本项目生成/编写。
 
 ---
 
-*Built with Zig 0.17 + SDL3 + zflecs. Real meshes, chunky pixels, five waves.*
+*Built with Zig 0.17 + SDL3 + zflecs. Real meshes, chunky pixels, turn-based depths.*

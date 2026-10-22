@@ -6,6 +6,8 @@ const Options = struct {
     out: ?[]const u8 = null,
     frames: u32 = 0,
     hero: u32 = 0,
+    seed: u64 = 12345,
+    arena: bool = false,
     yaw: f32 = -0.35,
     pitch: f32 = 0.70,
     dist: f32 = 8.2,
@@ -18,6 +20,9 @@ const Options = struct {
     auto_demo: bool = false,
     debug: bool = false,
     lineup: bool = false,
+    inventory: bool = false,
+    character: bool = false,
+    loot: u32 = 0,
     hide_hud: bool = false,
     help: bool = false,
 };
@@ -46,7 +51,7 @@ fn usage() void {
         \\  --help            this text
         \\
         \\Controls: WASD move, Q/E or right-drag orbit, wheel zoom,
-        \\          TAB switch hero, SPACE cast, R reset, F1 debug, F12 shot, ESC quit.
+        \\          TAB switch, SPACE skill, F interrupt, I inventory, R reset, F1 debug, F12 shot, ESC quit.
         \\
     , .{});
 }
@@ -78,6 +83,10 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.frames = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
         } else if (std.mem.eql(u8, a, "--hero")) {
             o.hero = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
+        } else if (std.mem.eql(u8, a, "--seed")) {
+            o.seed = try std.fmt.parseInt(u64, try argAt(argv, &i), 10);
+        } else if (std.mem.eql(u8, a, "--arena")) {
+            o.arena = true;
         } else if (std.mem.eql(u8, a, "--yaw")) {
             o.yaw = try std.fmt.parseFloat(f32, try argAt(argv, &i)) * std.math.pi / 180.0;
         } else if (std.mem.eql(u8, a, "--pitch")) {
@@ -102,6 +111,12 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.debug = true;
         } else if (std.mem.eql(u8, a, "--lineup")) {
             o.lineup = true;
+        } else if (std.mem.eql(u8, a, "--inventory")) {
+            o.inventory = true;
+        } else if (std.mem.eql(u8, a, "--character")) {
+            o.character = true;
+        } else if (std.mem.eql(u8, a, "--loot")) {
+            o.loot = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
             o.hide_hud = true;
         } else if (std.mem.eql(u8, a, "--help") or std.mem.eql(u8, a, "-h")) {
@@ -185,6 +200,8 @@ fn runWindow(game: *vx.Game, io: std.Io, options: Options) !void {
             .zoom_delta = pin.zoom_delta,
             .toggle_hero = pin.toggle_hero,
             .cast = pin.cast,
+            .interrupt = pin.interrupt,
+            .inventory = pin.inventory,
             .reset = pin.reset,
         };
         game.update(input, dt);
@@ -218,6 +235,101 @@ fn runWindow(game: *vx.Game, io: std.Io, options: Options) !void {
     }
 }
 
+fn runTomeHeadless(game: *vx.TomeGame, io: std.Io, options: Options) !void {
+    const frames: u32 = if (options.frames == 0) 1 else options.frames;
+    var frame: u32 = 0;
+    while (frame < frames) : (frame += 1) {
+        var input = vx.tome_game.Input{};
+        if (options.walk and frame % 12 == 0) input.step_y = -1;
+        if (options.auto_demo and frame % 10 == 0) {
+            game.autoPlayStep();
+        }
+        if (options.cast and frame + 1 == frames) input.talent = 0;
+        game.update(input, 1.0 / 60.0);
+    }
+    game.render();
+    const path = options.out orelse "shots/tome.png";
+    ensureParent(io, path);
+    try game.saveScreenshot(io, path);
+    std.debug.print(
+        "tome headless: {d}x{d} tris={d} drawn={d} floor={d} turn={d} hp={d:.0} -> {s}\n",
+        .{ game.renderer.width, game.renderer.height, game.renderer.stats.tris, game.renderer.stats.drawn, game.sim.floor, game.sim.turn, game.sim.hero.hp, path },
+    );
+}
+
+fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
+    var platform = vx.platform.Platform.init("VX - Aether Keep: Depths", options.width, options.height, options.scale) catch |err| {
+        std.debug.print("vx: could not open a window ({s}); use --headless for an off-screen capture.\n", .{@errorName(err)});
+        return err;
+    };
+    defer platform.deinit();
+
+    const freq: f64 = @floatFromInt(vx.platform.performanceFrequency());
+    var last = vx.platform.performanceNow();
+    var elapsed: f32 = 0;
+    var quit = false;
+    var captured = false;
+    std.debug.print("tome: {d}x{d} logical, {d}x scale - WASD step, 1/2/3 talent, SPACE wait, I/C panels, Q/E orbit, R restart\n", .{
+        options.width, options.height, options.scale,
+    });
+
+    while (!quit) {
+        const now = vx.platform.performanceNow();
+        const dt_seconds: f64 = @as(f64, @floatFromInt(now - last)) / freq;
+        const dt64: f32 = @floatCast(dt_seconds);
+        const dt: f32 = @min(0.05, dt64);
+        last = now;
+        elapsed += dt;
+
+        const pin = platform.poll(dt);
+        if (pin.quit) break;
+        if (pin.toggle_debug) game.debug = !game.debug;
+
+        var input = vx.tome_game.Input{};
+        input.step_x = @as(i32, @intFromBool(pin.step_e)) - @as(i32, @intFromBool(pin.step_w));
+        input.step_y = @as(i32, @intFromBool(pin.step_s)) - @as(i32, @intFromBool(pin.step_n));
+        if (pin.talent_1) input.talent = 0;
+        if (pin.talent_2) input.talent = 1;
+        if (pin.talent_3) input.talent = 2;
+        input.wait = pin.wait;
+        input.target_next = pin.toggle_hero;
+        input.inventory = pin.inventory;
+        input.character = pin.character;
+        input.restart = pin.reset;
+        input.yaw_delta = pin.yaw_delta;
+        input.zoom_delta = pin.zoom_delta;
+
+        game.update(input, dt);
+        game.render();
+        platform.present(game.renderer.color_buf);
+
+        if (pin.screenshot) {
+            const path = std.fmt.allocPrint(std.heap.page_allocator, "shots/tome-{d}.png", .{game.frame}) catch "shots/tome.png";
+            ensureParent(io, path);
+            game.saveScreenshot(io, path) catch |err| {
+                std.debug.print("vx: screenshot failed: {s}\n", .{@errorName(err)});
+            };
+            std.debug.print("screenshot -> {s}\n", .{path});
+        }
+
+        if (options.run_seconds > 0 and elapsed >= options.run_seconds) {
+            captured = true;
+            quit = true;
+        } else if (options.frames > 0 and game.frame >= options.frames) {
+            captured = true;
+            quit = true;
+        }
+    }
+
+    if (captured) {
+        const path = options.out orelse "shots/tome-window.png";
+        ensureParent(io, path);
+        game.render();
+        try game.saveScreenshot(io, path);
+        std.debug.print("tome window capture -> {s}\n", .{path});
+    }
+}
+
 pub fn main(init: std.process.Init.Minimal) !void {
     const gpa = std.heap.page_allocator;
     const argv = try init.args.toSlice(gpa);
@@ -238,20 +350,41 @@ pub fn main(init: std.process.Init.Minimal) !void {
     defer threaded.deinit();
     const io = threaded.io();
 
-    const game = try vx.Game.create(gpa, options.width, options.height);
-    defer game.destroy();
+    if (options.arena) {
+        const game = try vx.Game.create(gpa, options.width, options.height);
+        defer game.destroy();
 
-    game.selectHero(options.hero);
-    snapCamera(game, options);
-    game.debug = options.debug;
-    game.show_hud = !options.hide_hud;
-    if (options.lineup) {
-        game.lineup();
+        game.selectHero(options.hero);
+        snapCamera(game, options);
+        game.debug = options.debug;
+        game.show_hud = !options.hide_hud;
+        if (options.lineup) game.lineup();
+        if (options.inventory) game.inventory_open = true;
+
+        if (options.headless) {
+            try runHeadless(game, io, options);
+        } else {
+            try runWindow(game, io, options);
+        }
+        return;
     }
 
+    const class = vx.tome_sim.classFromIndex(@intCast(options.hero));
+    const game = try vx.TomeGame.create(gpa, options.width, options.height, class, options.seed);
+    defer game.destroy();
+
+    game.debug = options.debug;
+    game.show_hud = !options.hide_hud;
+    game.camera.yaw = options.yaw;
+    game.camera.pitch = options.pitch;
+    game.camera.distance = @max(options.dist, 12.0);
+    if (options.inventory) game.panel = .inventory;
+    if (options.character) game.panel = .character;
+    if (options.loot > 0) game.debugGrantLoot(options.loot);
+
     if (options.headless) {
-        try runHeadless(game, io, options);
+        try runTomeHeadless(game, io, options);
     } else {
-        try runWindow(game, io, options);
+        try runTomeWindow(game, io, options);
     }
 }
