@@ -292,6 +292,7 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
         if (pin.talent_2) input.talent = 1;
         if (pin.talent_3) input.talent = 2;
         input.wait = pin.wait;
+        input.target_next = pin.toggle_hero;
         input.inventory = pin.inventory;
         input.character = pin.character;
         input.restart = pin.reset;

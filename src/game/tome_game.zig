@@ -33,6 +33,7 @@ pub const Input = struct {
     wait: bool = false,
     inventory: bool = false,
     character: bool = false,
+    target_next: bool = false,
     restart: bool = false,
     yaw_delta: f32 = 0,
     zoom_delta: f32 = 0,
@@ -54,6 +55,7 @@ pub const TomeGame = struct {
     chest_loot_seen: u32 = 0,
     kill_loot_seen: u32 = 0,
     last_level: u16 = 1,
+    selected: ?usize = null,
     seed: u64,
     class: sim_mod.Class,
     hero_vis: Visual = .{},
@@ -181,6 +183,7 @@ pub const TomeGame = struct {
         self.chest_loot_seen = 0;
         self.kill_loot_seen = 0;
         self.last_level = 1;
+        self.selected = null;
         self.panel = .none;
         self.rebuildMesh();
         self.resetVisuals();
@@ -291,6 +294,7 @@ pub const TomeGame = struct {
         self.camera.distance = std.math.clamp(self.camera.distance - input.zoom_delta * 0.35, 6.0, 13.0);
 
         if (input.restart) self.restart();
+        if (input.target_next) self.cycleTarget();
 
         if (input.inventory) {
             self.panel = if (self.panel == .inventory) .none else .inventory;
@@ -318,7 +322,7 @@ pub const TomeGame = struct {
                 var before: [sim_mod.max_enemies]f32 = undefined;
                 var bi: usize = 0;
                 while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].hp;
-                if (self.sim.useTalent(idx)) {
+                if (self.sim.useTalentOn(idx, self.selected)) {
                     self.hero_vis.anim.cast = 1.0;
                     self.flashAfter(before_hero, before[0..self.sim.enemy_count]);
                 }
@@ -345,6 +349,31 @@ pub const TomeGame = struct {
         self.camera.target.y = 0.35;
         self.camera_target = self.camera.target;
         self.fillHudState();
+    }
+
+    fn currentTarget(self: *const TomeGame) ?usize {
+        if (self.selected) |s| {
+            if (s < self.sim.enemy_count and self.sim.enemies[s].alive) return s;
+        }
+        return self.sim.nearestEnemy(20);
+    }
+
+    fn cycleTarget(self: *TomeGame) void {
+        if (self.sim.enemy_count == 0) {
+            self.selected = null;
+            return;
+        }
+        var start: usize = 0;
+        if (self.selected) |s| start = (s + 1) % self.sim.enemy_count;
+        var i: usize = 0;
+        while (i < self.sim.enemy_count) : (i += 1) {
+            const idx = (start + i) % self.sim.enemy_count;
+            if (self.sim.enemies[idx].alive) {
+                self.selected = idx;
+                return;
+            }
+        }
+        self.selected = null;
     }
 
     fn flashAfter(self: *TomeGame, hero_before: f32, enemies_before: []const f32) void {
@@ -485,7 +514,7 @@ pub const TomeGame = struct {
                 self.renderer.drawText(sx - @divTrunc(tw, 2), sy - 11, label, palette.cyan_light, 1, true);
             }
         }
-        const target = self.sim.nearestEnemy(20);
+        const target = self.currentTarget();
         var i: usize = 0;
         while (i < self.sim.enemy_count) : (i += 1) {
             const e = self.sim.enemies[i];
@@ -642,7 +671,7 @@ pub const TomeGame = struct {
                 .ready = self.sim.hero.cooldowns[i] == 0 and self.sim.hero.resource >= @as(f32, @floatFromInt(self.sim.talentCost(i))),
             };
         }
-        const target = self.sim.nearestEnemy(20);
+        const target = self.currentTarget();
         self.hud_state.target_name = "";
         self.hud_state.target_hp = 0;
         self.hud_state.target_hp_max = 1;
@@ -683,6 +712,29 @@ pub const TomeGame = struct {
             const item = self.inventory.at(ii);
             self.hud_state.items[ii] = if (item < self.content.items.len) self.content.items[item].name else "";
         }
+        self.hud_state.has_minimap = true;
+        self.hud_state.minimap = @splat(0);
+        var my: usize = 0;
+        while (my < sim_mod.grid_h) : (my += 1) {
+            var mx: usize = 0;
+            while (mx < sim_mod.grid_w) : (mx += 1) {
+                self.hud_state.minimap[my * sim_mod.grid_w + mx] = if (self.sim.blocked[my * sim_mod.grid_w + mx]) 1 else 0;
+            }
+        }
+        self.hud_state.minimap[@as(usize, @intCast(self.sim.stairs.y)) * sim_mod.grid_w + @as(usize, @intCast(self.sim.stairs.x))] = 2;
+        var ci: usize = 0;
+        while (ci < self.sim.chests.len) : (ci += 1) {
+            if (!self.sim.chest_alive[ci]) continue;
+            const cp = self.sim.chests[ci];
+            self.hud_state.minimap[@as(usize, @intCast(cp.y)) * sim_mod.grid_w + @as(usize, @intCast(cp.x))] = 3;
+        }
+        var ei: usize = 0;
+        while (ei < self.sim.enemy_count) : (ei += 1) {
+            const e = self.sim.enemies[ei];
+            if (!e.alive) continue;
+            self.hud_state.minimap[@as(usize, @intCast(e.pos.y)) * sim_mod.grid_w + @as(usize, @intCast(e.pos.x))] = 5;
+        }
+        self.hud_state.minimap[@as(usize, @intCast(self.sim.hero.pos.y)) * sim_mod.grid_w + @as(usize, @intCast(self.sim.hero.pos.x))] = 4;
         self.hud_state.log_count = @min(self.sim.log_total, 4);
         i = 0;
         while (i < self.hud_state.log_count) : (i += 1) {

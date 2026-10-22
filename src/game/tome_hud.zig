@@ -35,6 +35,8 @@ pub const State = struct {
     target_range: u16 = 0,
     log_lines: [4][]const u8 = .{ "", "", "", "" },
     log_count: usize = 0,
+    minimap: [169]u8 = @splat(0),
+    has_minimap: bool = false,
     panel: Panel = .none,
     attrs: [6]i32 = .{ 0, 0, 0, 0, 0, 0 },
     attack: f32 = 0,
@@ -81,7 +83,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     r.drawText(14, 35, hp, palette.cream, 1, false);
     bar(r, 10, 45, 180, 5, if (state.resource_max > 0) state.resource / state.resource_max else 0, palette.cyan);
     const res = fmt(&buf, "{s} {d:.0}/{d:.0}", .{ state.resource_label, state.resource, state.resource_max });
-    r.drawText(14, 54, res, palette.muted, 1, false);
+    r.drawText(14, 52, res, palette.muted, 1, false);
 
     // top-right: floor / enemies / stairs
     backPanel(r, w - 160, 5, 154, 48);
@@ -90,6 +92,27 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     const enemies = fmt(&buf, "敌人 {d}", .{state.enemies_left});
     r.drawText(w - 154, 23, enemies, palette.cream, 1, false);
     if (state.stairs_hint.len > 0) r.drawText(w - 154, 37, state.stairs_hint, palette.muted, 1, false);
+    if (state.has_minimap) {
+        const mx0 = w - 40;
+        const my0 = 8;
+        var my: usize = 0;
+        while (my < 13) : (my += 1) {
+            var mx: usize = 0;
+            while (mx < 13) : (mx += 1) {
+                const cell = state.minimap[my * 13 + mx];
+                const c: u32 = switch (cell) {
+                    1 => palette.muted,
+                    2 => palette.cyan,
+                    3 => palette.gold,
+                    4 => palette.cream,
+                    5 => palette.red,
+                    else => palette.deep,
+                };
+                r.fillRect(mx0 + @as(i32, @intCast(mx)) * 2, my0 + @as(i32, @intCast(my)) * 2, 2, 2, c);
+            }
+        }
+        r.strokeRect(mx0, my0, 26, 26, palette.border);
+    }
 
     // top-centre target
     if (state.target_name.len > 0) {
@@ -127,8 +150,8 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     // bottom-right controls
     backPanel(r, w - 160, h - 60, 154, 54);
     r.drawText(w - 154, h - 56, "I 背包   C 角色", palette.cream, 1, false);
-    r.drawText(w - 154, h - 42, "Q/E 视角  R 重开", palette.muted, 1, false);
-    const turn = fmt(&buf, "你的回合 {d}", .{state.turn});
+    r.drawText(w - 154, h - 42, "Q/E 视角  TAB 目标", palette.muted, 1, false);
+    const turn = fmt(&buf, "R 重开  回合 {d}", .{state.turn});
     r.drawText(w - 154, h - 26, turn, palette.gold_light, 1, false);
 
     // modal character / inventory

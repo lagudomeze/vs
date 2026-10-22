@@ -646,6 +646,20 @@ pub const Sim = struct {
     }
 
     pub fn useTalent(self: *Sim, i: usize) bool {
+        return self.useTalentOn(i, null);
+    }
+
+    fn pickTarget(self: *const Sim, max_range: i32, preferred: ?usize) ?usize {
+        if (preferred) |p| {
+            if (p < self.enemy_count) {
+                const e = self.enemies[p];
+                if (e.alive and dist(e.pos, self.hero.pos) <= max_range) return p;
+            }
+        }
+        return self.nearestEnemy(max_range);
+    }
+
+    pub fn useTalentOn(self: *Sim, i: usize, target: ?usize) bool {
         if (self.state != .playing or i >= 3) return false;
         if (self.hero.cooldowns[i] > 0) return false;
         const cost = self.talentCost(i);
@@ -661,7 +675,7 @@ pub const Sim = struct {
                     self.endTurn();
                     return true;
                 }
-                const idx = self.nearestEnemy(if (i == 0) 1 else 4) orelse return false;
+                const idx = self.pickTarget(if (i == 0) 1 else 4, target) orelse return false;
                 self.hero.resource -= @floatFromInt(cost);
                 self.hero.cooldowns[i] = self.talentCooldown(i);
                 if (i == 0) {
@@ -691,7 +705,7 @@ pub const Sim = struct {
                     }
                     return false;
                 }
-                const idx = self.nearestEnemy(if (i == 0) 5 else 4) orelse return false;
+                const idx = self.pickTarget(if (i == 0) 5 else 4, target) orelse return false;
                 self.hero.resource -= @floatFromInt(cost);
                 self.hero.cooldowns[i] = self.talentCooldown(i);
                 if (i == 0) {
@@ -712,7 +726,7 @@ pub const Sim = struct {
                     self.endTurn();
                     return true;
                 }
-                const idx = self.nearestEnemy(if (i == 0) 5 else 4) orelse return false;
+                const idx = self.pickTarget(if (i == 0) 5 else 4, target) orelse return false;
                 self.hero.resource -= @floatFromInt(cost);
                 self.hero.cooldowns[i] = self.talentCooldown(i);
                 if (i == 0) {
