@@ -114,6 +114,7 @@ src/
     tome_game.zig    3D 场景、输入、相机、动画
     tome_hud.zig     角色/楼层/目标/日志/天赋/面板
     dungeon.zig      13×13 确定性关卡、连通性、A*、LOS
+    save.zig         RunState 存档/读档（纯逻辑，JSON v1）
     attributes.zig   六属性/派生/XP
     items.zig        装备/背包/修正
     content.zig      内嵌 JSON 内容加载/校验/掉落
@@ -125,7 +126,7 @@ assets/
   baked/        VXM 运行时模型
   models/       OBJ/MTL/rig 源
 tools/          characters / bake_assets / gen_cjk_font
-docs/           TOME_V1 / ART_PASS / UX_REVIEW_TOME / screenshots
+docs/           TOME_V1 / SAVE / ART_PASS / UX_REVIEW_TOME / screenshots
 ~~~
 
 ## 验证
@@ -145,7 +146,7 @@ docs/           TOME_V1 / ART_PASS / UX_REVIEW_TOME / screenshots
 - 天赋可以用 Tab 切换目标，但还没有 ToME4 的选格/范围预览/确认取消。
 - 背包内 1/2/3 可换装，空槽自动装备；多套装备/词缀/商店待做。
 - 敌人技能只有普攻 + Boss 深渊斩，没有召唤/更多 Boss 阶段。
-- 没有音频、存档、天赋树、随机词缀。
+- 没有音频、天赋树、随机词缀；存档已有纯逻辑模块（未接 F5/F9，见 [docs/SAVE.md](docs/SAVE.md)）。
 - 当前数值是 v1 占位，优先验证循环与可读性。
 
 ## 致谢与许可
