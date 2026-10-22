@@ -11,10 +11,18 @@ const arena_mesh = @import("../engine/arena_mesh.zig");
 const renderer = @import("../engine/renderer.zig");
 const assets = @import("assets");
 const sim_mod = @import("tome_sim.zig");
+const intent_mod = @import("intent.zig");
 const hud = @import("tome_hud.zig");
 const content_mod = @import("content.zig");
 const items_mod = @import("items.zig");
 const attributes = @import("attributes.zig");
+
+const FloatText = struct {
+    pos: math.Vec3 = math.Vec3.zero,
+    value: i32 = 0,
+    life: f32 = 0,
+    color: u32 = 0xffffff,
+};
 
 const Visual = struct {
     pos: math.Vec3 = math.Vec3.zero,
@@ -60,6 +68,8 @@ pub const TomeGame = struct {
     class: sim_mod.Class,
     hero_vis: Visual = .{},
     enemy_vis: [sim_mod.max_enemies]Visual = undefined,
+    floats: [24]FloatText = .{ .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{} },
+    float_cursor: usize = 0,
     mesh_floor: u8 = 0,
     panel: hud.Panel = .none,
     hud_state: hud.State = .{},
@@ -408,6 +418,28 @@ pub const TomeGame = struct {
         self.fillHudState();
     }
 
+    fn spawnFloat(self: *TomeGame, pos: math.Vec3, value: i32, color_value: u32) void {
+        if (value == 0) return;
+        const i = self.float_cursor;
+        self.float_cursor = (i + 1) % self.floats.len;
+        self.floats[i] = .{ .pos = pos.add(math.Vec3.init(0, 1.4, 0)), .value = value, .life = 0.75, .color = color_value };
+    }
+
+    fn drawFloats(self: *TomeGame) void {
+        for (self.floats) |f| {
+            if (f.life <= 0) continue;
+            const p = self.camera.project(f.pos, self.renderer.width, self.renderer.height) orelse continue;
+            if (p.depth <= 0.1) continue;
+            const x: i32 = @intFromFloat(p.x);
+            const y: i32 = @intFromFloat(p.y);
+            var buf: [16]u8 = undefined;
+            const txt = std.fmt.bufPrint(&buf, "{d}", .{f.value}) catch continue;
+            const tw = renderer.Renderer.textWidth(txt, 1);
+            self.renderer.fillRect(x - @divTrunc(tw, 2) - 2, y - 1, tw + 4, 11, palette.panel);
+            self.renderer.drawText(x - @divTrunc(tw, 2), y, txt, f.color, 1, true);
+        }
+    }
+
     fn currentTarget(self: *const TomeGame) ?usize {
         if (self.selected) |s| {
             if (s < self.sim.enemy_count and self.sim.enemies[s].alive) return s;
@@ -434,10 +466,18 @@ pub const TomeGame = struct {
     }
 
     fn flashAfter(self: *TomeGame, hero_before: f32, enemies_before: []const f32) void {
-        if (self.sim.hero.hp < hero_before - 0.01) self.hero_vis.flash = 0.22;
+        const hero_loss = hero_before - self.sim.hero.hp;
+        if (hero_loss > 0.5) {
+            self.hero_vis.flash = 0.22;
+            self.spawnFloat(self.hero_vis.pos, -@as(i32, @intFromFloat(hero_loss)), palette.red);
+        }
         var i: usize = 0;
         while (i < enemies_before.len and i < self.sim.enemy_count) : (i += 1) {
-            if (self.sim.enemies[i].hp < enemies_before[i] - 0.01) self.enemy_vis[i].flash = 0.22;
+            const loss = enemies_before[i] - self.sim.enemies[i].hp;
+            if (loss > 0.5) {
+                self.enemy_vis[i].flash = 0.22;
+                self.spawnFloat(self.enemy_vis[i].pos, -@as(i32, @intFromFloat(loss)), palette.gold_light);
+            }
         }
     }
 
@@ -474,6 +514,12 @@ pub const TomeGame = struct {
         self.hero_vis.anim.moving = self.hero_vis.moving;
         self.hero_vis.anim.cast = @max(0, self.hero_vis.anim.cast - dt * 3.0);
         self.hero_vis.flash = @max(0, self.hero_vis.flash - dt);
+        for (&self.floats) |*f| {
+            if (f.life > 0) {
+                f.life -= dt;
+                f.pos.y += dt * 0.55;
+            }
+        }
 
         var i: usize = 0;
         while (i < self.sim.enemy_count) : (i += 1) {
@@ -553,6 +599,7 @@ pub const TomeGame = struct {
 
         self.drawProps();
         self.renderer.resolve();
+        self.drawFloats();
         self.drawWorldBars();
         if (self.show_hud) hud.draw(&self.renderer, self.hud_state);
     }
@@ -587,16 +634,21 @@ pub const TomeGame = struct {
             const fill: i32 = @intFromFloat(@as(f32, @floatFromInt(bw - 2)) * frac);
             if (fill > 0) self.renderer.fillRect(x - @divTrunc(bw, 2) + 1, y + 1, fill, 1, palette.red);
             self.renderer.strokeRect(x - @divTrunc(bw, 2), y, bw, 3, palette.muted);
+            if (self.sim.intentFor(i)) |intent| {
+                var ibuf: [24]u8 = undefined;
+                const label = switch (intent.kind) {
+                    .aoe => "深渊斩",
+                    .melee, .ranged => std.fmt.bufPrint(&ibuf, "-{d:.0}", .{intent.damage_preview}) catch "",
+                    .chase => "追",
+                    .wait => "晕",
+                };
+                if (label.len > 0) self.renderer.drawText(x - @divTrunc(renderer.Renderer.textWidth(label, 1), 2), y + 5, label, if (intent.kind == .aoe) palette.red else palette.gold_light, 1, true);
+            }
             if (target != null and target.? == i) {
                 const tw = renderer.Renderer.textWidth(e.name, 1);
                 self.renderer.fillRect(x - @divTrunc(tw, 2) - 3, y - 13, tw + 6, 11, palette.panel);
                 self.renderer.strokeRect(x - @divTrunc(tw, 2) - 3, y - 13, tw + 6, 11, palette.border);
                 self.renderer.drawText(x - @divTrunc(tw, 2), y - 12, e.name, palette.red, 1, true);
-            }
-            const dx = e.pos.x - self.sim.hero.pos.x;
-            const dy = e.pos.y - self.sim.hero.pos.y;
-            if (@abs(dx) + @abs(dy) == 1) {
-                self.renderer.drawText(x - 2, y + 5, "!", palette.gold_light, 1, true);
             }
         }
     }
@@ -657,6 +709,16 @@ pub const TomeGame = struct {
                 .additive = true,
                 .alpha = 0.8,
             });
+            if (self.sim.intentFor(i)) |intent| {
+                if (intent.kind == .aoe) {
+                    self.renderer.drawModel(ring_model, null, math.Mat4.compose(tilePos(intent.target.x, intent.target.y).add(math.Vec3.init(0, 0.04, 0)), -self.time * 0.6, 0, 0, 2.2), .{
+                        .tint = color.pack(255, 54, 42),
+                        .boost = 1.0,
+                        .additive = true,
+                        .alpha = 0.75,
+                    });
+                }
+            }
         }
     }
 
@@ -715,6 +777,7 @@ pub const TomeGame = struct {
                 break :blk n;
             }),
             .stairs_hint = self.sim.stairsHint(),
+            .stairs_dist = @intCast(@abs(self.sim.stairs.x - self.sim.hero.pos.x) + @abs(self.sim.stairs.y - self.sim.hero.pos.y)),
             .panel = self.panel,
             .dead = self.sim.state == .dead,
             .victory = self.sim.state == .victory,

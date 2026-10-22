@@ -3,6 +3,7 @@
 const std = @import("std");
 const dungeon_mod = @import("dungeon.zig");
 const attributes = @import("attributes.zig");
+const intent_mod = @import("intent.zig");
 
 pub const grid_w = 13;
 pub const grid_h = 13;
@@ -238,6 +239,45 @@ pub const Sim = struct {
             if (e.alive and e.pos.x == x and e.pos.y == y) return i;
         }
         return null;
+    }
+
+    /// Read-only preview of what `enemies[index]` will attempt on the next
+    /// enemy phase. Does not mutate the sim and does not roll damage.
+    pub fn intentFor(self: *const Sim, index: usize) ?intent_mod.EnemyIntent {
+        if (index >= self.enemy_count) return null;
+        const e = self.enemies[index];
+        if (!e.alive) return null;
+        return intent_mod.preview(
+            .{
+                .width = grid_w,
+                .height = grid_h,
+                .blocked = self.blocked[0..],
+            },
+            .{
+                .kind = e.kind,
+                .pos = .{ .x = e.pos.x, .y = e.pos.y },
+                .range = e.range,
+                .attack = e.attack,
+                .stun_turns = e.stun_turns,
+                .slow_turns = e.slow_turns,
+                .alive = e.alive,
+            },
+            .{ .x = self.hero.pos.x, .y = self.hero.pos.y },
+            self.turn +| 1,
+        );
+    }
+
+    /// Fill `out` with one intent per living enemy, in enemy-array order.
+    /// Returns the number written. Read-only.
+    pub fn previewIntents(self: *const Sim, out: *[max_enemies]intent_mod.EnemyIntent) usize {
+        var n: usize = 0;
+        var i: usize = 0;
+        while (i < self.enemy_count) : (i += 1) {
+            if (!self.enemies[i].alive) continue;
+            out[n] = self.intentFor(i).?;
+            n += 1;
+        }
+        return n;
     }
 
     pub fn isBlocked(self: *const Sim, x: i32, y: i32) bool {
@@ -479,6 +519,13 @@ pub const Sim = struct {
             return;
         }
         if (e.slow_turns > 0) e.slow_turns -= 1;
+        if (e.kind == intent_mod.boss_kind and intent_mod.bossAoeDue(self.turn)) {
+            const raw = e.attack * intent_mod.boss_aoe_damage_scale * (if (e.slow_turns > 0) intent_mod.slow_damage_scale else 1.0);
+            const dmg = raw * (0.15 + 0.85 * 50 / (50 + self.hero.armor));
+            self.hero.hp = @max(0, self.hero.hp - dmg);
+            self.pushLog("深渊守卫 深渊斩 -{d:.0}", .{dmg});
+            return;
+        }
         const d = dist(e.pos, self.hero.pos);
         const los = self.map.lineOfSightTo(
             .{ .x = e.pos.x, .y = e.pos.y },
@@ -864,6 +911,27 @@ test "tome sim: killing the last boss wins" {
     try std.testing.expectEqual(State.victory, s.state);
 }
 
+test "tome sim: boss AOE resolves on the telegraphed turn" {
+    var s = Sim.init(31, .warrior);
+    s.turn = 2;
+    s.enemy_count = 1;
+    s.enemies[0] = .{
+        .kind = 5,
+        .name = "深渊守卫",
+        .pos = .{ .x = 10, .y = 2 },
+        .hp = 420,
+        .hp_max = 420,
+        .attack = 16,
+        .armor = 15,
+        .speed = 90,
+        .range = 1,
+        .xp = 200,
+    };
+    const hp = s.hero.hp;
+    _ = s.wait();
+    try std.testing.expect(s.hero.hp < hp);
+}
+
 test "tome sim: same seed produces the same floor" {
     const a = Sim.init(99, .warrior);
     const b = Sim.init(99, .warrior);
@@ -871,4 +939,65 @@ test "tome sim: same seed produces the same floor" {
     try std.testing.expectEqual(a.hero.pos.y, b.hero.pos.y);
     try std.testing.expectEqual(a.stairs.x, b.stairs.x);
     try std.testing.expectEqual(a.enemy_count, b.enemy_count);
+}
+
+test "tome sim: intent preview is read-only" {
+    var s = Sim.init(23, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = .{
+        .kind = 0,
+        .name = "骷髅兵",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 70,
+        .hp_max = 70,
+        .attack = 8,
+        .armor = 4,
+        .speed = 100,
+        .range = 1,
+        .xp = 20,
+    };
+    const hp = s.hero.hp;
+    const turn = s.turn;
+
+    const intent = s.intentFor(0) orelse return error.MissingIntent;
+    try std.testing.expectEqual(intent_mod.IntentKind.melee, intent.kind);
+    try std.testing.expect(intent.target.eql(.{ .x = s.hero.pos.x, .y = s.hero.pos.y }));
+    try std.testing.expectEqual(turn, s.turn);
+    try std.testing.expectEqual(hp, s.hero.hp);
+    try std.testing.expect(s.intentFor(1) == null);
+
+    var intents: [max_enemies]intent_mod.EnemyIntent = undefined;
+    try std.testing.expectEqual(@as(usize, 1), s.previewIntents(&intents));
+    try std.testing.expectEqual(intent_mod.IntentKind.melee, intents[0].kind);
+    try std.testing.expectEqual(hp, s.hero.hp);
+    try std.testing.expectEqual(turn, s.turn);
+}
+
+test "tome sim: boss intent telegraphs its AOE on the next enemy phase" {
+    var s = Sim.init(29, .warrior);
+    s.turn = 2; // the player action below advances to enemy phase 3
+    s.enemy_count = 1;
+    s.enemies[0] = .{
+        .kind = 5,
+        .name = "深渊守卫",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 420,
+        .hp_max = 420,
+        .attack = 16,
+        .armor = 15,
+        .speed = 90,
+        .range = 1,
+        .xp = 200,
+    };
+
+    const intent = s.intentFor(0) orelse return error.MissingIntent;
+    try std.testing.expectEqual(intent_mod.IntentKind.aoe, intent.kind);
+    try std.testing.expect(intent.target.eql(.{ .x = s.hero.pos.x, .y = s.hero.pos.y }));
+    try std.testing.expectEqual(@as(f32, 2.2), intent.aoe_radius);
+    try std.testing.expectEqual(@as(u8, 1), intent.telegraph_turns);
+
+    // The phase after this one is turn 4, back to the normal melee rotation.
+    s.turn = 3;
+    const next = s.intentFor(0) orelse return error.MissingIntent;
+    try std.testing.expectEqual(intent_mod.IntentKind.melee, next.kind);
 }
