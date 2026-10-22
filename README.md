@@ -6,8 +6,8 @@
 
 ![combat](docs/screenshots/combat.png)
 
-> **分支关系**：PR #1（`feat/pixel3d-arena`）是渲染/相机/资源管线切片；本分支 `feat/combat-prototype` 在其之上加战斗与中文 HUD。工作树 `D:\code\zig\vx-combat`。
-> 主分支 `main` 保留给数值与具体内容设计，这两个分支都没有向 main 提交；PR #1 合并后，本分支再 rebase 到 main 即可。
+> **分支关系**：PR #1（`feat/pixel3d-arena`）是渲染/相机/资源管线切片；本分支 `feat/combat-prototype` 在其之上加战斗与中文 HUD，对应 **PR #2**（stacked，基于 #1）：https://github.com/lagudomeze/vs/pull/2 。工作树 `D:\code\zig\vx-combat`。
+> 主分支 `main` 保留给数值与具体内容设计，这两个分支都没有向 main 提交；PR #1 合并后，把 #2 的 base 改为 main（或把本分支 rebase 到 main）即可。
 
 ![boss](docs/screenshots/boss.png)
 
