@@ -35,7 +35,11 @@ fn writeItemDetail(buf: []u8, def: *const items_mod.ItemDef) []const u8 {
         if (shown >= 2) break;
         if (m.flat != 0) {
             const sign: []const u8 = if (m.flat > 0) "+" else "";
-            detailAppend(buf, &off, " {s}{s}{d:.0}", .{ m.stat.label(), sign, m.flat });
+            if (m.stat == .crit) {
+                detailAppend(buf, &off, " {s}{s}{d:.0}%", .{ m.stat.label(), sign, m.flat * 100.0 });
+            } else {
+                detailAppend(buf, &off, " {s}{s}{d:.0}", .{ m.stat.label(), sign, m.flat });
+            }
             shown += 1;
         }
         if (m.pct != 0) {
