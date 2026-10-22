@@ -1,21 +1,40 @@
 const std = @import("std");
 
-// Although this function looks imperative, it does not perform the build
-// directly and instead it mutates the build graph (`b`) that will be then
-// executed by an external runner. The functions in `std.Build` implement a DSL
-// for defining build steps and express dependencies between them, allowing the
-// build runner to parallelize the build automatically (and the cache system to
-// know when a step doesn't need to be re-run).
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
+    // Default to a fast build so `zig build run` is smooth out of the box;
+    // pass -Doptimize=Debug when you want the debugger-friendly build.
+    const optimize = b.option(
+        std.builtin.Optimize,
+        "optimize",
+        "Prioritize performance, safety, or binary size (default: ReleaseFast)",
+    ) orelse .fast;
 
-    const zflecs_dep = b.dependency("zflecs", .{});
+    const zflecs_dep = b.dependency("zflecs", .{ .target = target, .optimize = optimize });
+    const sdl_dep = b.dependency("sdl", .{ .target = target, .optimize = optimize });
+
+    const sdl_c = b.addTranslateC(.{
+        .root_source_file = b.path("src/sdl_c.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+    sdl_c.addIncludePath(sdl_dep.path("include"));
+    const sdl_mod = sdl_c.createModule();
+
+    const assets_mod = b.createModule(.{
+        .root_source_file = b.path("assets/assets.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
 
     const mod = b.addModule("vx", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
+        .optimize = optimize,
     });
+    mod.addImport("zflecs", zflecs_dep.module("root"));
+    mod.addImport("sdl", sdl_mod);
+    mod.addImport("assets", assets_mod);
 
     const exe = b.addExecutable(.{
         .name = "vx",
@@ -31,27 +50,22 @@ pub fn build(b: *std.Build) void {
     });
 
     exe.root_module.linkLibrary(zflecs_dep.artifact("flecs"));
+    exe.root_module.linkLibrary(sdl_dep.artifact("SDL3"));
 
     b.installArtifact(exe);
 
     const run_step = b.step("run", "Run the app");
-
     const run_cmd = b.addRunArtifact(exe);
     run_step.dependOn(&run_cmd.step);
-
     run_cmd.step.dependOn(b.getInstallStep());
     run_cmd.addPassthruArgs();
 
-    const mod_tests = b.addTest(.{
-        .root_module = mod,
-    });
-
+    const mod_tests = b.addTest(.{ .root_module = mod });
+    mod_tests.root_module.linkLibrary(zflecs_dep.artifact("flecs"));
+    mod_tests.root_module.linkLibrary(sdl_dep.artifact("SDL3"));
     const run_mod_tests = b.addRunArtifact(mod_tests);
 
-    const exe_tests = b.addTest(.{
-        .root_module = exe.root_module,
-    });
-
+    const exe_tests = b.addTest(.{ .root_module = exe.root_module });
     const run_exe_tests = b.addRunArtifact(exe_tests);
 
     const test_step = b.step("test", "Run tests");

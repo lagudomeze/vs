@@ -1,18 +1,57 @@
-//! By convention, root.zig is the root source file when making a package.
+//! VX: a real-3D pixel-art dungeon diorama built on SDL3 + zflecs.
 const std = @import("std");
-const Io = std.Io;
 
-/// This is a documentation comment to explain the `printAnotherMessage` function below.
-///
-/// Accepting an `Io.Writer` instance is a handy way to write reusable code.
-pub fn printAnotherMessage(writer: *Io.Writer) Io.Writer.Error!void {
-    try writer.print("Run `zig build test` to run the tests.\n", .{});
+pub const math = @import("core/math.zig");
+pub const color = @import("core/color.zig");
+pub const palette = @import("core/palette.zig");
+pub const png = @import("core/png.zig");
+pub const font = @import("core/font.zig");
+
+pub const model = @import("engine/model.zig");
+pub const rig = @import("engine/rig.zig");
+pub const arena_mesh = @import("engine/arena_mesh.zig");
+pub const renderer = @import("engine/renderer.zig");
+
+pub const components = @import("game/components.zig");
+pub const systems = @import("game/systems.zig");
+pub const hud = @import("game/hud.zig");
+pub const game = @import("game/game.zig");
+pub const Game = @import("game/game.zig").Game;
+pub const platform = @import("platform/sdl.zig");
+
+test {
+    std.testing.refAllDecls(@This());
 }
 
-pub fn add(a: i32, b: i32) i32 {
-    return a + b;
+test "all embedded models load" {
+    const gpa = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+    const db = try model.ModelDb.init(arena.allocator(), @import("assets").all);
+    try std.testing.expect(db.models.len >= 20);
+    const warrior = db.find("warrior") orelse return error.MissingWarrior;
+    try std.testing.expect(warrior.joints.len >= 10);
+    try std.testing.expect(warrior.parts.len >= 8);
+    try std.testing.expect(warrior.torso != null);
+    try std.testing.expect(warrior.weapon != null);
+    const archmage = db.find("archmage") orelse return error.MissingArchmage;
+    try std.testing.expect(archmage.focus != null);
+    const chrono = db.find("chronomancer") orelse return error.MissingChrono;
+    try std.testing.expect(chrono.aura != null);
 }
 
-test "basic add functionality" {
-    try std.testing.expect(add(3, 7) == 10);
+test "game boots, simulates and renders offscreen" {
+    const gpa = std.testing.allocator;
+    const g = try Game.create(gpa, 160, 90);
+    defer g.destroy();
+
+    var frame: u32 = 0;
+    while (frame < 12) : (frame += 1) {
+        g.update(.{ .move_z = 1.0 }, 1.0 / 60.0);
+    }
+    g.render();
+    try std.testing.expect(g.renderer.stats.tris > 1000);
+    try std.testing.expect(g.renderer.stats.drawn > 1000);
+    try std.testing.expect(g.party[g.active_index] != 0);
+    try std.testing.expect(g.camera.target.y > 0.3);
 }

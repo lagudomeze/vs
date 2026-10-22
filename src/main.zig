@@ -1,82 +1,252 @@
 const std = @import("std");
-const ecs = @import("zflecs");
+const vx = @import("vx");
 
-// ==========================================
-// 1. 定义组件 (Data)
-// ==========================================
-const ActionGauge = struct {
-    current_ap: f32 = 0.0,
-    speed: f32 = 10.0,
+const Options = struct {
+    headless: bool = false,
+    out: ?[]const u8 = null,
+    frames: u32 = 0,
+    hero: u32 = 0,
+    yaw: f32 = -0.35,
+    pitch: f32 = 0.70,
+    dist: f32 = 8.2,
+    width: u32 = 480,
+    height: u32 = 270,
+    scale: u32 = 3,
+    run_seconds: f32 = 0,
+    walk: bool = false,
+    cast: bool = false,
+    debug: bool = false,
+    lineup: bool = false,
+    hide_hud: bool = false,
+    help: bool = false,
 };
 
-const DeltaTime = struct {
-    value: f32 = 0.0,
-};
+fn usage() void {
+    std.debug.print(
+        \\VX - real 3D models rendered in a pixel-art palette
+        \\
+        \\Usage: vx [options]
+        \\  --headless        render without opening a window
+        \\  --out PATH        screenshot path (default: shots/vx.png)
+        \\  --frames N        simulation frames before a headless capture; window auto-quit
+        \\  --run-seconds S   window mode: capture and quit after S seconds
+        \\  --hero N          start controlling hero 0=Berserker 1=Archmage 2=Chronomancer
+        \\  --yaw DEG         camera yaw (default -20)
+        \\  --pitch DEG       camera pitch (default 40)
+        \\  --dist U          camera orbit distance (default 8.2)
+        \\  --res WxH         internal pixel resolution (default 480x270)
+        \\  --scale N         integer window scale in window mode (default 3)
+        \\  --walk            headless: hold W so the party walks into frame
+        \\  --cast            headless: cast once mid-simulation
+        \\  --debug           show the debug HUD
+        \\  --lineup          class showcase camera (for documentation shots)
+        \\  --hide-hud        render without the HUD
+        \\  --help            this text
+        \\
+        \\Controls: WASD move, Q/E or right-drag orbit, wheel zoom,
+        \\          TAB switch hero, SPACE cast, R reset, F1 debug, F12 shot, ESC quit.
+        \\
+    , .{});
+}
 
-// 全局变量：为了在系统内部能访问 world 和单例实体
-var global_world: ?*ecs.world_t = null;
-var global_time_entity: ecs.entity_t = 0;
+fn argAt(argv: []const [:0]const u8, index: *usize) ![]const u8 {
+    index.* += 1;
+    if (index.* >= argv.len) return error.MissingValue;
+    return argv[index.*];
+}
 
-// ==========================================
-// 2. 定义系统 (Logic)
-// ==========================================
-fn updateGaugeSystem(gauges: []ActionGauge) void {
-    // 使用全局变量获取时间单例
-    const dt_ptr = ecs.get(global_world.?, global_time_entity, DeltaTime).?;
-    const dt = dt_ptr.value;
+fn parseResolution(text: []const u8) !struct { w: u32, h: u32 } {
+    const x = std.mem.indexOfScalar(u8, text, 'x') orelse return error.BadResolution;
+    const w = try std.fmt.parseInt(u32, text[0..x], 10);
+    const h = try std.fmt.parseInt(u32, text[x + 1 ..], 10);
+    if (w < 360 or h < 200 or w > 1024 or h > 768) return error.BadResolution;
+    return .{ .w = w, .h = h };
+}
 
-    for (gauges) |*gauge| {
-        gauge.current_ap += gauge.speed * dt;
+fn parseOptions(argv: []const [:0]const u8) !Options {
+    var o = Options{};
+    var i: usize = 1;
+    while (i < argv.len) : (i += 1) {
+        const a = argv[i];
+        if (std.mem.eql(u8, a, "--headless")) {
+            o.headless = true;
+        } else if (std.mem.eql(u8, a, "--out")) {
+            o.out = try argAt(argv, &i);
+        } else if (std.mem.eql(u8, a, "--frames")) {
+            o.frames = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
+        } else if (std.mem.eql(u8, a, "--hero")) {
+            o.hero = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
+        } else if (std.mem.eql(u8, a, "--yaw")) {
+            o.yaw = try std.fmt.parseFloat(f32, try argAt(argv, &i)) * std.math.pi / 180.0;
+        } else if (std.mem.eql(u8, a, "--pitch")) {
+            o.pitch = try std.fmt.parseFloat(f32, try argAt(argv, &i)) * std.math.pi / 180.0;
+        } else if (std.mem.eql(u8, a, "--dist")) {
+            o.dist = try std.fmt.parseFloat(f32, try argAt(argv, &i));
+        } else if (std.mem.eql(u8, a, "--res")) {
+            const r = try parseResolution(try argAt(argv, &i));
+            o.width = r.w;
+            o.height = r.h;
+        } else if (std.mem.eql(u8, a, "--scale")) {
+            o.scale = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
+        } else if (std.mem.eql(u8, a, "--run-seconds")) {
+            o.run_seconds = try std.fmt.parseFloat(f32, try argAt(argv, &i));
+        } else if (std.mem.eql(u8, a, "--walk")) {
+            o.walk = true;
+        } else if (std.mem.eql(u8, a, "--cast")) {
+            o.cast = true;
+        } else if (std.mem.eql(u8, a, "--debug")) {
+            o.debug = true;
+        } else if (std.mem.eql(u8, a, "--lineup")) {
+            o.lineup = true;
+        } else if (std.mem.eql(u8, a, "--hide-hud")) {
+            o.hide_hud = true;
+        } else if (std.mem.eql(u8, a, "--help") or std.mem.eql(u8, a, "-h")) {
+            o.help = true;
+        } else {
+            std.debug.print("vx: unknown option '{s}'\n", .{a});
+            usage();
+            return error.UnknownOption;
+        }
+    }
+    return o;
+}
+
+fn ensureParent(io: std.Io, path: []const u8) void {
+    if (std.fs.path.dirname(path)) |dir| {
+        if (dir.len == 0) return;
+        std.Io.Dir.cwd().createDirPath(io, dir) catch {};
     }
 }
 
-// ==========================================
-// 3. 主函数
-// ==========================================
-pub fn main() !void {
-    // 1. 初始化 Flecs 世界
-    const world = ecs.init();
-    defer _ = ecs.fini(world);
+fn snapCamera(game: *vx.Game, options: Options) void {
+    game.camera.yaw = options.yaw;
+    game.camera.pitch = options.pitch;
+    game.camera.distance = options.dist;
+    game.camera.target = game.camera_target;
+}
 
-    // 保存到全局变量供系统使用
-    global_world = world;
-
-    // 2. 注册组件
-    ecs.COMPONENT(world, ActionGauge);
-    ecs.COMPONENT(world, DeltaTime);
-
-    // 3. 注册系统 (必须用 _ = 接收 u64 返回值)
-    _ = ecs.ADD_SYSTEM(world, "UpdateGaugeSystem", ecs.OnUpdate, updateGaugeSystem);
-
-    // 4. 创建全局时间实体 (单例)
-    global_time_entity = ecs.new_entity(world, "TimeSingleton");
-    _ = ecs.set(world, global_time_entity, DeltaTime, .{ .value = 0.0 });
-
-    // 5. 创建玩家实体
-    const player = ecs.new_entity(world, "Player");
-    _ = ecs.set(world, player, ActionGauge, .{ .current_ap = 0.0, .speed = 10.0 });
-
-    // ==========================================
-    // 6. 纯逻辑模拟循环 (固定步长 60Hz)
-    // ==========================================
-    const dt_step: f32 = 1.0 / 60.0;
+fn runHeadless(game: *vx.Game, io: std.Io, options: Options) !void {
+    const frames: u32 = if (options.frames == 0) 1 else options.frames;
     var frame: u32 = 0;
+    while (frame < frames) : (frame += 1) {
+        var input = vx.game.InputFrame{};
+        if (options.walk) input.move_z = 1.0;
+        if (options.cast and frame + 1 == frames) input.cast = true;
+        game.update(input, 1.0 / 60.0);
+    }
+    game.render();
 
-    while (frame < 120) : (frame += 1) {
-        // 更新单例时间
-        _ = ecs.set(world, global_time_entity, DeltaTime, .{ .value = dt_step });
+    const path = options.out orelse "shots/vx.png";
+    ensureParent(io, path);
+    try game.saveScreenshot(io, path);
+    std.debug.print(
+        "headless: {d}x{d} tris={d} drawn={d} time={d:.2}s -> {s}\n",
+        .{ game.renderer.width, game.renderer.height, game.renderer.stats.tris, game.renderer.stats.drawn, game.time, path },
+    );
+}
 
-        // 推进世界
-        _ = ecs.progress(world, 0);
+fn runWindow(game: *vx.Game, io: std.Io, options: Options) !void {
+    var platform = vx.platform.Platform.init("VX - Aether Keep", options.width, options.height, options.scale) catch |err| {
+        std.debug.print("vx: could not open a window ({s}); use --headless for an off-screen capture.\n", .{@errorName(err)});
+        return err;
+    };
+    defer platform.deinit();
 
-        // 每过 1 秒打印一次状态
-        if (frame % 60 == 0) {
-            const gauge_ptr = ecs.get(world, player, ActionGauge).?;
-            const current_seconds = @as(f32, @floatFromInt(frame)) * dt_step;
-            std.debug.print("t={d:.1}s | Player AP = {d:.2}\n", .{
-                current_seconds,
-                gauge_ptr.current_ap,
-            });
+    const freq: f64 = @floatFromInt(vx.platform.performanceFrequency());
+    var last = vx.platform.performanceNow();
+    var elapsed: f32 = 0;
+    var quit = false;
+    var captured = false;
+    std.debug.print("window: {d}x{d} logical, {d}x scale - WASD move, Q/E orbit, TAB switch, ESC quit\n", .{
+        options.width, options.height, options.scale,
+    });
+
+    while (!quit) {
+        const now = vx.platform.performanceNow();
+        const dt_seconds: f64 = @as(f64, @floatFromInt(now - last)) / freq;
+        const dt64: f32 = @floatCast(dt_seconds);
+        const dt: f32 = @min(0.05, dt64);
+        last = now;
+        elapsed += dt;
+
+        const pin = platform.poll(dt);
+        if (pin.quit) break;
+        if (pin.toggle_debug) game.debug = !game.debug;
+
+        const input = vx.game.InputFrame{
+            .move_x = pin.move_x,
+            .move_z = pin.move_z,
+            .yaw_delta = pin.yaw_delta,
+            .zoom_delta = pin.zoom_delta,
+            .toggle_hero = pin.toggle_hero,
+            .cast = pin.cast,
+            .reset = pin.reset,
+        };
+        game.update(input, dt);
+        game.render();
+        platform.present(game.renderer.color_buf);
+
+        if (pin.screenshot) {
+            const path = std.fmt.allocPrint(std.heap.page_allocator, "shots/capture-{d}.png", .{game.frame}) catch "shots/capture.png";
+            ensureParent(io, path);
+            game.saveScreenshot(io, path) catch |err| {
+                std.debug.print("vx: screenshot failed: {s}\n", .{@errorName(err)});
+            };
+            std.debug.print("screenshot -> {s}\n", .{path});
         }
+
+        if (options.run_seconds > 0 and elapsed >= options.run_seconds) {
+            captured = true;
+            quit = true;
+        } else if (options.frames > 0 and game.frame >= options.frames) {
+            captured = true;
+            quit = true;
+        }
+    }
+
+    if (captured) {
+        const path = options.out orelse "shots/window.png";
+        ensureParent(io, path);
+        game.render();
+        try game.saveScreenshot(io, path);
+        std.debug.print("window capture -> {s}\n", .{path});
+    }
+}
+
+pub fn main(init: std.process.Init.Minimal) !void {
+    const gpa = std.heap.page_allocator;
+    const argv = try init.args.toSlice(gpa);
+    const options = parseOptions(argv) catch |err| switch (err) {
+        error.MissingValue, error.BadResolution, error.UnknownOption => return err,
+        else => return err,
+    };
+    if (options.help) {
+        usage();
+        return;
+    }
+    if (options.hero > 2) {
+        std.debug.print("vx: --hero must be 0, 1 or 2\n", .{});
+        return error.BadHero;
+    }
+
+    var threaded: std.Io.Threaded = .init(gpa, .{});
+    defer threaded.deinit();
+    const io = threaded.io();
+
+    const game = try vx.Game.create(gpa, options.width, options.height);
+    defer game.destroy();
+
+    game.selectHero(options.hero);
+    snapCamera(game, options);
+    game.debug = options.debug;
+    game.show_hud = !options.hide_hud;
+    if (options.lineup) {
+        game.lineup();
+    }
+
+    if (options.headless) {
+        try runHeadless(game, io, options);
+    } else {
+        try runWindow(game, io, options);
     }
 }
