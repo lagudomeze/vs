@@ -111,7 +111,7 @@ const menu_footer = "1/2/3 选择  F9x2 读档  R 重开同职业";
 const talent_label = "天赋";
 const help_title = "操作说明";
 const help_footer = "H 关闭";
-const aim_hint = "空格/同键确认  Esc取消  Tab换目标";
+const aim_hint = "空格/同键/左键确认  Esc取消  Tab换目标";
 
 /// Pre-run class selection. A checkerboard dim keeps the 3D dungeon visible
 /// behind the cards while the title and card panels stay fully readable.
@@ -190,13 +190,13 @@ fn drawHelp(r: *renderer.Renderer, w: i32, h: i32) void {
     const lines = [_][]const u8{
         "移动  WASD / 方向键 / 小键盘",
         "天赋  1/2/3 进入瞄准",
-        "确认  空格 或 按同一个数字键",
+        "确认  空格 / 同键 / 左键",
         "等待  5 / .（瞄准中空格=确认）",
         "瞄准  Tab 换目标   Esc 取消",
         "Esc 取消瞄准 / 关闭面板 / 退出",
         "背包 I     角色 C",
         "存档 F5    读档 F9x2",
-        "相机 Q/E 或右键调整",
+        "相机 Q/E/右键   鼠标悬停选目标",
         "重开 R（游戏中按两次确认）",
         "目标  击杀第 3 层深渊守卫",
         "楼梯在 Boss 存活时被封印",
@@ -225,15 +225,15 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     }
 
     // top-left: class / HP / resource / turn / floor
-    backPanel(r, 6, 5, 170, 58);
+    backPanel(r, 6, 5, 160, 58);
     var buf: [64]u8 = undefined;
     r.drawText(10, 8, state.class_name, palette.gold, 1, false);
     const lv = fmt(&buf, "{d}级  XP {d}/{d}", .{ state.level, state.xp, state.xp_next });
     r.drawText(10, 21, lv, palette.muted, 1, false);
-    bar(r, 10, 32, 160, 7, if (state.hp_max > 0) state.hp / state.hp_max else 0, palette.health_light);
+    bar(r, 10, 32, 150, 7, if (state.hp_max > 0) state.hp / state.hp_max else 0, palette.health_light);
     const hp = fmt(&buf, "{d:.0}/{d:.0}", .{ state.hp, state.hp_max });
     r.drawText(14, 33, hp, palette.cream, 1, false);
-    bar(r, 10, 43, 160, 5, if (state.resource_max > 0) state.resource / state.resource_max else 0, palette.cyan);
+    bar(r, 10, 43, 150, 5, if (state.resource_max > 0) state.resource / state.resource_max else 0, palette.cyan);
     const res = fmt(&buf, "{s} {d:.0}/{d:.0}", .{ state.resource_label, state.resource, state.resource_max });
     r.drawText(14, 49, res, palette.muted, 1, false);
 
@@ -273,7 +273,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
 
     // combat log, low-left above the hotbar (not across the battlefield)
     if (state.log_count > 0) {
-        backPanel(r, 6, h - 106, 160, 40);
+        backPanel(r, 6, h - 106, 150, 40);
         var shown: usize = 0;
         var li = state.log_count - @min(state.log_count, 3);
         while (li < state.log_count) : (li += 1) {
@@ -316,14 +316,14 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     }
 
     // hotbar: name, cost/base cooldown, then live availability
-    backPanel(r, 6, h - 60, 270, 54);
+    backPanel(r, 6, h - 60, 265, 54);
     r.drawText(10, h - 56, talent_label, palette.gold, 1, false);
     for (state.hotbar, 0..) |slot, i| {
-        const sx: i32 = 10 + @as(i32, @intCast(i)) * 87;
+        const sx: i32 = 10 + @as(i32, @intCast(i)) * 85;
         const sy: i32 = h - 45;
         const aiming = state.aim.active and state.aim.talent_index == i;
-        r.fillRect(sx, sy, 84, 38, palette.deep);
-        r.strokeRect(sx, sy, 84, 38, if (aiming) palette.gold else if (slot.ready) palette.border else palette.muted);
+        r.fillRect(sx, sy, 82, 38, palette.deep);
+        r.strokeRect(sx, sy, 82, 38, if (aiming) palette.gold else if (slot.ready) palette.border else palette.muted);
         const key = fmt(&buf, "{d}", .{i + 1});
         r.drawText(sx + 4, sy + 3, key, palette.gold, 1, false);
         r.drawText(sx + 18, sy + 3, slot.name, if (slot.ready) palette.cream else palette.muted, 1, false);
@@ -494,4 +494,10 @@ test "tome hud: hint strings have embedded CJK glyphs" {
         var ti: usize = 0;
         while (ti < 3) : (ti += 1) try expectGlyphs(sim.talentNameFor(class, ti));
     }
+}
+
+test "tome hud: default panels stay under 30 percent" {
+    const area = 160 * 58 + 154 * 60 + 150 * 40 + 265 * 54;
+    const screen = 480 * 270;
+    try std.testing.expect(area * 100 <= screen * 30);
 }

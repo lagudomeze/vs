@@ -29,6 +29,9 @@ pub const FrameInput = struct {
     save_slot: bool = false,
     load_slot: bool = false,
     help: bool = false,
+    mouse_x: f32 = 0,
+    mouse_y: f32 = 0,
+    click: bool = false,
 };
 
 pub const Platform = struct {
@@ -37,6 +40,10 @@ pub const Platform = struct {
     texture: [*c]c.SDL_Texture = null,
     logical_width: u32 = 384,
     logical_height: u32 = 216,
+    window_width: u32 = 0,
+    window_height: u32 = 0,
+    mouse_x: f32 = 0,
+    mouse_y: f32 = 0,
     right_button_down: bool = false,
 
     pub fn init(title: [:0]const u8, width: u32, height: u32, window_scale: u32) !Platform {
@@ -76,6 +83,8 @@ pub const Platform = struct {
             .texture = tex,
             .logical_width = width,
             .logical_height = height,
+            .window_width = @intCast(win_w),
+            .window_height = @intCast(win_h),
         };
     }
 
@@ -88,7 +97,7 @@ pub const Platform = struct {
     }
 
     pub fn poll(self: *Platform, dt: f32) FrameInput {
-        var input = FrameInput{};
+        var input = FrameInput{ .mouse_x = self.mouse_x, .mouse_y = self.mouse_y };
         var ev: c.SDL_Event = undefined;
         while (c.SDL_PollEvent(&ev)) {
             const t: u32 = ev.type;
@@ -131,12 +140,27 @@ pub const Platform = struct {
                 input.zoom_delta += ev.wheel.y * 0.55;
             } else if (t == @as(u32, @intCast(c.SDL_EVENT_MOUSE_BUTTON_DOWN))) {
                 if (ev.button.button == @as(u8, @intCast(c.SDL_BUTTON_RIGHT))) self.right_button_down = true;
+                if (ev.button.button == @as(u8, @intCast(c.SDL_BUTTON_LEFT))) {
+                    input.click = true;
+                    if (self.window_width > 0 and self.window_height > 0) {
+                        self.mouse_x = ev.button.x * @as(f32, @floatFromInt(self.logical_width)) / @as(f32, @floatFromInt(self.window_width));
+                        self.mouse_y = ev.button.y * @as(f32, @floatFromInt(self.logical_height)) / @as(f32, @floatFromInt(self.window_height));
+                    }
+                    input.mouse_x = self.mouse_x;
+                    input.mouse_y = self.mouse_y;
+                }
             } else if (t == @as(u32, @intCast(c.SDL_EVENT_MOUSE_BUTTON_UP))) {
                 if (ev.button.button == @as(u8, @intCast(c.SDL_BUTTON_RIGHT))) self.right_button_down = false;
             } else if (t == @as(u32, @intCast(c.SDL_EVENT_MOUSE_MOTION))) {
                 if (self.right_button_down) {
                     input.yaw_delta -= ev.motion.xrel * 0.006;
                 }
+                if (self.window_width > 0 and self.window_height > 0) {
+                    self.mouse_x = ev.motion.x * @as(f32, @floatFromInt(self.logical_width)) / @as(f32, @floatFromInt(self.window_width));
+                    self.mouse_y = ev.motion.y * @as(f32, @floatFromInt(self.logical_height)) / @as(f32, @floatFromInt(self.window_height));
+                }
+                input.mouse_x = self.mouse_x;
+                input.mouse_y = self.mouse_y;
             }
         }
 

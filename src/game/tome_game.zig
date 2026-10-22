@@ -49,6 +49,9 @@ pub const Input = struct {
     target_next: bool = false,
     restart: bool = false,
     help: bool = false,
+    mouse_x: f32 = 0,
+    mouse_y: f32 = 0,
+    click: bool = false,
     yaw_delta: f32 = 0,
     zoom_delta: f32 = 0,
 };
@@ -529,6 +532,21 @@ pub const TomeGame = struct {
         }
         if (input.target_next) self.cycleTarget();
 
+        // Mouse: hover highlights the enemy under the cursor, left click
+        // confirms an active aim (or selects when idle). HUD strips are not
+        // pickable; this only maps the 3D ground plane.
+        if ((input.mouse_x > 0 or input.mouse_y > 0) and input.mouse_y >= 70 and input.mouse_y <= @as(f32, @floatFromInt(self.renderer.height - 60))) {
+            if (self.pickCell(input.mouse_x, input.mouse_y)) |cell| {
+                const maybe_enemy = self.sim.enemyAt(cell.x, cell.y);
+                if (maybe_enemy) |idx| {
+                    if (self.aim_talent != null or input.click) self.selected = idx;
+                    if (input.click and self.aim_talent != null) _ = self.confirmAim();
+                } else if (input.click and self.aim_talent != null) {
+                    self.sim.pushLog("无效目标", .{});
+                }
+            }
+        }
+
         if (input.inventory) {
             self.clearAim();
             self.panel = if (self.panel == .inventory) .none else .inventory;
@@ -628,6 +646,16 @@ pub const TomeGame = struct {
             self.renderer.fillRect(x - @divTrunc(tw, 2) - 2, y - 1, tw + 4, 11, palette.panel);
             self.renderer.drawText(x - @divTrunc(tw, 2), y, txt, f.color, 1, true);
         }
+    }
+
+    /// Screen pixel -> simulation cell, clamped by the camera's ground-plane
+    /// intersection. Used by mouse aiming.
+    fn pickCell(self: *const TomeGame, sx: f32, sy: f32) ?sim_mod.GridPos {
+        const p = self.camera.pickGround(sx, sy, self.renderer.width, self.renderer.height) orelse return null;
+        const gx: i32 = @intFromFloat(@round(p.x + 6.0));
+        const gy: i32 = @intFromFloat(@round(p.z + 6.0));
+        if (gx < 0 or gy < 0 or gx >= sim_mod.grid_w or gy >= sim_mod.grid_h) return null;
+        return .{ .x = gx, .y = gy };
     }
 
     fn currentTarget(self: *const TomeGame) ?usize {
@@ -1574,4 +1602,21 @@ test "tome game: held repeat is throttled to one step per 0.3s" {
     try std.testing.expectEqual(turn, g.sim.turn);
     g.update(.{ .step_x = dx, .step_y = dy }, 0.31);
     try std.testing.expect(g.sim.turn >= turn);
+}
+
+test "tome game: mouse click confirms an aimed enemy" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    defer g.destroy();
+    g.sim.enemy_count = 0;
+    addGameEnemy(g, 1, 0, "骷髅兵");
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expect(g.isAiming());
+    const e = g.sim.enemies[0];
+    const world = math.Vec3.init(@as(f32, @floatFromInt(e.pos.x)) - 6.0, 0, @as(f32, @floatFromInt(e.pos.y)) - 6.0);
+    const p = g.camera.project(world, 480, 270) orelse return error.SkipZigTest;
+    const turn = g.sim.turn;
+    g.update(.{ .mouse_x = p.x, .mouse_y = p.y, .click = true }, 1.0 / 60.0);
+    try std.testing.expect(!g.isAiming());
+    try std.testing.expectEqual(turn + 1, g.sim.turn);
 }
