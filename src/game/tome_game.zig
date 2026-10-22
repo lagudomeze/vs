@@ -542,7 +542,8 @@ pub const TomeGame = struct {
         // Mouse: hover highlights the enemy under the cursor, left click
         // confirms an active aim (or selects when idle). HUD strips are not
         // pickable; this only maps the 3D ground plane.
-        if ((input.mouse_x > 0 or input.mouse_y > 0) and input.mouse_y >= 70 and input.mouse_y <= @as(f32, @floatFromInt(self.renderer.height - 60))) {
+        const over_log = input.mouse_x < 156 and input.mouse_y > @as(f32, @floatFromInt(self.renderer.height - 106)) and input.mouse_y < @as(f32, @floatFromInt(self.renderer.height - 66));
+        if ((input.mouse_x > 0 or input.mouse_y > 0) and input.mouse_y >= 70 and input.mouse_y <= @as(f32, @floatFromInt(self.renderer.height - 60)) and !over_log) {
             if (self.pickCell(input.mouse_x, input.mouse_y)) |cell| {
                 const maybe_enemy = self.sim.enemyAt(cell.x, cell.y);
                 if (maybe_enemy) |idx| {
@@ -756,7 +757,7 @@ pub const TomeGame = struct {
         if (self.sim.state != .playing) return .not_playing;
         if (self.sim.hero.cooldowns[talent] > 0) return .cooldown;
         if (self.sim.hero.resource < @as(f32, @floatFromInt(self.sim.talentCost(talent)))) return .no_resource;
-        if (self.sim.isBlocked(cell.x, cell.y)) return .not_targetable;
+        if (self.sim.isBlocked(cell.x, cell.y)) return .blocked_cell;
         if (target_mod.distance(self.sim.hero.pos, cell) > 5) return .out_of_range;
         if (!self.sim.map.lineOfSightTo(
             .{ .x = self.sim.hero.pos.x, .y = self.sim.hero.pos.y },
