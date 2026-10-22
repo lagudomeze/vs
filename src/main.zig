@@ -28,6 +28,7 @@ const Options = struct {
     aim: ?u32 = null,
     hide_hud: bool = false,
     help: bool = false,
+    help_screen: bool = false,
 };
 
 fn usage() void {
@@ -50,6 +51,7 @@ fn usage() void {
         \\  --cast            headless: cast once at the end
         \\  --auto            headless demo: cast every 1.5s
         \\  --aim N           headless: open aim on talent N for screenshots (no confirm)
+        \\  --help-screen     show the in-game controls panel for screenshots
         \\  --debug           show the debug HUD
         \\  --lineup          class showcase camera (for documentation shots)
         \\  --hide-hud        render without the HUD
@@ -58,7 +60,7 @@ fn usage() void {
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
         \\          TAB switch target, ESC cancel aim/close panel/quit,
         \\          Q/E or right-drag orbit, wheel zoom, I inventory, C character,
-        \\          R reset, F5 save, F9 load, F1 debug, F12 shot.
+        \\          R reset, F5 save, F9 load, H help, F1 debug, F12 shot.
         \\
     , .{});
 }
@@ -129,6 +131,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.loot = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
         } else if (std.mem.eql(u8, a, "--aim")) {
             o.aim = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
+        } else if (std.mem.eql(u8, a, "--help-screen")) {
+            o.help_screen = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
             o.hide_hud = true;
         } else if (std.mem.eql(u8, a, "--help") or std.mem.eql(u8, a, "-h")) {
@@ -305,7 +309,9 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
         // for cancelling a target), then close a modal panel, then quit.
         if (pin.escape) {
             if (!game.cancelAim()) {
-                if (game.panel != .none) {
+                if (game.show_help) {
+                    game.show_help = false;
+                } else if (game.panel != .none) {
                     game.panel = .none;
                 } else {
                     break;
@@ -328,6 +334,7 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
         input.inventory = pin.inventory;
         input.character = pin.character;
         input.restart = pin.reset;
+        input.help = pin.help;
         input.yaw_delta = pin.yaw_delta;
         input.zoom_delta = pin.zoom_delta;
 
@@ -416,6 +423,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
     game.camera.yaw = options.yaw;
     game.camera.pitch = options.pitch;
     game.camera.distance = @max(options.dist, 12.0);
+    game.show_help = options.help_screen;
 
     // Window play starts on the class cards; headless QA keeps its old
     // instant-start behaviour unless --start-menu is explicit. --hero always
