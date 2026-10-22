@@ -291,6 +291,28 @@ pub const OrbitCamera = struct {
             .depth = w,
         };
     }
+
+    /// Screen pixel -> point on the ground plane (y=0). Used by mouse aiming.
+    /// Returns null when the ray is parallel to the plane or points away.
+    pub fn pickGround(self: OrbitCamera, sx: f32, sy: f32, width: u32, height: u32) ?Vec3 {
+        if (width == 0 or height == 0) return null;
+        const eye_pos = self.eye();
+        const forward = self.target.sub(eye_pos).normalize();
+        const right = forward.cross(Vec3.up).normalize();
+        const up = right.cross(forward);
+        const aspect = @as(f32, @floatFromInt(width)) / @as(f32, @floatFromInt(height));
+        const ndc_x = (sx / @as(f32, @floatFromInt(width))) * 2.0 - 1.0;
+        const ndc_y = 1.0 - (sy / @as(f32, @floatFromInt(height))) * 2.0;
+        const tan_half = @tan(self.fov * 0.5);
+        const dir = forward
+            .add(right.scale(ndc_x * tan_half * aspect))
+            .add(up.scale(ndc_y * tan_half))
+            .normalize();
+        if (@abs(dir.y) < 1e-5) return null;
+        const t = -eye_pos.y / dir.y;
+        if (t <= 0) return null;
+        return eye_pos.add(dir.scale(t));
+    }
 };
 
 pub fn smoothstep(edge0: f32, edge1: f32, x: f32) f32 {
@@ -332,4 +354,13 @@ test "camera looks at target" {
     try std.testing.expectApproxEqAbs(p.x, 0, 1e-5);
     try std.testing.expectApproxEqAbs(p.y, 0, 1e-5);
     try std.testing.expectApproxEqAbs(p.z, -5, 1e-5);
+}
+
+test "camera ground pick roundtrips a projected point" {
+    const cam = OrbitCamera{ .target = Vec3.init(0, 0.55, 0), .yaw = 0, .pitch = 0.9, .distance = 10 };
+    const world = Vec3.init(0.4, 0, -0.7);
+    const s = cam.project(world, 480, 270) orelse return error.SkipZigTest;
+    const picked = cam.pickGround(s.x, s.y, 480, 270) orelse return error.SkipZigTest;
+    try std.testing.expectApproxEqAbs(world.x, picked.x, 0.02);
+    try std.testing.expectApproxEqAbs(world.z, picked.z, 0.02);
 }
