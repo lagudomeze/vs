@@ -714,6 +714,14 @@ test "qa2: autoplay batch over 100 seeds preserves turn/hp/floor invariants" {
     try std.testing.expectEqual(@as(u32, 0), b.timeouts);
     try std.testing.expectEqual(b.runs, b.wins + b.deaths);
     if (b.wins > 0) try std.testing.expect(b.win_turns >= @as(u64, b.wins));
+    if (b.wins == 0) {
+        // Balance regression, not a logic failure: keep the test green but
+        // make the 0% result loud in the log.
+        std.debug.print(
+            "[qa2] WARNING: 0/{d} autoplay wins; boss fight/balance regression, see docs/QA_TOME2.md\n",
+            .{b.runs},
+        );
+    }
 }
 
 test "qa2: fixed seed report is reproducible" {
