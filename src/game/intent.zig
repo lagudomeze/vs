@@ -134,6 +134,10 @@ pub fn bossAoeDue(turn: u32) bool {
 
 /// Predict the enemy's next action. Pure and allocation-free: identical inputs
 /// always produce an identical intent.
+///
+/// `turn` is the enemy-phase number being previewed. A HUD that previews while
+/// the player is deciding should pass the upcoming phase (for TomeSim, that is
+/// `sim.turn + 1`).
 pub fn preview(map: MapView, enemy: EnemyView, hero: GridPos, turn: u32) EnemyIntent {
     if (!enemy.alive) return waitIntent(enemy.pos);
     if (enemy.stun_turns > 0) return waitIntent(enemy.pos);
