@@ -6,6 +6,9 @@ assets/models/*.obj and the brazier / mote / rune circle props are
 procedurally authored for VX by tools/characters.py and
 tools/bake_assets.py. They belong to this project.
 
+Skeleton, wraith, golem and abyss guard meshes share the same
+procedural humanoid rig as the heroes.
+
 ## Kenney 3D kit
 
 The dungeon/arena props are derived from free Kenney 3D packs
@@ -48,3 +51,11 @@ Kenney's license text:
 	• BlueSky:	 kenney.bsky.social
 	• Instagram: instagram.com/kenney_nl
 ~~~
+
+## UI font
+
+The Chinese HUD uses a subset of **Ark Pixel Font 12px** by TakWolf
+(https://github.com/TakWolf/ark-pixel-font), licensed under the
+SIL Open Font License 1.1. The license text is in assets/fonts/OFL.txt.
+Only glyph bitmaps for characters used by the game are embedded;
+the source BDF is not required at runtime.

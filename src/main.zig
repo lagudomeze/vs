@@ -15,6 +15,7 @@ const Options = struct {
     run_seconds: f32 = 0,
     walk: bool = false,
     cast: bool = false,
+    auto_demo: bool = false,
     debug: bool = false,
     lineup: bool = false,
     hide_hud: bool = false,
@@ -37,7 +38,8 @@ fn usage() void {
         \\  --res WxH         internal pixel resolution (default 480x270)
         \\  --scale N         integer window scale in window mode (default 3)
         \\  --walk            headless: hold W so the party walks into frame
-        \\  --cast            headless: cast once mid-simulation
+        \\  --cast            headless: cast once at the end
+        \\  --auto            headless demo: cast every 1.5s
         \\  --debug           show the debug HUD
         \\  --lineup          class showcase camera (for documentation shots)
         \\  --hide-hud        render without the HUD
@@ -59,7 +61,7 @@ fn parseResolution(text: []const u8) !struct { w: u32, h: u32 } {
     const x = std.mem.indexOfScalar(u8, text, 'x') orelse return error.BadResolution;
     const w = try std.fmt.parseInt(u32, text[0..x], 10);
     const h = try std.fmt.parseInt(u32, text[x + 1 ..], 10);
-    if (w < 360 or h < 200 or w > 1024 or h > 768) return error.BadResolution;
+    if (w < 480 or h < 270 or w > 1024 or h > 768) return error.BadResolution;
     return .{ .w = w, .h = h };
 }
 
@@ -94,6 +96,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.walk = true;
         } else if (std.mem.eql(u8, a, "--cast")) {
             o.cast = true;
+        } else if (std.mem.eql(u8, a, "--auto")) {
+            o.auto_demo = true;
         } else if (std.mem.eql(u8, a, "--debug")) {
             o.debug = true;
         } else if (std.mem.eql(u8, a, "--lineup")) {
@@ -132,6 +136,7 @@ fn runHeadless(game: *vx.Game, io: std.Io, options: Options) !void {
         var input = vx.game.InputFrame{};
         if (options.walk) input.move_z = 1.0;
         if (options.cast and frame + 1 == frames) input.cast = true;
+        if (options.auto_demo and frame % 90 == 0) input.cast = true;
         game.update(input, 1.0 / 60.0);
     }
     game.render();

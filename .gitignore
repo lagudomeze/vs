@@ -6,3 +6,4 @@ shots
 *.html
 __pycache__/
 *.pyc
+.tmp-font/

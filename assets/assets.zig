@@ -3,6 +3,7 @@
 // Every model is embedded into the executable so the game runs from any
 // working directory.
 
+pub const abyss_guard = @embedFile("baked/abyss_guard.vxm");
 pub const archmage = @embedFile("baked/archmage.vxm");
 pub const banner = @embedFile("baked/banner.vxm");
 pub const barrel = @embedFile("baked/barrel.vxm");
@@ -15,12 +16,14 @@ pub const coin = @embedFile("baked/coin.vxm");
 pub const column = @embedFile("baked/column.vxm");
 pub const column_damaged = @embedFile("baked/column_damaged.vxm");
 pub const gate = @embedFile("baked/gate.vxm");
+pub const golem = @embedFile("baked/golem.vxm");
 pub const mote = @embedFile("baked/mote.vxm");
 pub const pot = @embedFile("baked/pot.vxm");
 pub const potion = @embedFile("baked/potion.vxm");
 pub const pylon = @embedFile("baked/pylon.vxm");
 pub const rocks = @embedFile("baked/rocks.vxm");
 pub const rune_circle = @embedFile("baked/rune_circle.vxm");
+pub const skeleton = @embedFile("baked/skeleton.vxm");
 pub const statue = @embedFile("baked/statue.vxm");
 pub const table = @embedFile("baked/table.vxm");
 pub const tree = @embedFile("baked/tree.vxm");
@@ -31,10 +34,12 @@ pub const warrior = @embedFile("baked/warrior.vxm");
 pub const weapon_rack = @embedFile("baked/weapon_rack.vxm");
 pub const weapon_spear = @embedFile("baked/weapon_spear.vxm");
 pub const weapon_sword = @embedFile("baked/weapon_sword.vxm");
+pub const wraith = @embedFile("baked/wraith.vxm");
 
 pub const Entry = struct { name: []const u8, bytes: []const u8 };
 
 pub const all = [_]Entry{
+    .{ .name = "abyss_guard", .bytes = abyss_guard },
     .{ .name = "archmage", .bytes = archmage },
     .{ .name = "banner", .bytes = banner },
     .{ .name = "barrel", .bytes = barrel },
@@ -47,12 +52,14 @@ pub const all = [_]Entry{
     .{ .name = "column", .bytes = column },
     .{ .name = "column_damaged", .bytes = column_damaged },
     .{ .name = "gate", .bytes = gate },
+    .{ .name = "golem", .bytes = golem },
     .{ .name = "mote", .bytes = mote },
     .{ .name = "pot", .bytes = pot },
     .{ .name = "potion", .bytes = potion },
     .{ .name = "pylon", .bytes = pylon },
     .{ .name = "rocks", .bytes = rocks },
     .{ .name = "rune_circle", .bytes = rune_circle },
+    .{ .name = "skeleton", .bytes = skeleton },
     .{ .name = "statue", .bytes = statue },
     .{ .name = "table", .bytes = table },
     .{ .name = "tree", .bytes = tree },
@@ -63,4 +70,5 @@ pub const all = [_]Entry{
     .{ .name = "weapon_rack", .bytes = weapon_rack },
     .{ .name = "weapon_spear", .bytes = weapon_spear },
     .{ .name = "weapon_sword", .bytes = weapon_sword },
+    .{ .name = "wraith", .bytes = wraith },
 };

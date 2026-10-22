@@ -14,11 +14,13 @@ const comp = @import("components.zig");
 const systems = @import("systems.zig");
 const hud = @import("hud.zig");
 
-pub const class_names = [_][]const u8{ "BERSERKER", "ARCHMAGE", "CHRONOMANCER" };
+pub const class_names = [_][]const u8{ "狂战士", "元素法师", "时空法师" };
 pub const party_size = 3;
 pub const max_dust = 84;
 pub const max_embers = 56;
-pub const max_sparks = 72;
+pub const max_sparks = 128;
+pub const max_enemies = 24;
+pub const max_floats = 32;
 
 pub const InputFrame = struct {
     move_x: f32 = 0,
@@ -47,6 +49,22 @@ const HeroGlow = struct {
     color: u32,
     intensity: f32,
     size: f32,
+};
+
+const FloatText = struct {
+    pos: math.Vec3,
+    value: i32,
+    crit: bool,
+    signed: bool,
+    life: f32,
+    max_life: f32,
+    color: u32,
+    active: bool = false,
+};
+
+const SpawnSpec = struct {
+    kind: u8,
+    pos: math.Vec3,
 };
 
 pub const Game = struct {
@@ -82,6 +100,24 @@ pub const Game = struct {
     hero_glows: [party_size]HeroGlow = undefined,
     hero_glow_count: usize = 0,
     hud_state: hud.State = undefined,
+
+    // combat / waves
+    wave: u8 = 0,
+    max_waves: u8 = 5,
+    kills: u32 = 0,
+    intermission: f32 = 0,
+    banner_time: f32 = 0,
+    banner_buf: [32]u8 = undefined,
+    victory: bool = false,
+    defeat: bool = false,
+    spawn_queue: [8]SpawnSpec = undefined,
+    spawn_count: usize = 0,
+    spawn_index: usize = 0,
+    spawn_timer: f32 = 0,
+    enemy_id_seq: u16 = 0,
+    target: ecs.entity_t = 0,
+    floats: [max_floats]FloatText = undefined,
+    float_cursor: usize = 0,
 
     pub fn create(gpa: std.mem.Allocator, width: u32, height: u32) !*Game {
         const self = try gpa.create(Game);
@@ -124,6 +160,7 @@ pub const Game = struct {
         self.initParticles();
         try self.spawnArena();
         try self.spawnParty();
+        self.resetRun();
         self.fillHudState();
     }
 
@@ -160,6 +197,7 @@ pub const Game = struct {
             };
         }
         for (&self.sparks) |*s| s.* = .{ .pos = math.Vec3.zero, .vel = math.Vec3.zero };
+        for (&self.floats) |*ft| ft.* = .{ .pos = math.Vec3.zero, .value = 0, .crit = false, .signed = false, .life = 0, .max_life = 1, .color = 0, .active = false };
     }
 
     // ----------------------------------------------------------------- arena
@@ -284,10 +322,22 @@ pub const Game = struct {
     fn spawnHero(self: *Game, index: usize, pos: math.Vec3, yaw: f32) !ecs.entity_t {
         const model_names = [_][]const u8{ "warrior", "archmage", "chronomancer" };
         const model_idx = self.models.indexOf(model_names[index]) orelse return 0;
-        const hero_stats = [_]struct { hp: f32, speed: f32, ap_speed: f32 }{
-            .{ .hp = 148, .speed = 3.15, .ap_speed = 16 },
-            .{ .hp = 96, .speed = 2.9, .ap_speed = 24 },
-            .{ .hp = 110, .speed = 3.0, .ap_speed = 20 },
+        const hero_stats = [_]struct {
+            hp: f32,
+            speed: f32,
+            ap_speed: f32,
+            damage: f32,
+            range: f32,
+            cooldown: f32,
+            skill_name: []const u8,
+            skill_mult: f32,
+            skill_range: f32,
+            skill_aoe: f32,
+            skill_slow: f32,
+        }{
+            .{ .hp = 148, .speed = 3.15, .ap_speed = 16, .damage = 18, .range = 1.45, .cooldown = 1.05, .skill_name = "重击", .skill_mult = 2.4, .skill_range = 2.0, .skill_aoe = 0, .skill_slow = 0 },
+            .{ .hp = 96, .speed = 2.9, .ap_speed = 24, .damage = 11, .range = 5.2, .cooldown = 1.45, .skill_name = "火球", .skill_mult = 3.4, .skill_range = 5.8, .skill_aoe = 1.6, .skill_slow = 0 },
+            .{ .hp = 110, .speed = 3.0, .ap_speed = 20, .damage = 14, .range = 4.2, .cooldown = 1.2, .skill_name = "时光箭", .skill_mult = 2.6, .skill_range = 4.8, .skill_aoe = 0, .skill_slow = 2.5 },
         };
         const e = ecs.new_id(self.world);
         _ = ecs.set(self.world, e, comp.Transform, .{ .pos = pos, .yaw = yaw, .scale = 1.40 });
@@ -310,6 +360,15 @@ pub const Game = struct {
             .ap_speed = hero_stats[index].ap_speed,
             .move_speed = hero_stats[index].speed,
             .active = index == 0,
+            .attack_damage = hero_stats[index].damage,
+            .attack_range = hero_stats[index].range,
+            .attack_cooldown = hero_stats[index].cooldown,
+            .attack_timer = 0.45 + @as(f32, @floatFromInt(index)) * 0.2,
+            .skill_name = hero_stats[index].skill_name,
+            .skill_mult = hero_stats[index].skill_mult,
+            .skill_range = hero_stats[index].skill_range,
+            .skill_aoe = hero_stats[index].skill_aoe,
+            .skill_slow = hero_stats[index].skill_slow,
         });
         _ = ecs.set(self.world, e, comp.Shadow, .{ .radius = 0.36 });
         return e;
@@ -403,26 +462,369 @@ pub const Game = struct {
         try self.spawnMote(self.party[2], color.pack(127, 179, 239), 0.48, 0.95, 0.85, 3.4);
     }
 
+    // ------------------------------------------------------------ combat/waves
+    fn resetRun(self: *Game) void {
+        self.clearEnemies();
+        self.kills = 0;
+        self.victory = false;
+        self.defeat = false;
+        self.banner_time = 0;
+        self.intermission = 0;
+        self.target = 0;
+        self.wave = 0;
+        for (&self.sparks) |*s| s.active = false;
+        for (&self.floats) |*ft| ft.active = false;
+
+        const starts = [_]math.Vec3{
+            math.Vec3.init(0, 0, 0.45),
+            math.Vec3.init(-1.6, 0, 0.27),
+            math.Vec3.init(1.6, 0, 0.27),
+        };
+        for (self.party, 0..) |e, i| {
+            if (e == 0) continue;
+            _ = ecs.set(self.world, e, comp.Transform, .{ .pos = starts[i], .yaw = 0.04, .scale = 1.40 });
+            _ = ecs.set(self.world, e, comp.Velocity, .{});
+            _ = ecs.set(self.world, e, comp.MoveIntent, .{});
+            if (ecs.get_mut(self.world, e, comp.Hero)) |h| {
+                h.hp = h.hp_max;
+                h.ap = h.ap_max;
+                h.downed = false;
+                h.revive_timer = 0;
+                h.attack_timer = 0.3 + @as(f32, @floatFromInt(i)) * 0.2;
+                h.active = i == 0;
+            }
+            if (ecs.get_mut(self.world, e, comp.Renderable)) |r| r.tint = 0xffffff;
+            if (ecs.get_mut(self.world, e, comp.Animation)) |a| {
+                a.state.cast = 0;
+                a.state.moving = 0;
+            }
+            if (i == 0) {
+                ecs.remove(self.world, e, comp.Follow);
+            } else {
+                _ = ecs.set(self.world, e, comp.Follow, .{ .leader = self.party[0], .offset = followOffset(@intCast(i)) });
+            }
+        }
+        self.active_index = 0;
+        self.active = self.party[0];
+        self.camera_target = math.Vec3.init(0, 0.58, 0.2);
+        self.camera.target = self.camera_target;
+        self.ctx.combat_active = true;
+        self.beginWave(1);
+    }
+
+    fn beginWave(self: *Game, wave: u8) void {
+        self.wave = wave;
+        self.spawn_index = 0;
+        self.spawn_timer = 0;
+        self.intermission = 0;
+        self.banner_time = 2.6;
+        self.queueWave(wave);
+    }
+
+    fn queueWave(self: *Game, wave: u8) void {
+        const defs: []const u8 = switch (wave) {
+            1 => &[_]u8{ 0, 0, 0 },
+            2 => &[_]u8{ 0, 0, 0, 1, 1 },
+            3 => &[_]u8{ 1, 1, 2, 2 },
+            4 => &[_]u8{ 0, 0, 0, 0, 2, 2 },
+            else => &[_]u8{ 3, 1, 1 },
+        };
+        self.spawn_count = defs.len;
+        for (defs, 0..) |kind, i| {
+            const angle = @as(f32, @floatFromInt(i)) * 2.399 + @as(f32, @floatFromInt(wave)) * 0.77;
+            const radius = 3.95 + @as(f32, @floatFromInt(i % 2)) * 0.30;
+            self.spawn_queue[i] = .{
+                .kind = kind,
+                .pos = math.Vec3.init(@sin(angle) * radius, 0, @cos(angle) * radius),
+            };
+        }
+    }
+
+    fn spawnEnemy(self: *Game, kind: u8, pos: math.Vec3) !void {
+        const names = [_][]const u8{ "skeleton", "wraith", "golem", "abyss_guard" };
+        const model_idx = self.models.indexOf(names[kind]) orelse return;
+        const Stats = struct { hp: f32, dmg: f32, speed: f32, range: f32, cd: f32, scale: f32 };
+        const s: Stats = switch (kind) {
+            0 => .{ .hp = 44, .dmg = 5, .speed = 1.90, .range = 1.10, .cd = 1.40, .scale = 1.18 },
+            1 => .{ .hp = 58, .dmg = 7, .speed = 1.60, .range = 3.80, .cd = 2.10, .scale = 1.32 },
+            2 => .{ .hp = 92, .dmg = 10, .speed = 1.15, .range = 1.25, .cd = 2.30, .scale = 1.55 },
+            else => .{ .hp = 220, .dmg = 13, .speed = 1.00, .range = 1.70, .cd = 2.00, .scale = 1.95 },
+        };
+        const e = ecs.new_id(self.world);
+        const yaw = std.math.atan2(-pos.x, -pos.z);
+        _ = ecs.set(self.world, e, comp.Transform, .{ .pos = pos, .yaw = yaw, .scale = s.scale });
+        _ = ecs.set(self.world, e, comp.Velocity, .{});
+        _ = ecs.set(self.world, e, comp.MoveIntent, .{});
+        _ = ecs.set(self.world, e, comp.Animation, .{ .state = .{ .kind = 3 + kind } });
+        _ = ecs.set(self.world, e, comp.Pose, .{});
+        self.enemy_id_seq +%= 1;
+        _ = ecs.set(self.world, e, comp.Renderable, .{
+            .model = model_idx,
+            .tint = if (kind == 3) color.pack(255, 218, 208) else 0xffffff,
+            .id = @intCast(300 + self.enemy_id_seq % 400),
+        });
+        _ = ecs.set(self.world, e, comp.Enemy, .{
+            .kind = kind,
+            .hp = s.hp,
+            .hp_max = s.hp,
+            .damage = s.dmg,
+            .move_speed = s.speed,
+            .attack_range = s.range,
+            .attack_cooldown = s.cd,
+            .attack_timer = 0.5 + color.hashFloat(self.frame * 37 + @as(u32, @intCast(self.enemy_id_seq))) * 0.6,
+            .boss = kind == 3,
+        });
+        _ = ecs.set(self.world, e, comp.Shadow, .{ .radius = 0.34 * s.scale });
+        if (kind == 3) {
+            _ = ecs.set(self.world, e, comp.LightSource, .{
+                .color = .{ .x = 1.0, .y = 0.20, .z = 0.16 },
+                .intensity = 1.25,
+                .radius = 3.4,
+                .height = 1.0,
+                .flicker = 0.08,
+            });
+        }
+        self.spawnBurst(pos.add(math.Vec3.init(0, 0.6, 0)), color.pack(255, 150, 80), 8, 0.8);
+    }
+
+    pub fn enemyCount(self: *Game) u32 {
+        var n: u32 = 0;
+        var it = ecs.each(self.world, comp.Enemy);
+        while (ecs.each_next(&it)) {
+            n += @intCast(it.entities().len);
+        }
+        return n;
+    }
+
+    fn clearEnemies(self: *Game) void {
+        var dead: [max_enemies]ecs.entity_t = undefined;
+        var n: usize = 0;
+        var it = ecs.each(self.world, comp.Enemy);
+        while (ecs.each_next(&it)) {
+            for (it.entities()) |e| {
+                if (n < dead.len) {
+                    dead[n] = e;
+                    n += 1;
+                }
+            }
+        }
+        for (dead[0..n]) |e| _ = ecs.delete(self.world, e);
+        self.target = 0;
+    }
+
+    fn cleanupEnemies(self: *Game) void {
+        var dead: [max_enemies]ecs.entity_t = undefined;
+        var n: usize = 0;
+        var it = ecs.each(self.world, comp.Enemy);
+        while (ecs.each_next(&it)) {
+            const enemies = ecs.field(&it, comp.Enemy, 0).?;
+            for (enemies, it.entities()) |enemy, e| {
+                if (enemy.hp <= 0 and n < dead.len) {
+                    dead[n] = e;
+                    n += 1;
+                }
+            }
+        }
+        for (dead[0..n]) |e| {
+            if (self.target == e) self.target = 0;
+            _ = ecs.delete(self.world, e);
+        }
+    }
+
+    fn updateWave(self: *Game) void {
+        if (self.victory or self.defeat) {
+            self.banner_time = @max(0, self.banner_time - self.dt);
+            return;
+        }
+        self.banner_time = @max(0, self.banner_time - self.dt);
+        if (self.intermission > 0) {
+            self.intermission -= self.dt;
+            if (self.intermission <= 0 and self.wave < self.max_waves) {
+                self.beginWave(self.wave + 1);
+            }
+            return;
+        }
+        if (self.spawn_index < self.spawn_count) {
+            self.spawn_timer -= self.dt;
+            if (self.spawn_timer <= 0) {
+                const spec = self.spawn_queue[self.spawn_index];
+                self.spawn_index += 1;
+                self.spawn_timer = 0.30;
+                self.spawnEnemy(spec.kind, spec.pos) catch {};
+            }
+            return;
+        }
+        if (self.enemyCount() == 0) {
+            if (self.wave >= self.max_waves) {
+                self.victory = true;
+                self.ctx.combat_active = false;
+                self.banner_time = 0;
+            } else {
+                self.restParty();
+                self.intermission = 2.0;
+            }
+        }
+    }
+
+    fn restParty(self: *Game) void {
+        for (self.party) |e| {
+            const h = ecs.get_mut(self.world, e, comp.Hero) orelse continue;
+            if (h.downed) {
+                h.downed = false;
+                h.hp = h.hp_max * 0.5;
+                h.ap = @max(h.ap, h.ap_max * 0.4);
+                h.revive_timer = 0;
+            } else {
+                h.hp = @min(h.hp_max, h.hp + h.hp_max * 0.25);
+            }
+            if (ecs.get_mut(self.world, e, comp.Renderable)) |r| r.tint = 0xffffff;
+            if (ecs.get(self.world, e, comp.Transform)) |tr| {
+                self.spawnBurst(tr.pos.add(math.Vec3.init(0, 0.6, 0)), palette.cyan_light, 10, 0.9);
+            }
+        }
+    }
+
+    fn spawnBurst(self: *Game, pos: math.Vec3, tint: u32, count: usize, speed: f32) void {
+        var i: usize = 0;
+        while (i < count) : (i += 1) {
+            const h1 = color.hashFloat(self.frame * 37 + @as(u32, @intCast(i)) * 17 + 3);
+            const h2 = color.hashFloat(self.frame * 91 + @as(u32, @intCast(i)) * 29 + 7);
+            const angle = h1 * 6.283;
+            const spark = &self.sparks[self.spark_cursor];
+            self.spark_cursor = (self.spark_cursor + 1) % max_sparks;
+            spark.* = .{
+                .pos = pos.add(math.Vec3.init((h2 - 0.5) * 0.25, (h1 - 0.5) * 0.25, (h2 - 0.5) * 0.25)),
+                .vel = math.Vec3.init(@sin(angle) * speed * (0.6 + h1), 0.6 + h2 * speed, @cos(angle) * speed * (0.6 + h2)),
+                .life = 0.35 + h1 * 0.45,
+                .max_life = 0.8,
+                .size = 0.018 + h2 * 0.022,
+                .color = tint,
+                .active = true,
+            };
+        }
+    }
+
+    fn spawnFloat(self: *Game, pos: math.Vec3, value: f32, crit: bool, signed: bool, tint: u32) void {
+        const ft = &self.floats[self.float_cursor];
+        self.float_cursor = (self.float_cursor + 1) % max_floats;
+        ft.* = .{
+            .pos = pos,
+            .value = @intFromFloat(@max(1.0, @round(value))),
+            .crit = crit,
+            .signed = signed,
+            .life = 0.95,
+            .max_life = 0.95,
+            .color = tint,
+            .active = true,
+        };
+    }
+
+    fn handleEvents(self: *Game) void {
+        for (systems.events[0..systems.event_count]) |ev| {
+            switch (ev.kind) {
+                .enemy_hit => {
+                    self.spawnFloat(ev.pos, ev.amount, ev.crit, false, if (ev.crit) palette.gold_light else palette.cream);
+                    self.spawnBurst(ev.pos, palette.gold_light, 2, 0.7);
+                },
+                .hero_hit => {
+                    self.spawnFloat(ev.pos, ev.amount, false, true, palette.red);
+                    self.spawnBurst(ev.pos, color.pack(220, 70, 70), 2, 0.6);
+                },
+                .enemy_died => {
+                    self.kills += 1;
+                    self.spawnBurst(ev.pos, palette.gold_light, 20, 1.6);
+                    self.spawnBurst(ev.pos, palette.red, 8, 1.1);
+                    for (self.party) |e| {
+                        if (ecs.get_mut(self.world, e, comp.Hero)) |h| {
+                            if (!h.downed) h.hp = @min(h.hp_max, h.hp + 4.0);
+                        }
+                    }
+                },
+                .hero_down => {
+                    self.spawnBurst(ev.pos, color.pack(220, 70, 70), 16, 1.2);
+                },
+            }
+        }
+        systems.clearEvents();
+    }
+
+    fn updateFloats(self: *Game) void {
+        for (&self.floats) |*ft| {
+            if (!ft.active) continue;
+            ft.life -= self.dt;
+            if (ft.life <= 0) ft.active = false;
+        }
+    }
+
+    fn updateHeroes(self: *Game) void {
+        var living: usize = 0;
+        for (self.party) |e| {
+            const h = ecs.get_mut(self.world, e, comp.Hero) orelse continue;
+            if (h.downed and !self.defeat) {
+                h.revive_timer -= self.dt;
+                if (h.revive_timer <= 0) {
+                    h.downed = false;
+                    h.hp = h.hp_max * 0.5;
+                    h.ap = @min(h.ap_max, 60);
+                    h.revive_timer = 0;
+                    if (ecs.get(self.world, e, comp.Transform)) |tr| {
+                        self.spawnBurst(tr.pos.add(math.Vec3.init(0, 0.6, 0)), palette.cyan_light, 14, 1.0);
+                    }
+                }
+            }
+            if (h.downed) {
+                if (ecs.get_mut(self.world, e, comp.Animation)) |a| a.state.moving = 0;
+                if (ecs.get_mut(self.world, e, comp.Renderable)) |r| r.tint = color.pack(110, 114, 126);
+            } else {
+                living += 1;
+                if (ecs.get_mut(self.world, e, comp.Renderable)) |r| r.tint = 0xffffff;
+            }
+        }
+        if (living == 0) {
+            self.defeat = true;
+            self.ctx.combat_active = false;
+            return;
+        }
+        const active_hero = ecs.get(self.world, self.active, comp.Hero);
+        if (active_hero) |h| {
+            if (h.downed) {
+                for (self.party, 0..) |e, i| {
+                    const other = ecs.get(self.world, e, comp.Hero) orelse continue;
+                    if (!other.downed) {
+                        self.selectHero(i);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     // --------------------------------------------------------------- controls
     fn cycleHero(self: *Game) void {
         const old_index = self.active_index;
-        const new_index = (old_index + 1) % party_size;
         const old = self.party[old_index];
-        const new = self.party[new_index];
-        if (old == 0 or new == 0) return;
+        if (old == 0) return;
+        var offset: usize = 1;
+        while (offset < party_size) : (offset += 1) {
+            const new_index = (old_index + offset) % party_size;
+            const new = self.party[new_index];
+            const new_hero = ecs.get(self.world, new, comp.Hero) orelse continue;
+            if (new_hero.downed) continue;
 
-        if (ecs.get_mut(self.world, old, comp.Hero)) |h| h.active = false;
-        if (ecs.get_mut(self.world, new, comp.Hero)) |h| h.active = true;
-        _ = ecs.set(self.world, new, comp.MoveIntent, .{});
-        _ = ecs.set(self.world, new, comp.Velocity, .{});
-        _ = ecs.set(self.world, old, comp.Follow, .{
-            .leader = new,
-            .offset = followOffset(@intCast(old_index)),
-        });
-        ecs.remove(self.world, new, comp.Follow);
+            if (ecs.get_mut(self.world, old, comp.Hero)) |h| h.active = false;
+            if (ecs.get_mut(self.world, new, comp.Hero)) |h| h.active = true;
+            _ = ecs.set(self.world, new, comp.MoveIntent, .{});
+            _ = ecs.set(self.world, new, comp.Velocity, .{});
+            _ = ecs.set(self.world, old, comp.Follow, .{
+                .leader = new,
+                .offset = followOffset(@intCast(old_index)),
+            });
+            ecs.remove(self.world, new, comp.Follow);
 
-        self.active_index = new_index;
-        self.active = new;
+            self.active_index = new_index;
+            self.active = new;
+            return;
+        }
     }
 
     pub fn selectHero(self: *Game, index: usize) void {
@@ -431,6 +833,8 @@ pub const Game = struct {
         }
         const target_entity = self.party[index];
         if (target_entity == 0) return;
+        const target_hero = ecs.get(self.world, target_entity, comp.Hero) orelse return;
+        if (target_hero.downed) return;
         for (self.party, 0..) |e, i| {
             if (e == 0) continue;
             _ = ecs.set(self.world, e, comp.MoveIntent, .{});
@@ -455,63 +859,62 @@ pub const Game = struct {
     }
 
     fn tryCast(self: *Game) void {
+        if (self.victory or self.defeat) return;
         const hero = ecs.get(self.world, self.active, comp.Hero) orelse return;
-        if (hero.ap < 35) return;
+        if (hero.downed or hero.ap < 35) return;
+        const tr = ecs.get(self.world, self.active, comp.Transform) orelse return;
+        const target = systems.nearestEnemy(self.world, tr.pos, hero.skill_range) orelse return;
+        const target_tr = ecs.get(self.world, target, comp.Transform) orelse return;
+
         if (ecs.get_mut(self.world, self.active, comp.Hero)) |h| h.ap -= 35;
         if (ecs.get_mut(self.world, self.active, comp.Animation)) |a| a.state.cast = 1.0;
 
-        const tr = ecs.get(self.world, self.active, comp.Transform) orelse return;
-        const hero_class = hero.class;
-        const base_color = switch (hero_class) {
+        const base_color = switch (hero.class) {
             0 => color.pack(255, 212, 94),
             1 => color.pack(255, 159, 28),
             else => color.pack(111, 224, 208),
         };
-        var i: usize = 0;
-        while (i < 18) : (i += 1) {
-            const h1 = color.hashFloat(self.frame * 37 + @as(u32, @intCast(i)) * 7 + 1);
-            const h2 = color.hashFloat(self.frame * 91 + @as(u32, @intCast(i)) * 13 + 5);
-            const h3 = color.hashFloat(self.frame * 53 + @as(u32, @intCast(i)) * 17 + 9);
-            const angle = h1 * 6.283;
-            const spark = &self.sparks[self.spark_cursor];
-            self.spark_cursor = (self.spark_cursor + 1) % max_sparks;
-            spark.* = .{
-                .pos = tr.pos.add(math.Vec3.init((h2 - 0.5) * 0.3, 0.85 + h3 * 0.25, (h3 - 0.5) * 0.3)),
-                .vel = math.Vec3.init(@sin(angle) * (0.7 + h1), 0.8 + h2 * 1.6, @cos(angle) * (0.7 + h3)),
-                .life = 0.55 + h2 * 0.45,
-                .max_life = 1.0,
-                .size = 0.022 + h3 * 0.02,
-                .color = if (i % 3 == 0) palette.gold_light else base_color,
-                .active = true,
-            };
-        }
-    }
+        const damage = hero.attack_damage * hero.skill_mult;
+        _ = systems.damageEnemy(self.world, target, damage, self.time);
 
-    fn resetPositions(self: *Game) void {
-        const starts = [_]math.Vec3{
-            math.Vec3.init(0, 0, 0.45),
-            math.Vec3.init(-1.6, 0, 0.27),
-            math.Vec3.init(1.6, 0, 0.27),
-        };
-        for (self.party, 0..) |e, i| {
-            if (e == 0) continue;
-            _ = ecs.set(self.world, e, comp.Transform, .{ .pos = starts[i], .yaw = 0.04, .scale = 1.0 });
-            _ = ecs.set(self.world, e, comp.Velocity, .{});
-            _ = ecs.set(self.world, e, comp.MoveIntent, .{});
+        if (hero.skill_aoe > 0) {
+            var it = ecs.each(self.world, comp.Enemy);
+            while (ecs.each_next(&it)) {
+                const enemies = ecs.field(&it, comp.Enemy, 0).?;
+                for (enemies, it.entities()) |*enemy, e| {
+                    if (e == target or enemy.hp <= 0) continue;
+                    const etr = ecs.get(self.world, e, comp.Transform) orelse continue;
+                    const dx = etr.pos.x - target_tr.pos.x;
+                    const dz = etr.pos.z - target_tr.pos.z;
+                    if (dx * dx + dz * dz <= hero.skill_aoe * hero.skill_aoe) {
+                        _ = systems.damageEnemy(self.world, e, damage * 0.55, self.time);
+                    }
+                }
+            }
         }
-        if (ecs.get_mut(self.world, self.party[0], comp.Hero)) |h| h.active = true;
-        if (ecs.get_mut(self.world, self.party[1], comp.Hero)) |h| h.active = false;
-        if (ecs.get_mut(self.world, self.party[2], comp.Hero)) |h| h.active = false;
-        self.active_index = 0;
-        self.active = self.party[0];
-        _ = ecs.set(self.world, self.party[1], comp.Follow, .{ .leader = self.party[0], .offset = followOffset(1) });
-        _ = ecs.set(self.world, self.party[2], comp.Follow, .{ .leader = self.party[0], .offset = followOffset(2) });
-        self.camera_target = math.Vec3.init(0, 0.58, 0.2);
+        if (hero.skill_slow > 0) {
+            if (ecs.get_mut(self.world, target, comp.Enemy)) |enemy| enemy.slow_timer = hero.skill_slow;
+        }
+
+        self.spawnBurst(target_tr.pos.add(math.Vec3.init(0, 0.8, 0)), base_color, 22, 1.6);
+        self.spawnBurst(tr.pos.add(math.Vec3.init(0, 0.9, 0)), base_color, 12, 0.9);
+        self.target = target;
     }
 
     /// Documentation / class-showcase mode: line the party up and bring the
     /// camera down for a clean look at the three hero meshes.
     pub fn lineup(self: *Game) void {
+        self.clearEnemies();
+        self.ctx.combat_active = false;
+        self.victory = false;
+        self.defeat = false;
+        self.wave = 0;
+        self.kills = 0;
+        self.banner_time = 0;
+        self.target = 0;
+        self.spawn_count = 0;
+        self.spawn_index = 0;
+        self.intermission = 0;
         const xs = [_]f32{ -1.45, 0.0, 1.45 };
         for (self.party, 0..) |e, i| {
             if (e == 0) continue;
@@ -524,7 +927,13 @@ pub const Game = struct {
             _ = ecs.set(self.world, e, comp.MoveIntent, .{});
             if (ecs.get_mut(self.world, e, comp.Animation)) |a| a.state.moving = 0;
             ecs.remove(self.world, e, comp.Follow);
-            if (ecs.get_mut(self.world, e, comp.Hero)) |h| h.active = i == 1;
+            if (ecs.get_mut(self.world, e, comp.Hero)) |h| {
+                h.active = i == 1;
+                h.downed = false;
+                h.hp = h.hp_max;
+                h.revive_timer = 0;
+            }
+            if (ecs.get_mut(self.world, e, comp.Renderable)) |r| r.tint = 0xffffff;
         }
         self.active_index = 1;
         self.active = self.party[1];
@@ -544,8 +953,9 @@ pub const Game = struct {
         const inst_fps = if (self.dt > 0) 1.0 / self.dt else 60.0;
         self.fps += (inst_fps - self.fps) * 0.08;
         self.frame_ms += (inst_ms - self.frame_ms) * 0.08;
+        systems.clearEvents();
 
-        if (input.reset) self.resetPositions();
+        if (input.reset) self.resetRun();
         if (input.toggle_hero) self.cycleHero();
         if (input.cast) self.tryCast();
 
@@ -553,20 +963,28 @@ pub const Game = struct {
         self.camera.distance = std.math.clamp(self.camera.distance - input.zoom_delta, 4.8, 11.5);
 
         const hero = ecs.get(self.world, self.active, comp.Hero);
+        const can_move = !(self.victory or self.defeat) and hero != null and !hero.?.downed;
         const fwd = math.Vec3.init(-@sin(self.camera.yaw), 0, -@cos(self.camera.yaw));
         const right = math.Vec3.init(@cos(self.camera.yaw), 0, -@sin(self.camera.yaw));
         var dir = fwd.scale(input.move_z).add(right.scale(input.move_x));
         const len = dir.length();
         if (len > 1.0) dir = dir.scale(1.0 / len);
-        const speed: f32 = if (len > 0.05 and hero != null) hero.?.move_speed else 0;
+        const speed: f32 = if (len > 0.05 and can_move) hero.?.move_speed else 0;
         _ = ecs.set(self.world, self.active, comp.MoveIntent, .{ .dir = dir, .speed = speed });
 
         self.ctx.dt = self.dt;
         self.ctx.time = self.time;
         self.ctx.active = self.active;
+        self.ctx.combat_active = !(self.victory or self.defeat);
+        self.updateWave();
         _ = ecs.progress(self.world, self.dt);
+        self.handleEvents();
+        self.cleanupEnemies();
+        self.updateHeroes();
+        self.updateFloats();
 
         const tr = ecs.get(self.world, self.active, comp.Transform) orelse return;
+        self.target = systems.nearestEnemy(self.world, tr.pos, 7.0) orelse 0;
         const desired = tr.pos.add(math.Vec3.init(0, 0.58, 0));
         self.camera_target = self.camera_target.lerp(desired, 1.0 - @exp(-9.0 * self.dt));
         self.camera.target = self.camera_target;
@@ -718,6 +1136,26 @@ pub const Game = struct {
             }
         }
 
+        // locked enemy ring
+        if (self.target != 0) {
+            if (ecs.get(self.world, self.target, comp.Enemy)) |enemy| {
+                if (enemy.hp > 0) {
+                    if (ecs.get(self.world, self.target, comp.Transform)) |tr| {
+                        self.renderer.drawGlow(tr.pos.add(math.Vec3.init(0, 0.08, 0)), 0.30, color.pack(255, 80, 64), 0.22);
+                        if (self.models.find("rune_circle")) |ring| {
+                            const pos = math.Vec3.init(tr.pos.x, 0.035, tr.pos.z);
+                            self.renderer.drawModel(ring, null, math.Mat4.compose(pos, -self.time * 0.7, 0, 0, 0.34), .{
+                                .tint = color.pack(255, 86, 70),
+                                .boost = 1.0,
+                                .additive = true,
+                                .alpha = 0.85,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
         // flames & embers
         for (self.braziers, 0..) |pos, i| {
             const flick = 0.9 + @sin(self.time * 9.0 + @as(f32, @floatFromInt(i)) * 1.7) * 0.12;
@@ -789,8 +1227,71 @@ pub const Game = struct {
         }
     }
 
+    fn enemyLabel(kind: u8) []const u8 {
+        return switch (kind) {
+            0 => "骷髅兵",
+            1 => "幽魂",
+            2 => "石魔像",
+            else => "深渊守卫",
+        };
+    }
+
+    fn enemyColor(kind: u8) u32 {
+        return switch (kind) {
+            0 => palette.cream,
+            1 => palette.cyan_light,
+            2 => palette.gold_light,
+            else => palette.red,
+        };
+    }
+
+    fn drawCombatHud(self: *Game) void {
+        const r = &self.renderer;
+        var it = ecs.each(self.world, comp.Enemy);
+        while (ecs.each_next(&it)) {
+            const enemies = ecs.field(&it, comp.Enemy, 0).?;
+            for (enemies, it.entities()) |enemy, e| {
+                if (enemy.hp <= 0) continue;
+                const tr = ecs.get(self.world, e, comp.Transform) orelse continue;
+                const head_pos = tr.pos.add(math.Vec3.init(0, 1.05 * tr.scale, 0));
+                const p = self.camera.project(head_pos, r.width, r.height) orelse continue;
+                if (p.depth <= 0.1) continue;
+                const x: i32 = @intFromFloat(p.x);
+                const y: i32 = @intFromFloat(p.y);
+                const is_target = e == self.target;
+                if (is_target or enemy.boss) {
+                    const label = enemyLabel(enemy.kind);
+                    const tw = renderer.Renderer.textWidth(label, 1);
+                    if (x + tw >= -8 and x - tw <= @as(i32, @intCast(r.width)) + 8) {
+                        r.fillRect(x - @divTrunc(tw, 2) - 4, y - 17, tw + 8, 16, palette.panel);
+                        r.strokeRect(x - @divTrunc(tw, 2) - 4, y - 17, tw + 8, 16, palette.border);
+                        r.textCentered(x, y - 15, label, enemyColor(enemy.kind), 1, false);
+                    }
+                }
+                const bw: i32 = if (enemy.boss) 48 else if (is_target) 38 else 22;
+                r.fillRect(x - @divTrunc(bw, 2), y, bw, 4, palette.deep);
+                const fill = @as(i32, @intFromFloat(@as(f32, @floatFromInt(bw - 2)) * std.math.clamp(enemy.hp / enemy.hp_max, 0, 1)));
+                if (fill > 0) r.fillRect(x - @divTrunc(bw, 2) + 1, y + 1, fill, 2, palette.health_light);
+                r.strokeRect(x - @divTrunc(bw, 2), y, bw, 4, palette.muted);
+            }
+        }
+
+        for (self.floats) |ft| {
+            if (!ft.active) continue;
+            const t = 1.0 - ft.life / ft.max_life;
+            const p = self.camera.project(ft.pos.add(math.Vec3.init(0, t * 0.55, 0)), r.width, r.height) orelse continue;
+            if (p.depth <= 0.1) continue;
+            var buf: [16]u8 = undefined;
+            const text = std.fmt.bufPrint(&buf, "{s}{d}", .{ if (ft.signed) "-" else "", ft.value }) catch continue;
+            const scale: i32 = if (ft.crit) 2 else 1;
+            const x: i32 = @intFromFloat(p.x);
+            const y: i32 = @as(i32, @intFromFloat(p.y)) - 10;
+            r.textCentered(x, y, text, ft.color, scale, true);
+        }
+    }
+
     fn fillHudState(self: *Game) void {
-        const plate_heights = [_]f32{ 1.13, 1.30, 1.23 };
+        const plate_heights = [_]f32{ 1.32, 1.48, 1.41 };
         var i: usize = 0;
         while (i < party_size) : (i += 1) {
             const e = self.party[i];
@@ -818,12 +1319,14 @@ pub const Game = struct {
                 .ap = h.ap,
                 .ap_max = h.ap_max,
                 .active = h.active,
+                .downed = h.downed,
+                .revive = @max(0, h.revive_timer),
             };
             self.hud_state.plates[i] = .{
                 .pos = math.Vec3.init(tr.?.pos.x, plate_heights[i], tr.?.pos.z),
                 .name = class_names[i],
                 .level = h.level,
-                .active = h.active,
+                .active = h.active and !h.downed,
             };
         }
         self.hud_state.camera_yaw = self.camera.yaw;
@@ -832,8 +1335,23 @@ pub const Game = struct {
         self.hud_state.frame_ms = self.frame_ms;
         self.hud_state.tris = self.renderer.stats.tris;
         self.hud_state.drawn = self.renderer.stats.drawn;
-        self.hud_state.entities = @intCast(self.prop_seq + party_size + 8);
+        self.hud_state.entities = @intCast(self.prop_seq + party_size + 8 + self.enemyCount());
         self.hud_state.debug = self.debug;
+        self.hud_state.wave = self.wave;
+        self.hud_state.max_waves = self.max_waves;
+        self.hud_state.enemies = @intCast(self.enemyCount());
+        self.hud_state.kills = self.kills;
+        self.hud_state.skill = "";
+        if (ecs.get(self.world, self.active, comp.Hero)) |h| {
+            if (!h.downed) self.hud_state.skill = h.skill_name;
+        }
+        self.hud_state.banner = "";
+        self.hud_state.banner_time = self.banner_time;
+        if (self.banner_time > 0 and !self.victory and !self.defeat) {
+            self.hud_state.banner = std.fmt.bufPrint(&self.banner_buf, "第{d}波来袭", .{self.wave}) catch "";
+        }
+        self.hud_state.victory = self.victory;
+        self.hud_state.defeat = self.defeat;
     }
 
     pub fn render(self: *Game) void {
@@ -848,6 +1366,7 @@ pub const Game = struct {
         self.drawEffects();
         self.renderer.resolve();
 
+        self.drawCombatHud();
         self.fillHudState();
         if (self.show_hud) hud.draw(&self.renderer, cam, self.hud_state);
     }

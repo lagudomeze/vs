@@ -1,0 +1,42 @@
+# VX material palette
+newmtl m_1a1220
+Kd 0.10196 0.07059 0.12549
+illum 1
+
+newmtl m_3e4759
+Kd 0.24314 0.27843 0.34902
+illum 1
+
+newmtl m_eaa62e
+Kd 0.91765 0.65098 0.18039
+illum 1
+
+newmtl m_7a1f55
+Kd 0.47843 0.12157 0.33333
+illum 1
+
+newmtl m_606878
+Kd 0.37647 0.40784 0.47059
+illum 1
+
+newmtl m_b08465
+Kd 0.69020 0.51765 0.39608
+illum 1
+
+newmtl m_18161e
+Kd 0.09412 0.08627 0.11765
+illum 1
+
+newmtl m_ff9f1c
+Kd 1.00000 0.62353 0.10980
+Ke 1.00000 0.62353 0.10980
+illum 1
+
+newmtl m_e2d6bc
+Kd 0.88627 0.83922 0.73725
+illum 1
+
+newmtl m_4e3828
+Kd 0.30588 0.21961 0.15686
+illum 1
+

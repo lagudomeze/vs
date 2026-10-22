@@ -55,3 +55,21 @@ test "game boots, simulates and renders offscreen" {
     try std.testing.expect(g.party[g.active_index] != 0);
     try std.testing.expect(g.camera.target.y > 0.3);
 }
+
+test "combat spawns waves and deals damage" {
+    const gpa = std.testing.allocator;
+    const g = try Game.create(gpa, 160, 90);
+    defer g.destroy();
+
+    var frame: u32 = 0;
+    while (frame < 420) : (frame += 1) {
+        var input = @import("game/game.zig").InputFrame{};
+        if (frame % 90 == 0) input.cast = true;
+        g.update(input, 1.0 / 60.0);
+    }
+    try std.testing.expect(g.wave >= 1);
+    try std.testing.expect(g.enemyCount() > 0 or g.kills > 0);
+    g.show_hud = false;
+    g.render();
+    try std.testing.expect(g.renderer.stats.tris > 20000);
+}

@@ -57,3 +57,27 @@ zig build
 - 每个部件的三角形颜色是逐三角形的，渲染器计算面法线做平面着色；若需要平滑法线，需要扩展格式与光栅器。
 - 模型坐标单位为“米”，角色约 1.0–1.2 高；游戏里通过 `Transform.scale`（英雄 1.4）缩放。
 - 资源内嵌在 `assets/` 目录下，`@embedFile` 的相对路径以 `assets/assets.zig` 为基准。
+## 中文 HUD 字体
+
+`tools/gen_cjk_font.py` 从 Ark Pixel Font 12px monospaced BDF 生成运行时字形子集：
+
+```powershell
+gh release download 2026.10.16 -R TakWolf/ark-pixel-font -p "*12px-monospaced-bdf*" -D .tmp-font
+Expand-Archive .tmp-font/ark-pixel-font-12px-monospaced-bdf-v2026.10.16.zip .tmp-font/bdf
+python tools/gen_cjk_font.py
+```
+
+- 只嵌入源码中实际出现的字符 + EXTRA 中的敌人/技能名；
+- 生成 `src/core/cjk_font.zig`，并复制 OFL 到 `assets/fonts/OFL.txt`；
+- 如果 BDF 缺字（例如 Ark Pixel 2026.10.16 缺“旋/施/滚”），脚本会打印 U+ 码点；换同义文案或换字体版本。
+
+## 敌人模型
+
+`characters.py` 额外生成：
+
+- `skeleton`：骨白、破甲、锈剑/小盾；
+- `wraith`：兜帽幽魂、青焰法杖、漂浮；
+- `golem`：石甲、巨拳；
+- `abyss_guard`：深渊守卫（暗红石甲、角、巨斧），第 5 波首领。
+
+它们与英雄共用 `BASE_JOINTS` 和导出/烘焙流程；`bake_assets.py` 的角色列表在文件末尾。动画 kind 由 `game.zig` 的敌人类型写入。
