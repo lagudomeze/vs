@@ -257,6 +257,30 @@ pub const TomeGame = struct {
         _ = self.sim.wait();
     }
 
+    fn itemScore(def: *const items_mod.ItemDef) f32 {
+        var score: f32 = 0;
+        for (def.mods) |m| {
+            score += m.flat;
+            score += m.pct * 20.0;
+        }
+        return score;
+    }
+
+    fn usePotion(self: *TomeGame) bool {
+        for (self.inventory.slice()) |id| {
+            if (id >= self.content.items.len) continue;
+            const def = &self.content.items[id];
+            const use = def.use orelse continue;
+            if (use.heal <= 0) continue;
+            if (!self.inventory.remove(id)) continue;
+            self.sim.hero.hp = @min(self.sim.hero.hp_max, self.sim.hero.hp + use.heal);
+            self.sim.pushLog("使用 {s}：恢复 {d:.0} 生命", .{ def.name, use.heal });
+            _ = self.sim.wait();
+            return true;
+        }
+        return false;
+    }
+
     pub fn debugGrantLoot(self: *TomeGame, n: u32) void {
         var i: u32 = 0;
         while (i < n) : (i += 1) self.grantDrop(true);
@@ -275,9 +299,17 @@ pub const TomeGame = struct {
         const def = &self.content.items[item];
         self.sim.pushLog("获得 {s}", .{def.name});
         if (def.slot) |slot| {
-            if (def.allowsClass(self.classOf()) and self.inventory.equipped.get(slot) == null) {
-                self.inventory.equip(self.content.items, item) catch {};
-                self.rebuildMods();
+            if (def.allowsClass(self.classOf())) {
+                var better = self.inventory.equipped.get(slot) == null;
+                if (self.inventory.equipped.get(slot)) |current| {
+                    if (current < self.content.items.len) {
+                        better = itemScore(def) > itemScore(&self.content.items[current]);
+                    }
+                }
+                if (better) {
+                    self.inventory.equip(self.content.items, item) catch {};
+                    self.rebuildMods();
+                }
             }
         }
     }
@@ -303,7 +335,12 @@ pub const TomeGame = struct {
             self.panel = if (self.panel == .character) .none else .character;
         }
 
-        if (self.panel == .none and self.sim.state == .playing) {
+        var used_potion = false;
+        if (self.panel == .none and self.sim.state == .playing and self.sim.hero.hp < self.sim.hero.hp_max * 0.35) {
+            used_potion = self.usePotion();
+        }
+
+        if (!used_potion and self.panel == .none and self.sim.state == .playing) {
             if (input.step_x != 0 or input.step_y != 0) {
                 const before_hero = self.sim.hero.hp;
                 var before: [sim_mod.max_enemies]f32 = undefined;

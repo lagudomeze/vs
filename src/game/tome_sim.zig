@@ -295,7 +295,13 @@ pub const Sim = struct {
             2 => &.{ 3, 0, 1, 2, 4, 1, 0, 3 },
             else => &.{ 5, 3, 4, 0, 1, 2, 3, 4 },
         };
+        const max_spawns: usize = switch (self.floor) {
+            1 => 4,
+            2 => 4,
+            else => 4,
+        };
         for (self.map.spawnSlice(), 0..) |p, i| {
+            if (i >= max_spawns) break;
             self.spawnEnemyAt(kinds[i % kinds.len], .{ .x = p.x, .y = p.y });
         }
         self.pushLog("第 {d} 层：{d} 个敌人", .{ self.floor, self.enemy_count });
@@ -540,7 +546,7 @@ pub const Sim = struct {
 
     fn enemyAttack(self: *Sim, idx: usize) void {
         const e = self.enemies[idx];
-        var raw = e.attack;
+        var raw = e.attack * 0.72;
         if (e.slow_turns > 0) raw *= 0.55;
         const dmg = raw * (0.15 + 0.85 * 50 / (50 + self.hero.armor));
         self.hero.hp = @max(0, self.hero.hp - dmg);
