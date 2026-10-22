@@ -192,7 +192,7 @@ fn drawHelp(r: *renderer.Renderer, w: i32, h: i32) void {
         "天赋  1/2/3 进入瞄准",
         "确认  空格 / 同键 / 左键",
         "等待  5 / .（瞄准中空格=确认）",
-        "瞄准  Tab 换目标   Esc 取消",
+        "瞄准 Tab换目标 火球鼠标点地面",
         "Esc 取消瞄准 / 关闭面板 / 退出",
         "背包 I     角色 C",
         "存档 F5    读档 F9x2",
@@ -289,12 +289,16 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         var aim_buf: [128]u8 = undefined;
         var line: []const u8 = undefined;
         if (state.aim.valid) {
-            line = if (state.aim.aoe_radius > 0)
-                fmt(&aim_buf, "瞄准：{s} -> {s} 距离{d} 预计{d}伤害 范围{d}", .{
+            if (std.mem.eql(u8, state.aim.target, "地面")) {
+                line = fmt(&aim_buf, "瞄准：{s} -> 地面 距离{d} 范围{d}", .{
+                    state.aim.talent, state.aim.distance, state.aim.aoe_radius,
+                });
+            } else if (state.aim.aoe_radius > 0)
+                line = fmt(&aim_buf, "瞄准：{s} -> {s} 距离{d} 预计{d}伤害 范围{d}", .{
                     state.aim.talent, state.aim.target, state.aim.distance, state.aim.damage, state.aim.aoe_radius,
                 })
             else
-                fmt(&aim_buf, "瞄准：{s} -> {s} 距离{d} 预计{d}伤害", .{
+                line = fmt(&aim_buf, "瞄准：{s} -> {s} 距离{d} 预计{d}伤害", .{
                     state.aim.talent, state.aim.target, state.aim.distance, state.aim.damage,
                 });
         } else if (state.aim.target.len > 0) {
@@ -476,6 +480,7 @@ test "tome hud: hint strings have embedded CJK glyphs" {
         "超出范围",
         "视线受阻",
         "取消瞄准",
+        "地面",
     };
     for (fixed) |text| try expectGlyphs(text);
     const targeting = @import("tome_target.zig");

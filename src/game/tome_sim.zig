@@ -883,15 +883,48 @@ pub const Sim = struct {
     }
 
     fn aoeAttack(self: *Sim, primary: usize, mult: f32, radius: f32) void {
-        const center = self.enemies[primary].pos;
+        self.aoeAttackAt(self.enemies[primary].pos, mult, radius);
+    }
+
+    /// Ground-centred area attack. The centre itself takes full damage; every
+    /// other enemy within the radius takes 60%. Used by mouse/ground-targeted
+    /// fireball and by the enemy-centred helper above.
+    fn aoeAttackAt(self: *Sim, center: GridPos, mult: f32, radius: f32) void {
         var i: usize = 0;
         while (i < self.enemy_count) : (i += 1) {
             const e = &self.enemies[i];
             if (!e.alive) continue;
-            if (dist(e.pos, center) > @as(i32, @intFromFloat(radius))) continue;
-            self.playerAttack(i, if (i == primary) mult else mult * 0.6);
+            const d = dist(e.pos, center);
+            if (d > @as(i32, @intFromFloat(radius))) continue;
+            self.playerAttack(i, if (d == 0) mult else mult * 0.6);
             if (!e.alive) continue;
         }
+    }
+
+    /// Cast a talent at a grid cell. Fireball (mage slot 0) is the only v1
+    /// talent with a ground target; everything else resolves to the enemy on
+    /// that cell and falls back to the normal single-target path.
+    pub fn useTalentAt(self: *Sim, i: usize, cell: GridPos) bool {
+        if (self.state != .playing or i >= 3) return false;
+        if (!(self.class == .mage and i == 0)) {
+            return self.useTalentOn(i, self.enemyAt(cell.x, cell.y));
+        }
+        if (self.hero.cooldowns[i] > 0) return false;
+        const cost = self.talentCost(i);
+        if (self.hero.resource < @as(f32, @floatFromInt(cost))) return false;
+        if (self.isBlocked(cell.x, cell.y)) return false;
+        if (dist(self.hero.pos, cell) > 5) return false;
+        if (!self.map.lineOfSightTo(
+            .{ .x = self.hero.pos.x, .y = self.hero.pos.y },
+            .{ .x = cell.x, .y = cell.y },
+            null,
+        )) return false;
+        self.hero.resource -= @floatFromInt(cost);
+        self.hero.cooldowns[i] = self.talentCooldown(i);
+        self.aoeAttackAt(cell, 2.5, 1.5);
+        self.pushLog("火球轰击地面", .{});
+        self.endTurn();
+        return true;
     }
 
     pub fn stairsHint(self: *const Sim) []const u8 {
@@ -1030,6 +1063,50 @@ test "tome sim: enemy speeds cover the extra/skip bands" {
     }
     try std.testing.expect(fast);
     try std.testing.expect(slow);
+}
+
+test "tome sim: mage fireball can be cast on a ground cell" {
+    var s = Sim.init(41, .mage);
+    var center: ?GridPos = null;
+    var y: i32 = 0;
+    while (y < grid_h and center == null) : (y += 1) {
+        var x: i32 = 0;
+        while (x < grid_w) : (x += 1) {
+            const p = GridPos{ .x = x, .y = y };
+            if (s.isBlocked(x, y)) continue;
+            const d = @abs(s.hero.pos.x - p.x) + @abs(s.hero.pos.y - p.y);
+            if (d > 5 or d == 0) continue;
+            if (!s.map.lineOfSightTo(.{ .x = s.hero.pos.x, .y = s.hero.pos.y }, .{ .x = x, .y = y }, null)) continue;
+            center = p;
+            break;
+        }
+    }
+    const c = center orelse return error.SkipZigTest;
+    s.enemy_count = 1;
+    s.enemies[0] = .{
+        .kind = 0,
+        .name = "骷髅兵",
+        .pos = c,
+        .hp = 70,
+        .hp_max = 70,
+        .attack = 8,
+        .armor = 4,
+        .speed = 100,
+        .range = 1,
+        .xp = 20,
+    };
+    const turn = s.turn;
+    try std.testing.expect(s.useTalentAt(0, c));
+    try std.testing.expect(s.enemies[0].hp < 70);
+    try std.testing.expectEqual(turn + 1, s.turn);
+    try std.testing.expect(s.hero.cooldowns[0] > 0);
+}
+
+test "tome sim: fireball ground target validates range and walls" {
+    var s = Sim.init(43, .mage);
+    const turn = s.turn;
+    try std.testing.expect(!s.useTalentAt(0, .{ .x = 0, .y = 0 })); // border wall
+    try std.testing.expectEqual(turn, s.turn);
 }
 
 test "tome sim: boss seals the stairs until defeated" {

@@ -76,6 +76,8 @@ pub const TomeGame = struct {
     /// Talent index while the player is aiming; null when not aiming. Aiming
     /// itself never spends a turn, only a successful confirmation does.
     aim_talent: ?usize = null,
+    /// Ground cell for mouse-cast fireball; null means enemy-centric aim.
+    aim_cell: ?sim_mod.GridPos = null,
     reset_armed: f32 = 0,
     /// Throttles OS key-repeat so holding a direction does not burn a turn
     /// for every repeat event (critic P0).
@@ -218,6 +220,7 @@ pub const TomeGame = struct {
         self.last_level = 1;
         self.selected = null;
         self.aim_talent = null;
+        self.aim_cell = null;
         self.reset_armed = 0;
         self.step_cooldown = 0;
         self.show_help = false;
@@ -321,6 +324,7 @@ pub const TomeGame = struct {
         self.last_level = loaded.hero.level;
         self.selected = null;
         self.aim_talent = null;
+        self.aim_cell = null;
         self.reset_armed = 0;
         self.step_cooldown = 0;
         self.show_help = false;
@@ -530,7 +534,10 @@ pub const TomeGame = struct {
                 self.sim.pushLog("再按 R 确认重开", .{});
             }
         }
-        if (input.target_next) self.cycleTarget();
+        if (input.target_next) {
+            self.cycleTarget();
+            if (self.aim_talent != null) self.aim_cell = null;
+        }
 
         // Mouse: hover highlights the enemy under the cursor, left click
         // confirms an active aim (or selects when idle). HUD strips are not
@@ -539,10 +546,23 @@ pub const TomeGame = struct {
             if (self.pickCell(input.mouse_x, input.mouse_y)) |cell| {
                 const maybe_enemy = self.sim.enemyAt(cell.x, cell.y);
                 if (maybe_enemy) |idx| {
+                    self.aim_cell = null;
                     if (self.aim_talent != null or input.click) self.selected = idx;
                     if (input.click and self.aim_talent != null) _ = self.confirmAim();
-                } else if (input.click and self.aim_talent != null) {
-                    self.sim.pushLog("无效目标", .{});
+                } else if (self.aim_talent) |talent| {
+                    if (self.class == .mage and talent == 0) {
+                        self.aim_cell = cell;
+                        if (input.click) {
+                            const verdict = self.groundAimVerdict(talent, cell);
+                            if (verdict == .ok) {
+                                _ = self.confirmAim();
+                            } else {
+                                self.sim.pushLog("瞄准：{s}", .{target_mod.verdictText(verdict)});
+                            }
+                        }
+                    } else if (input.click) {
+                        self.sim.pushLog("无效目标", .{});
+                    }
                 }
             }
         }
@@ -692,12 +712,14 @@ pub const TomeGame = struct {
     pub fn cancelAim(self: *TomeGame) bool {
         if (self.aim_talent == null) return false;
         self.aim_talent = null;
+        self.aim_cell = null;
         self.sim.pushLog("取消瞄准", .{});
         return true;
     }
 
     fn clearAim(self: *TomeGame) void {
         self.aim_talent = null;
+        self.aim_cell = null;
     }
 
     /// Currently highlighted enemy. Falls back to the nearest living enemy at
@@ -727,6 +749,23 @@ pub const TomeGame = struct {
         return best orelse self.aimTarget();
     }
 
+    /// Fireball is the only ground-targeted v1 talent. Returns the same
+    /// verdict vocabulary as enemy aim so the HUD can reuse its strings.
+    fn groundAimVerdict(self: *const TomeGame, talent: usize, cell: sim_mod.GridPos) target_mod.Verdict {
+        if (!(self.class == .mage and talent == 0)) return .not_targetable;
+        if (self.sim.state != .playing) return .not_playing;
+        if (self.sim.hero.cooldowns[talent] > 0) return .cooldown;
+        if (self.sim.hero.resource < @as(f32, @floatFromInt(self.sim.talentCost(talent)))) return .no_resource;
+        if (self.sim.isBlocked(cell.x, cell.y)) return .not_targetable;
+        if (target_mod.distance(self.sim.hero.pos, cell) > 5) return .out_of_range;
+        if (!self.sim.map.lineOfSightTo(
+            .{ .x = self.sim.hero.pos.x, .y = self.sim.hero.pos.y },
+            .{ .x = cell.x, .y = cell.y },
+            null,
+        )) return .no_line_of_sight;
+        return .ok;
+    }
+
     fn beginAim(self: *TomeGame, talent: usize) void {
         const name = self.sim.talentName(talent);
         if (self.sim.hero.cooldowns[talent] > 0) {
@@ -738,6 +777,7 @@ pub const TomeGame = struct {
             return;
         }
         self.aim_talent = talent;
+        self.aim_cell = null;
         self.selected = self.bestAimTarget(talent);
         self.sim.pushLog("瞄准 {s}：空格确认", .{name});
     }
@@ -784,6 +824,19 @@ pub const TomeGame = struct {
         return used;
     }
 
+    fn castTalentAtCell(self: *TomeGame, talent: usize, cell: sim_mod.GridPos) bool {
+        const before_hero = self.sim.hero.hp;
+        var before: [sim_mod.max_enemies]f32 = undefined;
+        var bi: usize = 0;
+        while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].hp;
+        const used = self.sim.useTalentAt(talent, cell);
+        if (used) {
+            self.hero_vis.anim.cast = 1.0;
+            self.flashAfter(before_hero, before[0..bi]);
+        }
+        return used;
+    }
+
     fn releaseTalent(self: *TomeGame, talent: usize) bool {
         if (self.castTalentAt(talent, self.selected)) return true;
         self.sim.pushLog("技能不可用", .{});
@@ -794,6 +847,25 @@ pub const TomeGame = struct {
     /// the turn and resource untouched; success spends exactly one turn.
     fn confirmAim(self: *TomeGame) bool {
         const talent = self.aim_talent orelse return false;
+        if (self.aim_cell) |cell| {
+            const verdict = self.groundAimVerdict(talent, cell);
+            if (verdict != .ok) {
+                self.sim.pushLog("瞄准：{s}", .{target_mod.verdictText(verdict)});
+                return false;
+            }
+            const turn_before = self.sim.turn;
+            if (!self.castTalentAtCell(talent, cell)) {
+                self.sim.pushLog("技能不可用", .{});
+                return false;
+            }
+            self.aim_talent = null;
+            self.aim_cell = null;
+            if (self.sim.turn == turn_before) {
+                self.sim.pushLog("技能未生效", .{});
+                return false;
+            }
+            return true;
+        }
         const p = target_mod.preview(&self.sim, talent, self.aimTarget());
         if (!p.valid()) {
             self.sim.pushLog("瞄准：{s}", .{p.reason()});
@@ -1090,6 +1162,34 @@ pub const TomeGame = struct {
         const talent = self.aim_talent orelse return;
         const ring_index = self.models.indexOf("rune_circle") orelse return;
         const ring_model = self.models.at(ring_index);
+        if (self.aim_cell) |cell| {
+            const verdict = self.groundAimVerdict(talent, cell);
+            const accent: u32 = if (verdict == .ok) color.pack(255, 168, 74) else color.pack(220, 70, 50);
+            self.renderer.drawModel(ring_model, null, math.Mat4.compose(tilePos(cell.x, cell.y).add(math.Vec3.init(0, 0.06, 0)), self.time * 0.9, 0, 0, 0.62), .{
+                .tint = accent,
+                .boost = 1.0,
+                .additive = true,
+                .alpha = 0.95,
+            });
+            var dy: i32 = -1;
+            while (dy <= 1) : (dy += 1) {
+                var dx: i32 = -1;
+                while (dx <= 1) : (dx += 1) {
+                    if (@abs(dx) + @abs(dy) > 1) continue;
+                    const x = cell.x + dx;
+                    const y = cell.y + dy;
+                    if (x < 0 or y < 0 or x >= sim_mod.grid_w or y >= sim_mod.grid_h) continue;
+                    const pos = tilePos(x, y).add(math.Vec3.init(0, 0.045, 0));
+                    self.renderer.drawModel(ring_model, null, math.Mat4.compose(pos, -self.time * 0.35, 0, 0, 0.40), .{
+                        .tint = accent,
+                        .boost = 0.8,
+                        .additive = true,
+                        .alpha = 0.55,
+                    });
+                }
+            }
+            return;
+        }
         const p = target_mod.preview(&self.sim, talent, self.aimTarget());
         const accent: u32 = if (p.valid()) color.pack(110, 235, 200) else color.pack(255, 84, 66);
         if (p.target) |ti| {
@@ -1226,19 +1326,34 @@ pub const TomeGame = struct {
         }
         self.hud_state.aim = .{};
         if (self.aim_talent) |talent| {
-            const p = target_mod.preview(&self.sim, talent, target);
-            var aim = hud.AimInfo{
-                .active = true,
-                .valid = p.valid(),
-                .talent_index = talent,
-                .talent = self.sim.talentName(talent),
-                .distance = p.distance,
-                .damage = p.damageInt(),
-                .aoe_radius = p.spec.aoe_radius,
-                .reason = if (p.valid()) "" else p.reason(),
-            };
-            if (p.target) |ti| aim.target = self.sim.enemies[ti].name;
-            self.hud_state.aim = aim;
+            if (self.aim_cell) |cell| {
+                const verdict = self.groundAimVerdict(talent, cell);
+                self.hud_state.aim = .{
+                    .active = true,
+                    .valid = verdict == .ok,
+                    .talent_index = talent,
+                    .talent = self.sim.talentName(talent),
+                    .target = "地面",
+                    .distance = target_mod.distance(self.sim.hero.pos, cell),
+                    .damage = 0,
+                    .aoe_radius = 1,
+                    .reason = if (verdict == .ok) "" else target_mod.verdictText(verdict),
+                };
+            } else {
+                const p = target_mod.preview(&self.sim, talent, target);
+                var aim = hud.AimInfo{
+                    .active = true,
+                    .valid = p.valid(),
+                    .talent_index = talent,
+                    .talent = self.sim.talentName(talent),
+                    .distance = p.distance,
+                    .damage = p.damageInt(),
+                    .aoe_radius = p.spec.aoe_radius,
+                    .reason = if (p.valid()) "" else p.reason(),
+                };
+                if (p.target) |ti| aim.target = self.sim.enemies[ti].name;
+                self.hud_state.aim = aim;
+            }
         }
         const attrs = [_]i32{
             @intFromFloat(self.sim.hero.eff_stats[0]),
@@ -1619,4 +1734,34 @@ test "tome game: mouse click confirms an aimed enemy" {
     g.update(.{ .mouse_x = p.x, .mouse_y = p.y, .click = true }, 1.0 / 60.0);
     try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(turn + 1, g.sim.turn);
+}
+
+test "tome game: mouse click casts fireball on a ground cell" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 480, 270, .mage, 12345);
+    defer g.destroy();
+    g.sim.enemy_count = 0;
+    var target: ?sim_mod.GridPos = null;
+    var y: i32 = 0;
+    while (y < sim_mod.grid_h and target == null) : (y += 1) {
+        var x: i32 = 0;
+        while (x < sim_mod.grid_w) : (x += 1) {
+            const cell = sim_mod.GridPos{ .x = x, .y = y };
+            const d = @abs(x - g.sim.hero.pos.x) + @abs(y - g.sim.hero.pos.y);
+            if (d == 0 or d > 5 or g.sim.isBlocked(x, y)) continue;
+            if (!g.sim.map.lineOfSightTo(.{ .x = g.sim.hero.pos.x, .y = g.sim.hero.pos.y }, .{ .x = x, .y = y }, null)) continue;
+            target = cell;
+            break;
+        }
+    }
+    const cell = target orelse return error.SkipZigTest;
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expect(g.isAiming());
+    const world = math.Vec3.init(@as(f32, @floatFromInt(cell.x)) - 6.0, 0, @as(f32, @floatFromInt(cell.y)) - 6.0);
+    const p = g.camera.project(world, 480, 270) orelse return error.SkipZigTest;
+    const turn = g.sim.turn;
+    g.update(.{ .mouse_x = p.x, .mouse_y = p.y, .click = true }, 1.0 / 60.0);
+    try std.testing.expect(!g.isAiming());
+    try std.testing.expectEqual(turn + 1, g.sim.turn);
+    try std.testing.expect(g.sim.hero.cooldowns[0] > 0);
 }
