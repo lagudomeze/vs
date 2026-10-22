@@ -271,6 +271,7 @@ pub fn buildDungeon(
     blocked: []const bool,
     width: usize,
     height: usize,
+    stairs_cell: ?[2]i32,
 ) !Mesh {
     std.debug.assert(blocked.len == width * height);
     var b = Builder{ .gpa = gpa };
@@ -296,9 +297,12 @@ pub fn buildDungeon(
                 const h = color.hashU32(@as(u32, @intCast(idx)) * 97 + 13);
                 const top = stoneColor(@intCast(h % 1000 + 17));
                 const side = color.pack(74, 79, 92);
-                try b.box(.{ .x = x, .y = 0.42, .z = z }, math.Vec3.init(0.5, 0.42, 0.5), top, side, color.pack(45, 52, 68));
-                try b.box(.{ .x = x, .y = 0.86, .z = z }, math.Vec3.init(0.5, 0.05, 0.5), color.pack(139, 147, 165), side, side);
+                try b.box(.{ .x = x, .y = 0.30, .z = z }, math.Vec3.init(0.5, 0.30, 0.5), top, side, color.pack(45, 52, 68));
+                try b.box(.{ .x = x, .y = 0.62, .z = z }, math.Vec3.init(0.5, 0.04, 0.5), color.pack(112, 120, 138), side, side);
             } else {
+                if (stairs_cell) |sc| {
+                    if (col == @as(usize, @intCast(sc[0])) and row == @as(usize, @intCast(sc[1]))) continue;
+                }
                 const c = stoneColor(@as(u32, @intCast(idx)) * 131 + 29);
                 try b.quad(
                     math.Vec3.init(x - 0.5, 0.002, z - 0.5),
@@ -320,6 +324,33 @@ pub fn buildDungeon(
             }
         }
     }
+    // grid seams: make the 13x13 cells readable under the 3D models
+    const gx0: f32 = -@as(f32, @floatFromInt(width)) * 0.5;
+    const gz0: f32 = -@as(f32, @floatFromInt(height)) * 0.5;
+    var gi: usize = 0;
+    while (gi <= width) : (gi += 1) {
+        const gx = gx0 + @as(f32, @floatFromInt(gi));
+        try b.quad(
+            math.Vec3.init(gx - 0.009, 0.007, gz0),
+            math.Vec3.init(gx - 0.009, 0.007, gz0 + @as(f32, @floatFromInt(height))),
+            math.Vec3.init(gx + 0.009, 0.007, gz0 + @as(f32, @floatFromInt(height))),
+            math.Vec3.init(gx + 0.009, 0.007, gz0),
+            color.pack(43, 50, 66),
+            math.Vec3.init(0, 1, 0),
+        );
+    }
+    gi = 0;
+    while (gi <= height) : (gi += 1) {
+        const gz = gz0 + @as(f32, @floatFromInt(gi));
+        try b.quad(
+            math.Vec3.init(gx0, 0.007, gz - 0.009),
+            math.Vec3.init(gx0, 0.007, gz + 0.009),
+            math.Vec3.init(gx0 + @as(f32, @floatFromInt(width)), 0.007, gz + 0.009),
+            math.Vec3.init(gx0 + @as(f32, @floatFromInt(width)), 0.007, gz - 0.009),
+            color.pack(43, 50, 66),
+            math.Vec3.init(0, 1, 0),
+        );
+    }
     return b.finish();
 }
 
@@ -332,7 +363,7 @@ test "dungeon mesh builds" {
         blocked[i * 13] = true;
         blocked[i * 13 + 12] = true;
     }
-    const mesh = try buildDungeon(gpa, &blocked, 13, 13);
+    const mesh = try buildDungeon(gpa, &blocked, 13, 13, null);
     defer gpa.free(mesh.verts);
     defer gpa.free(mesh.tris);
     try std.testing.expect(mesh.tris.len > 300);

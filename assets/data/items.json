@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "iron_sword",
+      "name": "铁剑",
+      "slot": "main_hand",
+      "quality": "common",
+      "classes": ["warrior"],
+      "mods": [
+        { "stat": "attack", "flat": 6 },
+        { "stat": "strength", "flat": 2 }
+      ],
+      "description": "狂战士的制式铁剑：+6 攻击，+2 力量。"
+    },
+    {
+      "id": "staff",
+      "name": "法杖",
+      "slot": "main_hand",
+      "quality": "common",
+      "classes": ["mage"],
+      "mods": [
+        { "stat": "attack", "flat": 5 },
+        { "stat": "magic", "flat": 3 }
+      ],
+      "description": "元素法师的橡木法杖：+5 攻击，+3 魔力。"
+    },
+    {
+      "id": "leather_armor",
+      "name": "皮甲",
+      "slot": "body",
+      "quality": "common",
+      "mods": [
+        { "stat": "hp_max", "flat": 20 },
+        { "stat": "armor", "flat": 3 }
+      ],
+      "description": "轻便的皮质护甲：+20 生命上限，+3 护甲。"
+    },
+    {
+      "id": "mithril_armor",
+      "name": "秘银甲",
+      "slot": "body",
+      "quality": "rare",
+      "mods": [
+        { "stat": "hp_max", "flat": 35 },
+        { "stat": "armor", "flat": 6 },
+        { "stat": "will", "flat": 2 }
+      ],
+      "description": "秘银环甲：+35 生命上限，+6 护甲，+2 意志。"
+    },
+    {
+      "id": "tiger_charm",
+      "name": "猛虎护符",
+      "slot": "trinket",
+      "quality": "rare",
+      "classes": ["warrior"],
+      "mods": [
+        { "stat": "strength", "flat": 4 },
+        { "stat": "crit", "flat": 0.03 }
+      ],
+      "description": "虎牙护符：+4 力量，+3% 暴击。"
+    },
+    {
+      "id": "hourglass",
+      "name": "时光沙漏",
+      "slot": "trinket",
+      "quality": "rare",
+      "classes": ["mage"],
+      "mods": [
+        { "stat": "will", "flat": 5 },
+        { "stat": "resource_max", "flat": 10 }
+      ],
+      "description": "封存时间的沙漏：+5 意志，+10 法力上限。"
+    },
+    {
+      "id": "healing_potion",
+      "name": "生命瓶",
+      "quality": "common",
+      "weight": 0.8,
+      "use": { "heal": 40 },
+      "description": "恢复 40 生命；v1 暂不做使用 UI。"
+    },
+    {
+      "id": "gear_sigil",
+      "name": "齿轮印记",
+      "slot": "trinket",
+      "quality": "epic",
+      "classes": ["chronomancer"],
+      "mods": [
+        { "stat": "perception", "flat": 3 },
+        { "stat": "magic", "flat": 2 },
+        { "stat": "crit", "flat": 0.05 }
+      ],
+      "description": "时空法师的齿轮印记：+3 感知，+2 魔力，+5% 暴击。"
+    }
+  ]
+}

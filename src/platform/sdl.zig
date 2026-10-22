@@ -11,6 +11,15 @@ pub const FrameInput = struct {
     zoom_delta: f32 = 0,
     toggle_hero: bool = false,
     cast: bool = false,
+    wait: bool = false,
+    talent_1: bool = false,
+    talent_2: bool = false,
+    talent_3: bool = false,
+    character: bool = false,
+    step_n: bool = false,
+    step_s: bool = false,
+    step_e: bool = false,
+    step_w: bool = false,
     interrupt: bool = false,
     inventory: bool = false,
     reset: bool = false,
@@ -86,7 +95,18 @@ pub const Platform = struct {
                     const sc = ev.key.scancode;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_ESCAPE))) input.quit = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_TAB))) input.toggle_hero = true;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_SPACE))) input.cast = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_SPACE))) {
+                        input.cast = true;
+                        input.wait = true;
+                    }
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_W))) input.step_n = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_S))) input.step_s = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_D))) input.step_e = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_A))) input.step_w = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_1))) input.talent_1 = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_2))) input.talent_2 = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_3))) input.talent_3 = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_C))) input.character = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F))) input.interrupt = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_I))) input.inventory = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_R))) input.reset = true;

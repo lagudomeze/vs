@@ -6,8 +6,10 @@ assets/models/*.obj and the brazier / mote / rune circle props are
 procedurally authored for VX by tools/characters.py and
 tools/bake_assets.py. They belong to this project.
 
-Skeleton, wraith, golem and abyss guard meshes share the same
-procedural humanoid rig as the heroes.
+Skeleton, wraith, golem, abyss guard and the elite skeleton /
+elite wraith variants share the same procedural humanoid rig as
+the heroes. The threat ring, dungeon floor/wall tiles, stairs,
+chest and traps are generated flat-colour props.
 
 ## Kenney 3D kit
 
