@@ -263,7 +263,7 @@ pub const Sim = struct {
                 .alive = e.alive,
             },
             .{ .x = self.hero.pos.x, .y = self.hero.pos.y },
-            self.turn,
+            self.turn +| 1,
         );
     }
 
@@ -945,9 +945,9 @@ test "tome sim: intent preview is read-only" {
     try std.testing.expectEqual(turn, s.turn);
 }
 
-test "tome sim: boss intent telegraphs its AOE on turn three" {
+test "tome sim: boss intent telegraphs its AOE on the next enemy phase" {
     var s = Sim.init(29, .warrior);
-    s.turn = 3;
+    s.turn = 2; // the player action below advances to enemy phase 3
     s.enemy_count = 1;
     s.enemies[0] = .{
         .kind = 5,
@@ -967,4 +967,9 @@ test "tome sim: boss intent telegraphs its AOE on turn three" {
     try std.testing.expect(intent.target.eql(.{ .x = s.hero.pos.x, .y = s.hero.pos.y }));
     try std.testing.expectEqual(@as(f32, 2.2), intent.aoe_radius);
     try std.testing.expectEqual(@as(u8, 1), intent.telegraph_turns);
+
+    // The phase after this one is turn 4, back to the normal melee rotation.
+    s.turn = 3;
+    const next = s.intentFor(0) orelse return error.MissingIntent;
+    try std.testing.expectEqual(intent_mod.IntentKind.melee, next.kind);
 }
