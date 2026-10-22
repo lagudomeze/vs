@@ -140,12 +140,13 @@ docs/           TOME_V1 / SAVE / ART_PASS / UX_REVIEW_TOME / screenshots
 
 ## 验证
 
-- zig build / zig build test：13/13 steps、126/126 tests。
+- zig build / zig build test：13/13 steps、127/127 tests。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/tome_select.png`。
 - 职业菜单选择后 seed 重新生成并重置战利品 RNG；R 重开保持当前职业和 seed。
 - 自动跑局（seed 12345）：三职业均可通关；狂战士约第 100 回合剩 66 HP，元素法师第 75 回合、时空法师第 84 回合。
-- QA 批量（100 seed × 3 职业，纯逻辑 bot）：通关率约 61%；狂战士 47%、元素法师 77%、时空法师 59%，0 超时/不变量违规。
+- QA 批量（100 seed × 3 职业，纯逻辑 bot）：通关率约 64%；狂战士 45%、元素法师 82%、时空法师 66%，0 超时/不变量违规。
 - Boss 深渊斩每 3 个敌方回合预警一次，半径 0.9 格；走出标记格即可躲开；Boss 存活时第 3 层楼梯封印。
+- 速度机制已启用：精英幽魂 150（每 2 回合多一次行动），石魔像 70（每 2 回合跳过行动）。
 - 天赋瞄准/确认、F5/F9 存档读档均有单元测试；存档格式见 [docs/SAVE.md](docs/SAVE.md)。
 - 窗口模式：480×270、3× 最近邻、SDL 输入/截图正常。
 

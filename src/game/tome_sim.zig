@@ -161,9 +161,9 @@ pub const EnemyDef = struct {
 const enemy_defs = [_]EnemyDef{
     .{ .name = "骷髅兵", .hp = 70, .attack = 8, .armor = 4, .speed = 100, .range = 1, .xp = 20 },
     .{ .name = "幽魂", .hp = 55, .attack = 7, .armor = 1, .speed = 110, .range = 3, .xp = 25 },
-    .{ .name = "石魔像", .hp = 150, .attack = 12, .armor = 12, .speed = 80, .range = 1, .xp = 40 },
+    .{ .name = "石魔像", .hp = 150, .attack = 12, .armor = 12, .speed = 70, .range = 1, .xp = 40 },
     .{ .name = "精英骷髅", .hp = 100, .attack = 11, .armor = 7, .speed = 110, .range = 1, .xp = 50 },
-    .{ .name = "精英幽魂", .hp = 85, .attack = 10, .armor = 2, .speed = 120, .range = 4, .xp = 50 },
+    .{ .name = "精英幽魂", .hp = 85, .attack = 10, .armor = 2, .speed = 150, .range = 4, .xp = 50 },
     .{ .name = "深渊守卫", .hp = 420, .attack = 16, .armor = 15, .speed = 90, .range = 1, .xp = 200 },
 };
 
@@ -1018,6 +1018,17 @@ test "tome sim: boss AOE resolves on the telegraphed turn" {
     const hp = s.hero.hp;
     _ = s.wait();
     try std.testing.expect(s.hero.hp < hp);
+}
+
+test "tome sim: enemy speeds cover the extra/skip bands" {
+    var fast = false;
+    var slow = false;
+    for (enemy_defs) |def| {
+        if (def.speed >= 150) fast = true;
+        if (def.speed <= 75) slow = true;
+    }
+    try std.testing.expect(fast);
+    try std.testing.expect(slow);
 }
 
 test "tome sim: boss seals the stairs until defeated" {
