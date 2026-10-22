@@ -20,6 +20,7 @@ pub const content = @import("game/content.zig");
 pub const dungeon = @import("game/dungeon.zig");
 pub const tome_sim = @import("game/tome_sim.zig");
 pub const intent = @import("game/intent.zig");
+pub const tome_regression = @import("qa2/tome_regression.zig");
 pub const tome_hud = @import("game/tome_hud.zig");
 pub const tome_game = @import("game/tome_game.zig");
 pub const TomeGame = @import("game/tome_game.zig").TomeGame;
