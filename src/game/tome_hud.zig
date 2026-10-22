@@ -167,20 +167,20 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     }
 
     // top-left: class / HP / resource / turn / floor
-    backPanel(r, 6, 5, 190, 60);
+    backPanel(r, 6, 5, 170, 58);
     var buf: [64]u8 = undefined;
     r.drawText(10, 8, state.class_name, palette.gold, 1, false);
     const lv = fmt(&buf, "{d}级  XP {d}/{d}", .{ state.level, state.xp, state.xp_next });
-    r.drawText(10, 22, lv, palette.muted, 1, false);
-    bar(r, 10, 34, 180, 7, if (state.hp_max > 0) state.hp / state.hp_max else 0, palette.health_light);
+    r.drawText(10, 21, lv, palette.muted, 1, false);
+    bar(r, 10, 32, 160, 7, if (state.hp_max > 0) state.hp / state.hp_max else 0, palette.health_light);
     const hp = fmt(&buf, "{d:.0}/{d:.0}", .{ state.hp, state.hp_max });
-    r.drawText(14, 35, hp, palette.cream, 1, false);
-    bar(r, 10, 45, 180, 5, if (state.resource_max > 0) state.resource / state.resource_max else 0, palette.cyan);
+    r.drawText(14, 33, hp, palette.cream, 1, false);
+    bar(r, 10, 43, 160, 5, if (state.resource_max > 0) state.resource / state.resource_max else 0, palette.cyan);
     const res = fmt(&buf, "{s} {d:.0}/{d:.0}", .{ state.resource_label, state.resource, state.resource_max });
-    r.drawText(14, 52, res, palette.muted, 1, false);
+    r.drawText(14, 49, res, palette.muted, 1, false);
 
-    // top-right: floor / enemies / stairs
-    backPanel(r, w - 160, 5, 154, 48);
+    // top-right: floor / enemies / stairs / turn
+    backPanel(r, w - 154, 5, 154, 60);
     const floor = fmt(&buf, "第 {d}/{d} 层", .{ state.floor, state.floors });
     r.drawText(w - 154, 9, floor, palette.gold_light, 1, false);
     const enemies = fmt(&buf, "敌人 {d}", .{state.enemies_left});
@@ -189,6 +189,8 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         const stairs = fmt(&buf, "{s} {d}", .{ state.stairs_hint, state.stairs_dist });
         r.drawText(w - 154, 37, stairs, palette.muted, 1, false);
     }
+    const turn = fmt(&buf, "玩家回合 {d}", .{state.turn});
+    r.drawText(w - 154, 51, turn, palette.gold_light, 1, false);
     if (state.has_minimap) {
         const mx0 = w - 40;
         const my0 = 8;
@@ -211,44 +213,31 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         r.strokeRect(mx0, my0, 26, 26, palette.border);
     }
 
-    // top-centre target
-    if (state.target_name.len > 0) {
-        backPanel(r, 200, 5, 114, 48);
-        r.drawText(204, 9, state.target_name, palette.red, 1, false);
-        bar(r, 204, 23, 106, 5, if (state.target_hp_max > 0) state.target_hp / state.target_hp_max else 0, palette.red);
-        const range = fmt(&buf, "距离 {d}", .{state.target_range});
-        r.drawText(204, 33, range, palette.muted, 1, false);
-    }
-
     // combat log
     if (state.log_count > 0) {
-        backPanel(r, 6, 122, 190, 54);
-        for (state.log_lines, 0..) |line, i| {
-            if (i >= state.log_count) break;
-            r.drawText(10, 126 + @as(i32, @intCast(i)) * 12, line, if (i + 1 == state.log_count) palette.cream else palette.muted, 1, false);
+        backPanel(r, 6, 122, 160, 40);
+        var shown: usize = 0;
+        var li = state.log_count - @min(state.log_count, 3);
+        while (li < state.log_count) : (li += 1) {
+            const line = state.log_lines[li];
+            r.drawText(10, 126 + @as(i32, @intCast(shown)) * 11, line, if (li + 1 == state.log_count) palette.cream else palette.muted, 1, false);
+            shown += 1;
         }
     }
 
-    // one-line talent effects, aligned under the three hotbar cards
-    backPanel(r, 6, h - 92, 300, 20);
-    for (state.talent_descs, 0..) |desc, i| {
-        const dx: i32 = 10 + @as(i32, @intCast(i)) * 97;
-        r.drawText(dx, h - 89, desc, palette.muted, 1, false);
-    }
-
     // hotbar: name, cost/base cooldown, then live availability
-    backPanel(r, 6, h - 70, 300, 64);
-    r.drawText(10, h - 66, talent_label, palette.gold, 1, false);
+    backPanel(r, 6, h - 60, 270, 54);
+    r.drawText(10, h - 56, talent_label, palette.gold, 1, false);
     for (state.hotbar, 0..) |slot, i| {
-        const sx: i32 = 10 + @as(i32, @intCast(i)) * 97;
-        const sy: i32 = h - 52;
-        r.fillRect(sx, sy, 94, 42, palette.deep);
-        r.strokeRect(sx, sy, 94, 42, if (slot.ready) palette.border else palette.muted);
+        const sx: i32 = 10 + @as(i32, @intCast(i)) * 87;
+        const sy: i32 = h - 45;
+        r.fillRect(sx, sy, 84, 38, palette.deep);
+        r.strokeRect(sx, sy, 84, 38, if (slot.ready) palette.border else palette.muted);
         const key = fmt(&buf, "{d}", .{i + 1});
         r.drawText(sx + 4, sy + 3, key, palette.gold, 1, false);
         r.drawText(sx + 18, sy + 3, slot.name, if (slot.ready) palette.cream else palette.muted, 1, false);
         const cost = fmt(&buf, "消耗{d} 冷却{d}", .{ slot.cost, slot.cooldown_max });
-        r.drawText(sx + 4, sy + 16, cost, palette.muted, 1, false);
+        r.drawText(sx + 4, sy + 15, cost, palette.muted, 1, false);
         var status_buf: [24]u8 = undefined;
         var status: []const u8 = "可用";
         var status_color: u32 = palette.cyan_light;
@@ -262,15 +251,8 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
             status = "缺资源";
             status_color = palette.red;
         }
-        r.drawText(sx + 4, sy + 29, status, status_color, 1, false);
+        r.drawText(sx + 4, sy + 26, status, status_color, 1, false);
     }
-
-    // bottom-right controls
-    backPanel(r, w - 160, h - 60, 154, 54);
-    r.drawText(w - 154, h - 56, "I 背包   C 角色", palette.cream, 1, false);
-    r.drawText(w - 154, h - 42, "Q/E 视角  TAB 目标", palette.muted, 1, false);
-    const turn = fmt(&buf, "R 重开  回合 {d}", .{state.turn});
-    r.drawText(w - 154, h - 26, turn, palette.gold_light, 1, false);
 
     // modal character / inventory
     if (state.panel != .none) {

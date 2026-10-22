@@ -442,7 +442,7 @@ pub const TomeGame = struct {
                 var before: [sim_mod.max_enemies]f32 = undefined;
                 var bi: usize = 0;
                 while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].hp;
-                _ = self.sim.move(input.step_x, input.step_y);
+                if (!self.sim.move(input.step_x, input.step_y)) self.sim.pushLog("前方被挡住", .{});
                 self.flashAfter(before_hero, before[0..self.sim.enemy_count]);
                 if (input.step_x != 0 or input.step_y != 0) {
                     self.hero_vis.target_yaw = std.math.atan2(@as(f32, @floatFromInt(input.step_x)), @as(f32, @floatFromInt(input.step_y)));
@@ -458,6 +458,8 @@ pub const TomeGame = struct {
                 if (self.sim.useTalentOn(idx, self.selected)) {
                     self.hero_vis.anim.cast = 1.0;
                     self.flashAfter(before_hero, before[0..self.sim.enemy_count]);
+                } else {
+                    self.sim.pushLog("技能不可用", .{});
                 }
             }
         }
@@ -698,7 +700,7 @@ pub const TomeGame = struct {
             const x: i32 = @intFromFloat(p.x);
             const y: i32 = @intFromFloat(p.y);
             if (x < -30 or x > w + 30 or y < -20 or y > h + 20) continue;
-            const bw: i32 = 22;
+            const bw: i32 = 18 + @as(i32, @intFromFloat(@min(18.0, e.hp_max / 22.0)));
             self.renderer.fillRect(x - @divTrunc(bw, 2), y, bw, 3, palette.deep);
             const frac = if (e.hp_max > 0) std.math.clamp(e.hp / e.hp_max, 0, 1) else 0;
             const fill: i32 = @intFromFloat(@as(f32, @floatFromInt(bw - 2)) * frac);
@@ -709,7 +711,7 @@ pub const TomeGame = struct {
                 const label = switch (intent.kind) {
                     .aoe => "深渊斩",
                     .melee, .ranged => std.fmt.bufPrint(&ibuf, "-{d:.0}", .{intent.damage_preview}) catch "",
-                    .chase => "追",
+                    .chase => "!",
                     .wait => "晕",
                 };
                 if (label.len > 0) self.renderer.drawText(x - @divTrunc(renderer.Renderer.textWidth(label, 1), 2), y + 5, label, if (intent.kind == .aoe) palette.red else palette.gold_light, 1, true);
