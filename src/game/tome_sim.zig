@@ -519,6 +519,13 @@ pub const Sim = struct {
             return;
         }
         if (e.slow_turns > 0) e.slow_turns -= 1;
+        if (e.kind == intent_mod.boss_kind and intent_mod.bossAoeDue(self.turn)) {
+            const raw = e.attack * intent_mod.boss_aoe_damage_scale * (if (e.slow_turns > 0) intent_mod.slow_damage_scale else 1.0);
+            const dmg = raw * (0.15 + 0.85 * 50 / (50 + self.hero.armor));
+            self.hero.hp = @max(0, self.hero.hp - dmg);
+            self.pushLog("深渊守卫 深渊斩 -{d:.0}", .{dmg});
+            return;
+        }
         const d = dist(e.pos, self.hero.pos);
         const los = self.map.lineOfSightTo(
             .{ .x = e.pos.x, .y = e.pos.y },
