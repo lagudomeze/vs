@@ -14,6 +14,8 @@ pub const GearSave = struct {
     len: u8 = 0,
     items: [items.max_inventory]items.ItemId = @splat(0),
     equipped: [items.slot_count]?items.ItemId = @splat(null),
+    /// TomeGame.loot_rng state; zero for an old save that predates it.
+    loot_rng: [4]u64 = @splat(0),
 };
 
 pub const GearError = error{
@@ -33,6 +35,19 @@ pub fn capture(inv: *const items.Inventory) GearSave {
     return save;
 }
 
+pub fn captureWithRng(inv: *const items.Inventory, rng: *const std.Random.DefaultPrng) GearSave {
+    var save = capture(inv);
+    save.loot_rng = rng.s;
+    return save;
+}
+
+pub fn rngNonZero(state: [4]u64) bool {
+    for (state) |part| {
+        if (part != 0) return true;
+    }
+    return false;
+}
+
 pub fn restore(save: *const GearSave, inv: *items.Inventory) GearError!void {
     if (save.len > items.max_inventory) return error.InvalidLength;
     inv.* = items.Inventory.init();
@@ -42,7 +57,11 @@ pub fn restore(save: *const GearSave, inv: *items.Inventory) GearError!void {
 }
 
 pub fn toAlloc(alloc: std.mem.Allocator, inv: *const items.Inventory) ![]u8 {
-    const save = capture(inv);
+    return toAllocWithRng(alloc, inv, null);
+}
+
+pub fn toAllocWithRng(alloc: std.mem.Allocator, inv: *const items.Inventory, rng: ?*const std.Random.DefaultPrng) ![]u8 {
+    const save = if (rng) |r| captureWithRng(inv, r) else capture(inv);
     return std.json.Stringify.valueAlloc(alloc, save, .{});
 }
 
@@ -62,7 +81,11 @@ pub fn fromSlice(alloc: std.mem.Allocator, bytes: []const u8) (GearError || std.
 
 /// Write the gear half of a run save. Parent directories must exist.
 pub fn saveFile(io: std.Io, alloc: std.mem.Allocator, path: []const u8, inv: *const items.Inventory) !void {
-    const bytes = try toAlloc(alloc, inv);
+    try saveFileWithRng(io, alloc, path, inv, null);
+}
+
+pub fn saveFileWithRng(io: std.Io, alloc: std.mem.Allocator, path: []const u8, inv: *const items.Inventory, rng: ?*const std.Random.DefaultPrng) !void {
+    const bytes = try toAllocWithRng(alloc, inv, rng);
     defer alloc.free(bytes);
     const file = if (std.fs.path.isAbsolute(path))
         try std.Io.Dir.createFileAbsolute(io, path, .{})
