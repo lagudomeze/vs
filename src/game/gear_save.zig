@@ -88,12 +88,13 @@ pub fn saveFile(io: std.Io, alloc: std.mem.Allocator, path: []const u8, inv: *co
 pub fn saveFileWithRng(io: std.Io, alloc: std.mem.Allocator, path: []const u8, inv: *const items.Inventory, rng: ?*const std.Random.DefaultPrng) !void {
     const bytes = try toAllocWithRng(alloc, inv, rng);
     defer alloc.free(bytes);
-    const file = if (std.fs.path.isAbsolute(path))
-        try std.Io.Dir.createFileAbsolute(io, path, .{})
+    var atomic = if (std.fs.path.isAbsolute(path))
+        try std.Io.Dir.cwd().createFileAtomic(io, path, .{ .replace = true })
     else
-        try std.Io.Dir.cwd().createFile(io, path, .{});
-    defer file.close(io);
-    try file.writeStreamingAll(io, bytes);
+        try std.Io.Dir.cwd().createFileAtomic(io, path, .{ .replace = true });
+    defer atomic.deinit(io);
+    try atomic.file.writeStreamingAll(io, bytes);
+    try atomic.replace(io);
 }
 
 /// Read and validate the gear half. Bad files are left untouched on disk.

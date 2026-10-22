@@ -647,12 +647,13 @@ pub fn saveFile(io: std.Io, alloc: std.mem.Allocator, path: []const u8, sim: *co
     const bytes = try saveAlloc(alloc, sim);
     defer alloc.free(bytes);
 
-    const file = if (std.fs.path.isAbsolute(path))
-        try std.Io.Dir.createFileAbsolute(io, path, .{})
+    var atomic = if (std.fs.path.isAbsolute(path))
+        try std.Io.Dir.cwd().createFileAtomic(io, path, .{ .replace = true })
     else
-        try std.Io.Dir.cwd().createFile(io, path, .{});
-    defer file.close(io);
-    try file.writeStreamingAll(io, bytes);
+        try std.Io.Dir.cwd().createFileAtomic(io, path, .{ .replace = true });
+    defer atomic.deinit(io);
+    try atomic.file.writeStreamingAll(io, bytes);
+    try atomic.replace(io);
 }
 
 /// Read and validate a save file. The file is opened read-only; a bad save is
@@ -1018,6 +1019,28 @@ test "save file: round-trip and a corrupt file is rejected without overwriting" 
     const after = try tmp.dir.readFileAlloc(io, "run.json", alloc, .limited(max_save_bytes));
     defer alloc.free(after);
     try testing.expectEqualStrings(before, after);
+}
+
+test "save file: atomic overwrite replaces an existing valid save" {
+    const alloc = testing.allocator;
+    const io = testing.io;
+    var tmp = testing.tmpDir(.{});
+    defer tmp.cleanup();
+
+    const save_path = try std.fs.path.join(alloc, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "run.json" });
+    defer alloc.free(save_path);
+
+    var first = Sim.init(5150, .warrior);
+    try saveFile(io, alloc, save_path, &first);
+
+    var second = Sim.init(6161, .mage);
+    drive(&second, 20);
+    try saveFile(io, alloc, save_path, &second);
+
+    var loaded = try loadFile(io, alloc, save_path);
+    try testing.expectEqual(second.seed, loaded.seed);
+    try testing.expectEqual(second.class, loaded.class);
+    try expectSameRun(&second, &loaded);
 }
 
 test "save: enemy name table matches the simulation" {

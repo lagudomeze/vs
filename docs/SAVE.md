@@ -9,12 +9,12 @@
 - `saves/tome-run.json`：`tome_sim.Sim` 的整局运行状态（RunState，含 xoshiro RNG）。
 - `saves/tome-gear.json`：`TomeGame.inventory` 的背包与装备槽（`gear_save.zig`，format `vx-tome-gear`）。
 
-渲染/相机/当前镜头不保存；掉落 RNG 不保存，读档后用 seed+turn 重新初始化。
+渲染/相机/当前镜头不保存；掉落 RNG 存在 gear 侧车（loot_rng），读档后从同一位置继续。
 
 | 分类 | 字段 |
 | --- | --- |
 | 顶层 | format、version、seed、class、floor、floors、turn、state、kills、chest_loot、kill_loot、rng |
-| hero | pos、last_pos、stats(6)、hp、hp_max、resource、resource_max、attack、armor、crit、speed、res_per_turn、level、xp、cooldowns(3)、buff_turns、buff_pct、eff_stats(6) |
+| hero | pos、last_pos、stats(6)、hp、hp_max、resource、resource_max、attack、armor、crit、speed、res_per_turn、level、xp、pending_points、cooldowns(3)、buff_turns、buff_pct、eff_stats(6) |
 | enemies | kind、name、pos、hp、hp_max、attack、armor、speed、range、xp、stun_turns、slow_turns、alive |
 | map | blocked(169)、entrance、stairs、chests(4)/chest_alive(4)、traps(4)/trap_alive(4)、aoe_target、aoe_armed |
 | 日志 | 最近 6 条，按从旧到新保存 |
@@ -56,7 +56,7 @@ var from_disk = try save.loadFile(io, alloc, "saves/tome.json");
 ## 可复现性
 
 - 存档记录 **xoshiro256 的完整内部状态**（4×u64），读档后 `Sim.rng` 从同一位置继续。
-- 测试覆盖：读档后原局与读档局继续跑 40 步，逐字段一致（含暴击/伤害、敌人移动、掉落计数、日志）。
+- 测试覆盖：读档后原局与读档局继续跑 40 步，逐字段一致（含暴击/伤害、敌人移动、掉落计数、日志）；pending_points 显式 round-trip。
 - 如果未来 Zig 更换 `std.Random.DefaultPrng`，需要同步升级 `save_version`；也可以退化为只存 seed+turn 并在读档时 `init(seed ^ turn)`，但那样无法保证暴击序列可复现。
 
 ## 导入后的地图
@@ -71,6 +71,7 @@ var from_disk = try save.loadFile(io, alloc, "saves/tome.json");
 
 - **F5**：`saves/tome-run.json` + `saves/tome-gear.json`；目录不存在会自动创建；失败写日志，不打断当前局。
 - **F9**：连按两次确认后，先完整读入并校验两半，再替换当前局；坏档/未知物品/版本不符/空 gear 对象只写日志并保留当前局。读档后重建 mesh、视觉、HUD，清空瞄准。
+- 存档槽位尚未实现；当前固定单槽。
 - 职业菜单底部提示 **F9x2 读档**；没有 gear 文件时按空背包读取，装备 sidecar 缺失不会阻断 Sim。
 
 实现入口：`TomeGame.saveRun(io, sim_path, gear_path)` / `TomeGame.loadRun(...)`；`src/game/gear_save.zig` 有 `saveFile/loadFile`。
