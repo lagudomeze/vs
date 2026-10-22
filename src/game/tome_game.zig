@@ -11,6 +11,7 @@ const arena_mesh = @import("../engine/arena_mesh.zig");
 const renderer = @import("../engine/renderer.zig");
 const assets = @import("assets");
 const sim_mod = @import("tome_sim.zig");
+const intent_mod = @import("intent.zig");
 const hud = @import("tome_hud.zig");
 const content_mod = @import("content.zig");
 const items_mod = @import("items.zig");
@@ -633,16 +634,21 @@ pub const TomeGame = struct {
             const fill: i32 = @intFromFloat(@as(f32, @floatFromInt(bw - 2)) * frac);
             if (fill > 0) self.renderer.fillRect(x - @divTrunc(bw, 2) + 1, y + 1, fill, 1, palette.red);
             self.renderer.strokeRect(x - @divTrunc(bw, 2), y, bw, 3, palette.muted);
+            if (self.sim.intentFor(i)) |intent| {
+                var ibuf: [24]u8 = undefined;
+                const label = switch (intent.kind) {
+                    .aoe => "深渊斩",
+                    .melee, .ranged => std.fmt.bufPrint(&ibuf, "-{d:.0}", .{intent.damage_preview}) catch "",
+                    .chase => "追",
+                    .wait => "晕",
+                };
+                if (label.len > 0) self.renderer.drawText(x - @divTrunc(renderer.Renderer.textWidth(label, 1), 2), y + 5, label, if (intent.kind == .aoe) palette.red else palette.gold_light, 1, true);
+            }
             if (target != null and target.? == i) {
                 const tw = renderer.Renderer.textWidth(e.name, 1);
                 self.renderer.fillRect(x - @divTrunc(tw, 2) - 3, y - 13, tw + 6, 11, palette.panel);
                 self.renderer.strokeRect(x - @divTrunc(tw, 2) - 3, y - 13, tw + 6, 11, palette.border);
                 self.renderer.drawText(x - @divTrunc(tw, 2), y - 12, e.name, palette.red, 1, true);
-            }
-            const dx = e.pos.x - self.sim.hero.pos.x;
-            const dy = e.pos.y - self.sim.hero.pos.y;
-            if (@abs(dx) + @abs(dy) == 1) {
-                self.renderer.drawText(x - 2, y + 5, "!", palette.gold_light, 1, true);
             }
         }
     }
@@ -703,6 +709,16 @@ pub const TomeGame = struct {
                 .additive = true,
                 .alpha = 0.8,
             });
+            if (self.sim.intentFor(i)) |intent| {
+                if (intent.kind == .aoe) {
+                    self.renderer.drawModel(ring_model, null, math.Mat4.compose(tilePos(intent.target.x, intent.target.y).add(math.Vec3.init(0, 0.04, 0)), -self.time * 0.6, 0, 0, 2.2), .{
+                        .tint = color.pack(255, 54, 42),
+                        .boost = 1.0,
+                        .additive = true,
+                        .alpha = 0.75,
+                    });
+                }
+            }
         }
     }
 
