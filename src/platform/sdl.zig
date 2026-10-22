@@ -11,6 +11,8 @@ pub const FrameInput = struct {
     zoom_delta: f32 = 0,
     toggle_hero: bool = false,
     cast: bool = false,
+    interrupt: bool = false,
+    inventory: bool = false,
     reset: bool = false,
     toggle_debug: bool = false,
     screenshot: bool = false,
@@ -85,6 +87,8 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_ESCAPE))) input.quit = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_TAB))) input.toggle_hero = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_SPACE))) input.cast = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F))) input.interrupt = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_I))) input.inventory = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_R))) input.reset = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F1))) input.toggle_debug = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F12))) input.screenshot = true;

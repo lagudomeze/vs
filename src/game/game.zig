@@ -29,6 +29,8 @@ pub const InputFrame = struct {
     zoom_delta: f32 = 0,
     toggle_hero: bool = false,
     cast: bool = false,
+    interrupt: bool = false,
+    inventory: bool = false,
     reset: bool = false,
 };
 
@@ -89,6 +91,7 @@ pub const Game = struct {
     frame_ms: f32 = 16.6,
     debug: bool = false,
     show_hud: bool = true,
+    inventory_open: bool = false,
     prop_seq: u16 = 0,
     braziers: [4]math.Vec3 = undefined,
 
@@ -957,6 +960,7 @@ pub const Game = struct {
 
         if (input.reset) self.resetRun();
         if (input.toggle_hero) self.cycleHero();
+        if (input.inventory) self.inventory_open = !self.inventory_open;
         if (input.cast) self.tryCast();
 
         self.camera.yaw += input.yaw_delta;

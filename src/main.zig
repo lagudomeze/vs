@@ -46,7 +46,7 @@ fn usage() void {
         \\  --help            this text
         \\
         \\Controls: WASD move, Q/E or right-drag orbit, wheel zoom,
-        \\          TAB switch hero, SPACE cast, R reset, F1 debug, F12 shot, ESC quit.
+        \\          TAB switch, SPACE skill, F interrupt, I inventory, R reset, F1 debug, F12 shot, ESC quit.
         \\
     , .{});
 }
@@ -185,6 +185,8 @@ fn runWindow(game: *vx.Game, io: std.Io, options: Options) !void {
             .zoom_delta = pin.zoom_delta,
             .toggle_hero = pin.toggle_hero,
             .cast = pin.cast,
+            .interrupt = pin.interrupt,
+            .inventory = pin.inventory,
             .reset = pin.reset,
         };
         game.update(input, dt);
