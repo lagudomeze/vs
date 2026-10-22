@@ -684,9 +684,18 @@ pub const TomeGame = struct {
     }
 
     fn beginAim(self: *TomeGame, talent: usize) void {
+        const name = self.sim.talentName(talent);
+        if (self.sim.hero.cooldowns[talent] > 0) {
+            self.sim.pushLog("{s} 冷却中", .{name});
+            return;
+        }
+        if (self.sim.hero.resource < @as(f32, @floatFromInt(self.sim.talentCost(talent)))) {
+            self.sim.pushLog("{s} 缺资源", .{name});
+            return;
+        }
         self.aim_talent = talent;
         self.selected = self.bestAimTarget(talent);
-        self.sim.pushLog("瞄准 {s}：空格确认", .{self.sim.talentName(talent)});
+        self.sim.pushLog("瞄准 {s}：空格确认", .{name});
     }
 
     fn switchAim(self: *TomeGame, talent: usize) void {
@@ -1319,17 +1328,15 @@ test "tome game: aiming waits for confirmation and spends one turn" {
     try std.testing.expect(g.sim.hero.cooldowns[0] > 0);
     try std.testing.expect(!g.hud_state.aim.active);
 
-    // Re-aiming during cooldown previews red; confirming again spends nothing.
+    // Re-aiming during cooldown is refused up front; no aim, turn or resource.
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
-    try std.testing.expect(g.isAiming());
-    try std.testing.expect(!g.hud_state.aim.valid);
-    try std.testing.expectEqualStrings("冷却中", g.hud_state.aim.reason);
+    try std.testing.expect(!g.isAiming());
     const turn_after = g.sim.turn;
     const res_after = g.sim.hero.resource;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expectEqual(turn_after, g.sim.turn);
     try std.testing.expectEqual(res_after, g.sim.hero.resource);
-    try std.testing.expect(g.isAiming());
+    try std.testing.expect(!g.isAiming());
 }
 
 test "tome game: space confirms, switch key changes aim, self talent releases" {
@@ -1436,13 +1443,12 @@ test "tome game: cancel and invalid confirms never spend a turn or resource" {
     try std.testing.expectEqual(turn, g.sim.turn);
     try std.testing.expectEqual(res, g.sim.hero.resource);
 
-    // Insufficient resource.
+    // Insufficient resource: refuse to enter aim at all.
     g.restart();
     addGameEnemy(g, 1, 0, "骷髅兵");
     g.sim.hero.resource = 0;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
-    try std.testing.expect(!g.hud_state.aim.valid);
-    try std.testing.expectEqualStrings("缺资源", g.hud_state.aim.reason);
+    try std.testing.expect(!g.isAiming());
     turn = g.sim.turn;
     res = g.sim.hero.resource;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
@@ -1505,4 +1511,17 @@ test "tome game: H toggles help without spending a turn" {
     g.update(.{ .help = true }, 1.0 / 60.0);
     try std.testing.expect(!g.show_help);
     try std.testing.expectEqual(turn, g.sim.turn);
+}
+
+test "tome game: aim refuses cooldown/resource-blocked talents" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.sim.hero.cooldowns[0] = 2;
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expect(!g.isAiming());
+    g.sim.hero.cooldowns[0] = 0;
+    g.sim.hero.resource = 0;
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expect(!g.isAiming());
 }
