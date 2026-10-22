@@ -715,6 +715,7 @@ pub const TomeGame = struct {
                 break :blk n;
             }),
             .stairs_hint = self.sim.stairsHint(),
+            .stairs_dist = @intCast(@abs(self.sim.stairs.x - self.sim.hero.pos.x) + @abs(self.sim.stairs.y - self.sim.hero.pos.y)),
             .panel = self.panel,
             .dead = self.sim.state == .dead,
             .victory = self.sim.state == .victory,

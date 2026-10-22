@@ -28,6 +28,7 @@ pub const State = struct {
     kills: u32 = 0,
     enemies_left: u32 = 0,
     stairs_hint: []const u8 = "",
+    stairs_dist: u16 = 0,
     hotbar: [3]HotbarSlot = .{ .{}, .{}, .{} },
     target_name: []const u8 = "",
     target_hp: f32 = 0,
@@ -91,7 +92,10 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     r.drawText(w - 154, 9, floor, palette.gold_light, 1, false);
     const enemies = fmt(&buf, "敌人 {d}", .{state.enemies_left});
     r.drawText(w - 154, 23, enemies, palette.cream, 1, false);
-    if (state.stairs_hint.len > 0) r.drawText(w - 154, 37, state.stairs_hint, palette.muted, 1, false);
+    if (state.stairs_hint.len > 0) {
+        const stairs = fmt(&buf, "{s} {d}", .{ state.stairs_hint, state.stairs_dist });
+        r.drawText(w - 154, 37, stairs, palette.muted, 1, false);
+    }
     if (state.has_minimap) {
         const mx0 = w - 40;
         const my0 = 8;
