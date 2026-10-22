@@ -82,6 +82,7 @@ pub const Verdict = enum(u8) {
     no_line_of_sight,
     cooldown,
     no_resource,
+    blocked_cell,
 
     pub fn valid(self: Verdict) bool {
         return self == .ok;
@@ -99,6 +100,7 @@ pub fn verdictText(verdict: Verdict) []const u8 {
         .no_line_of_sight => "视线受阻",
         .cooldown => "冷却中",
         .no_resource => "缺资源",
+        .blocked_cell => "无法落点",
     };
 }
 
