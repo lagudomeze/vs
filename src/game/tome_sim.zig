@@ -192,6 +192,8 @@ pub const Sim = struct {
     kills: u32 = 0,
     chest_loot_events: u32 = 0,
     kill_loot_events: u32 = 0,
+    aoe_target: GridPos = .{ .x = 0, .y = 0 },
+    aoe_armed: bool = false,
     log_buf: [6]LogLine = .{ .{}, .{}, .{}, .{}, .{}, .{} },
     log_head: usize = 0,
     log_total: usize = 0,
@@ -217,6 +219,7 @@ pub const Sim = struct {
         self.kills = 0;
         self.chest_loot_events = 0;
         self.kill_loot_events = 0;
+        self.aoe_armed = false;
         self.state = .playing;
         self.log_head = 0;
         self.log_total = 0;
@@ -299,7 +302,7 @@ pub const Sim = struct {
         if (index >= self.enemy_count) return null;
         const e = self.enemies[index];
         if (!e.alive) return null;
-        return intent_mod.preview(
+        var intent = intent_mod.preview(
             .{
                 .width = grid_w,
                 .height = grid_h,
@@ -317,6 +320,10 @@ pub const Sim = struct {
             .{ .x = self.hero.pos.x, .y = self.hero.pos.y },
             self.turn +| 1,
         );
+        if (intent.kind == .aoe and self.aoe_armed) {
+            intent.target = .{ .x = self.aoe_target.x, .y = self.aoe_target.y };
+        }
+        return intent;
     }
 
     /// Fill `out` with one intent per living enemy, in enemy-array order.
@@ -347,6 +354,7 @@ pub const Sim = struct {
 
     pub fn generateFloor(self: *Sim) void {
         self.enemy_count = 0;
+        self.aoe_armed = false;
         self.map = dungeon_mod.Dungeon.generate(self.seed, self.floor);
         self.map.validate() catch {};
 
@@ -504,6 +512,19 @@ pub const Sim = struct {
         self.hero.resource = @min(self.hero.resource_max, self.hero.resource + self.hero.resource_max * 0.5);
         self.turn += 1;
         self.generateFloor();
+        self.armBossAoe();
+    }
+
+    fn armBossAoe(self: *Sim) void {
+        if (self.aoe_armed) return;
+        if (!intent_mod.bossAoeDue(self.turn +| 1)) return;
+        for (self.enemies[0..self.enemy_count]) |e| {
+            if (e.alive and e.kind == intent_mod.boss_kind) {
+                self.aoe_target = self.hero.pos;
+                self.aoe_armed = true;
+                return;
+            }
+        }
     }
 
     fn endTurn(self: *Sim) void {
@@ -523,6 +544,7 @@ pub const Sim = struct {
             return;
         }
         self.enemyPhase();
+        self.armBossAoe();
         if (self.hero.hp <= 0) self.state = .dead;
         if (self.enemy_count == 0 and self.floor >= self.floors) {
             self.state = .victory;
@@ -571,11 +593,16 @@ pub const Sim = struct {
             return;
         }
         if (e.slow_turns > 0) e.slow_turns -= 1;
-        if (e.kind == intent_mod.boss_kind and intent_mod.bossAoeDue(self.turn)) {
-            const raw = e.attack * intent_mod.boss_aoe_damage_scale * (if (e.slow_turns > 0) intent_mod.slow_damage_scale else 1.0);
-            const dmg = raw * (0.15 + 0.85 * 50 / (50 + self.hero.armor));
-            self.hero.hp = @max(0, self.hero.hp - dmg);
-            self.pushLog("深渊守卫 深渊斩 -{d:.0}", .{dmg});
+        if (e.kind == intent_mod.boss_kind and self.aoe_armed and intent_mod.bossAoeDue(self.turn)) {
+            self.aoe_armed = false;
+            if (@as(f32, @floatFromInt(dist(self.hero.pos, self.aoe_target))) <= intent_mod.boss_aoe_radius) {
+                const raw = e.attack * intent_mod.boss_aoe_damage_scale * (if (e.slow_turns > 0) intent_mod.slow_damage_scale else 1.0);
+                const dmg = raw * (0.15 + 0.85 * 50 / (50 + self.hero.armor));
+                self.hero.hp = @max(0, self.hero.hp - dmg);
+                self.pushLog("深渊守卫 深渊斩 -{d:.0}", .{dmg});
+            } else {
+                self.pushLog("躲开深渊斩", .{});
+            }
             return;
         }
         const d = dist(e.pos, self.hero.pos);
@@ -670,6 +697,7 @@ pub const Sim = struct {
         if (!e.alive) return;
         e.alive = false;
         e.hp = 0;
+        if (e.kind == intent_mod.boss_kind) self.aoe_armed = false;
         self.kills += 1;
         self.kill_loot_events += 1;
         self.pushLog("击杀 {s} +{d}XP", .{ e.name, e.xp });
@@ -967,9 +995,41 @@ test "tome sim: boss AOE resolves on the telegraphed turn" {
         .range = 1,
         .xp = 200,
     };
+    s.aoe_armed = true;
+    s.aoe_target = s.hero.pos;
     const hp = s.hero.hp;
     _ = s.wait();
     try std.testing.expect(s.hero.hp < hp);
+}
+
+test "tome sim: stepping away dodges the telegraphed boss AOE" {
+    var s = Sim.init(33, .warrior);
+    s.turn = 2;
+    s.enemy_count = 1;
+    s.enemies[0] = .{
+        .kind = 5,
+        .name = "深渊守卫",
+        .pos = .{ .x = 10, .y = 2 },
+        .hp = 420,
+        .hp_max = 420,
+        .attack = 16,
+        .armor = 15,
+        .speed = 90,
+        .range = 1,
+        .xp = 200,
+    };
+    s.aoe_armed = true;
+    s.aoe_target = .{ .x = s.hero.pos.x, .y = s.hero.pos.y };
+    const hp = s.hero.hp;
+    // find a legal open neighbour and step out of the marked cell
+    const dirs = [_][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
+    for (dirs) |d| {
+        if (s.canMove(d[0], d[1])) {
+            _ = s.move(d[0], d[1]);
+            break;
+        }
+    }
+    try std.testing.expect(s.hero.hp >= hp);
 }
 
 test "tome sim: same seed produces the same floor" {
@@ -1033,7 +1093,7 @@ test "tome sim: boss intent telegraphs its AOE on the next enemy phase" {
     const intent = s.intentFor(0) orelse return error.MissingIntent;
     try std.testing.expectEqual(intent_mod.IntentKind.aoe, intent.kind);
     try std.testing.expect(intent.target.eql(.{ .x = s.hero.pos.x, .y = s.hero.pos.y }));
-    try std.testing.expectEqual(@as(f32, 2.2), intent.aoe_radius);
+    try std.testing.expectEqual(@as(f32, 0.9), intent.aoe_radius);
     try std.testing.expectEqual(@as(u8, 1), intent.telegraph_turns);
 
     // The phase after this one is turn 4, back to the normal melee rotation.

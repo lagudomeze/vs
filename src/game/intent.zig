@@ -11,7 +11,7 @@
 //! * otherwise -> chase
 //! * stunned -> wait
 //!
-//! Boss kind 5 (深渊守卫) replaces its melee with a 2.2-cell AOE every third
+//! Boss kind 5 (深渊守卫) replaces its melee with a 0.9-cell AOE every third
 //! turn; on the other turns it melees when adjacent and chases otherwise. The
 //! AOE is telegraphed one turn ahead and targets the hero's current cell. `damage_preview` is a raw, pre-armor estimate: 0.72x attack for a
 //! normal hit (matching the sim's enemy attack scale), 0.55x while slowed, and
@@ -22,7 +22,7 @@ const std = @import("std");
 pub const boss_kind: u8 = 5;
 /// The boss uses its AOE on turn 3, 6, 9, ...
 pub const boss_aoe_period: u32 = 3;
-pub const boss_aoe_radius: f32 = 2.2;
+pub const boss_aoe_radius: f32 = 0.9;
 pub const boss_aoe_telegraph: u8 = 1;
 /// 2.8x attack matches the 45 damage of the v1 abyss cleave at 16 attack.
 pub const boss_aoe_damage_scale: f32 = 2.8;
@@ -357,7 +357,7 @@ test "boss alternates melee and telegraphed AOE every three turns" {
         try std.testing.expect(intent.will_act);
         if (kind == .aoe) {
             try std.testing.expectEqual(@as(u8, 1), intent.telegraph_turns);
-            try expectApprox(intent.aoe_radius, 2.2);
+            try expectApprox(intent.aoe_radius, 0.9);
             try expectApprox(intent.damage_preview, 44.8); // 16 * 2.8
         } else {
             try std.testing.expectEqual(@as(u8, 0), intent.telegraph_turns);
@@ -381,7 +381,7 @@ test "boss AOE is telegraphed even before the boss reaches the hero" {
     try std.testing.expectEqual(IntentKind.aoe, intent.kind);
     try std.testing.expect(intent.target.eql(hero));
     try std.testing.expectEqual(@as(u8, 1), intent.telegraph_turns);
-    try expectApprox(intent.aoe_radius, 2.2);
+    try expectApprox(intent.aoe_radius, 0.9);
 
     const approach = preview(map.view(), boss, hero, 4);
     try std.testing.expectEqual(IntentKind.chase, approach.kind);

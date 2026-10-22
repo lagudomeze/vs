@@ -255,9 +255,30 @@ pub const TomeGame = struct {
     pub fn autoPlayStep(self: *TomeGame) void {
         if (!self.started or self.sim.state != .playing or self.panel != .none) return;
         const hero = self.sim.hero.pos;
+        const dirs = [_][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
+
+        // Step out of a telegraphed boss AOE before doing anything else.
+        if (self.sim.aoe_armed and intent_mod.bossAoeDue(self.sim.turn +| 1)) {
+            var best: ?[2]i32 = null;
+            var best_d: i32 = -1;
+            for (dirs) |d| {
+                const nx = hero.x + d[0];
+                const ny = hero.y + d[1];
+                if (!self.sim.canMove(d[0], d[1])) continue;
+                if (self.sim.enemyAt(nx, ny) != null) continue;
+                const dd: i32 = @intCast(@abs(nx - self.sim.aoe_target.x) + @abs(ny - self.sim.aoe_target.y));
+                if (dd > best_d) {
+                    best_d = dd;
+                    best = d;
+                }
+            }
+            if (best) |d| {
+                _ = self.sim.move(d[0], d[1]);
+                return;
+            }
+        }
 
         // adjacent enemy: bump attack
-        const dirs = [_][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
         for (dirs) |d| {
             if (self.sim.enemyAt(hero.x + d[0], hero.y + d[1]) != null) {
                 _ = self.sim.move(d[0], d[1]);
@@ -760,7 +781,7 @@ pub const TomeGame = struct {
             });
             if (self.sim.intentFor(i)) |intent| {
                 if (intent.kind == .aoe) {
-                    self.renderer.drawModel(ring_model, null, math.Mat4.compose(tilePos(intent.target.x, intent.target.y).add(math.Vec3.init(0, 0.04, 0)), -self.time * 0.6, 0, 0, 2.2), .{
+                    self.renderer.drawModel(ring_model, null, math.Mat4.compose(tilePos(intent.target.x, intent.target.y).add(math.Vec3.init(0, 0.04, 0)), -self.time * 0.6, 0, 0, 1.8), .{
                         .tint = color.pack(255, 54, 42),
                         .boost = 1.0,
                         .additive = true,
