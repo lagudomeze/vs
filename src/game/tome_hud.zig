@@ -107,7 +107,7 @@ fn fmt(buf: []u8, comptime f: []const u8, args: anytype) []const u8 {
 
 const menu_title = "选职业";
 const menu_hint = "按 1 / 2 / 3 开始";
-const menu_footer = "1/2/3 选择 · 死亡后 R 重开同职业";
+const menu_footer = "1/2/3 选择  F9 读档  R 重开同职业";
 const talent_label = "天赋";
 const help_title = "操作说明";
 const help_footer = "H 关闭";
