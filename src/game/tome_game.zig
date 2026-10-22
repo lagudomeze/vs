@@ -48,6 +48,7 @@ pub const Input = struct {
     character: bool = false,
     target_next: bool = false,
     restart: bool = false,
+    help: bool = false,
     yaw_delta: f32 = 0,
     zoom_delta: f32 = 0,
 };
@@ -91,6 +92,7 @@ pub const TomeGame = struct {
     fps: f32 = 60,
     frame_ms: f32 = 16.6,
     show_hud: bool = true,
+    show_help: bool = false,
     debug: bool = false,
 
     pub fn create(gpa: std.mem.Allocator, width: u32, height: u32, class: sim_mod.Class, seed: u64) !*TomeGame {
@@ -211,6 +213,7 @@ pub const TomeGame = struct {
         self.selected = null;
         self.aim_talent = null;
         self.reset_armed = 0;
+        self.show_help = false;
         self.panel = .none;
         self.rebuildMesh();
         self.resetVisuals();
@@ -308,6 +311,7 @@ pub const TomeGame = struct {
         self.selected = null;
         self.aim_talent = null;
         self.reset_armed = 0;
+        self.show_help = false;
         self.panel = .none;
         self.started = true;
         self.rebuildMesh();
@@ -488,6 +492,17 @@ pub const TomeGame = struct {
             self.syncVisuals(false);
             self.updateVisuals(dt);
             self.followCamera();
+            self.fillHudState();
+            return;
+        }
+
+        if (input.help) {
+            self.show_help = !self.show_help;
+            self.clearAim();
+            self.fillHudState();
+            return;
+        }
+        if (self.show_help) {
             self.fillHudState();
             return;
         }
@@ -1047,6 +1062,7 @@ pub const TomeGame = struct {
     fn fillHudState(self: *TomeGame) void {
         self.hud_state = .{
             .menu = !self.started,
+            .help = self.show_help,
             .menu_seed = self.seed,
             .class_name = sim_mod.class_names[@backingInt(self.class)],
             .level = self.sim.hero.level,
@@ -1449,4 +1465,17 @@ test "tome game: save/load round-trips the sim and gear" {
     try std.testing.expectEqual(@as(f32, 77), g.sim.hero.hp);
     try std.testing.expectEqual(turn, g.sim.turn);
     try std.testing.expectEqual(@as(usize, 1), g.inventory.len);
+}
+
+test "tome game: H toggles help without spending a turn" {
+    const gpa = std.testing.allocator;
+    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    const turn = g.sim.turn;
+    g.update(.{ .help = true }, 1.0 / 60.0);
+    try std.testing.expect(g.show_help);
+    try std.testing.expectEqual(turn, g.sim.turn);
+    g.update(.{ .help = true }, 1.0 / 60.0);
+    try std.testing.expect(!g.show_help);
+    try std.testing.expectEqual(turn, g.sim.turn);
 }

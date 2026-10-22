@@ -16,7 +16,7 @@
 - **属性/装备/掉落**：六属性、HP/资源、攻击/护甲/暴击/速度；宝箱和击杀产出版本内物品，空槽自动装备，装备即时改变面板数值。
 - **天赋瞄准**：1/2/3 先进入瞄准，显示目标/距离/预计伤害/范围；空格或同键确认，Esc 取消，Tab 换目标；超距/无视线/缺资源红色提示。
 - **存档/读档**：F5 写 saves/tome-run.json（Sim 全状态 + RNG）和 saves/tome-gear.json（背包/装备）；F9 读取，坏档不覆盖当前局。
-- **中文 HUD**：角色卡、楼层卡、战斗日志、天赋栏、角色/背包面板；天赋栏显示消耗、基础冷却和当前状态（可用/冷却中/缺资源），角色面板可复查。Ark Pixel 12px 子集。
+- **中文 HUD**：角色卡、楼层卡、战斗日志、天赋栏、角色/背包面板；天赋栏显示消耗、基础冷却和当前状态（可用/冷却中/缺资源），角色面板可复查。H 打开操作说明。Ark Pixel 12px 子集。
 - **3D 像素场景**：地牢地砖、墙、楼梯、宝箱、陷阱、精英和 Boss 模型；脚底环、目标血条、危险标记、楼梯光柱。
 - **无窗口验证**：headless 截图；自动跑局用于 QA。
 
@@ -60,7 +60,10 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | Tab | 瞄准中切换目标 |
 | R | 游戏中第一次按进入确认（2 秒内再按）；死亡/胜利立即重开；保留职业与 seed |
 | F5 / F9 | 存档 / 读档 |
+| H | 打开/关闭操作说明 |
 | F1 / F12 | 调试 / 截图 |
+
+![help](docs/screenshots/tome_help.png)
 
 ![character](docs/screenshots/tome_character.png)
 
@@ -137,7 +140,7 @@ docs/           TOME_V1 / SAVE / ART_PASS / UX_REVIEW_TOME / screenshots
 
 ## 验证
 
-- zig build / zig build test：13/13 steps、125/125 tests。
+- zig build / zig build test：13/13 steps、126/126 tests。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/tome_select.png`。
 - 职业菜单选择后 seed 重新生成并重置战利品 RNG；R 重开保持当前职业和 seed。
 - 自动跑局（seed 12345）：三职业均可通关；狂战士约第 100 回合剩 66 HP，元素法师第 75 回合、时空法师第 84 回合。

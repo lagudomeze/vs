@@ -44,6 +44,7 @@ pub const ClassCard = struct {
 
 pub const State = struct {
     menu: bool = false,
+    help: bool = false,
     menu_seed: u64 = 0,
     menu_cards: [3]ClassCard = .{ .{}, .{}, .{} },
     class_name: []const u8 = "",
@@ -106,8 +107,10 @@ fn fmt(buf: []u8, comptime f: []const u8, args: anytype) []const u8 {
 
 const menu_title = "选职业";
 const menu_hint = "按 1 / 2 / 3 开始";
-const menu_footer = "死亡按 R 重开 同职业";
+const menu_footer = "1/2/3 选择 · 死亡后 R 重开同职业";
 const talent_label = "天赋";
+const help_title = "操作说明";
+const help_footer = "H 关闭";
 const aim_hint = "空格/同键确认  Esc取消  Tab换目标";
 
 /// Pre-run class selection. A checkerboard dim keeps the 3D dungeon visible
@@ -174,12 +177,50 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     r.drawText(@divTrunc(w, 2) - @divTrunc(fw, 2), 252, menu_footer, palette.muted, 1, false);
 }
 
+fn drawHelp(r: *renderer.Renderer, w: i32, h: i32) void {
+    r.fillRect(0, 0, w, h, palette.deep);
+    const px: i32 = 32;
+    const py: i32 = 16;
+    const pw: i32 = w - 64;
+    const ph: i32 = h - 32;
+    backPanel(r, px, py, pw, ph);
+    const tw = renderer.Renderer.textWidth(help_title, 2);
+    r.drawText(px + @divTrunc(pw - tw, 2), py + 8, help_title, palette.gold, 2, true);
+
+    const lines = [_][]const u8{
+        "移动  WASD / 方向键 / 小键盘",
+        "天赋  1/2/3 进入瞄准",
+        "确认  空格 或 按同一个数字键",
+        "等待  空格 / 5 / .",
+        "瞄准  Tab 换目标   Esc 取消",
+        "背包 I     角色 C",
+        "存档 F5    读档 F9",
+        "相机 Q/E 或右键调整",
+        "重开 R（游戏中按两次确认）",
+        "目标  击杀第 3 层深渊守卫",
+        "楼梯在 Boss 存活时被封印",
+        "战利品自动装备，背包内 1/2/3 换装",
+        "截图 F12   调试 F1",
+    };
+    var y = py + 42;
+    for (lines) |line| {
+        r.drawText(px + 18, y, line, palette.cream, 1, false);
+        y += 13;
+    }
+    const fw = renderer.Renderer.textWidth(help_footer, 1);
+    r.drawText(px + @divTrunc(pw - fw, 2), py + ph - 18, help_footer, palette.muted, 1, false);
+}
+
 pub fn draw(r: *renderer.Renderer, state: State) void {
     const w: i32 = @intCast(r.width);
     const h: i32 = @intCast(r.height);
 
     if (state.menu) {
         drawMenu(r, state, w, h);
+        return;
+    }
+    if (state.help) {
+        drawHelp(r, w, h);
         return;
     }
 
@@ -409,6 +450,8 @@ test "tome hud: hint strings have embedded CJK glyphs" {
         menu_footer,
         talent_label,
         aim_hint,
+        help_title,
+        help_footer,
         "资源",
         "生命",
         "定位",
