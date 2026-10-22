@@ -19,7 +19,7 @@
 ~~~powershell
 zig build --summary all          # 11/11 steps succeeded
 zig build test --summary all     # 13/13 steps succeeded; 127/127 tests passed
-zig build test-qa --summary all  # 3/3 steps succeeded; 78/78 tests passed
+zig build test-qa --summary all  # 3/3 steps succeeded; 79/79 tests passed
 zig build test-qa3 --summary all # 3/3 steps succeeded; 128/128 tests passed
 ~~~
 
@@ -366,4 +366,4 @@ QA3 开 PR 后，主分支继续合并了以下修复；本节把上面 P1/P2 �
 | 目标无 HP/距离/速度提示 | 部分 | 目标名字牌加 HP 数字、速度 x2/慢；AOE 标签带预计伤害；平台/日志下移 |
 | 日志压战场/死因被盖 | 已修 | 日志移到左下；死亡/胜利结算显示最后一条日志作为死因 |
 
-最新测试：`zig build test` 135/135，`test-qa` 78/78，`test-qa3` 136/136；QA3 测试已改为新行为的回归断言。
+最新测试：`zig build test` 137/137，`test-qa` 79/79，`test-qa3` 138/138；QA3 测试已改为新行为的回归断言。

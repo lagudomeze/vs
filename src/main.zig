@@ -348,6 +348,7 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
         input.mouse_x = pin.mouse_x;
         input.mouse_y = pin.mouse_y;
         input.click = pin.click;
+        input.stat = pin.stat;
         input.yaw_delta = pin.yaw_delta;
         input.zoom_delta = pin.zoom_delta;
 

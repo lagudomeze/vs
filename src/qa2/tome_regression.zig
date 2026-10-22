@@ -231,6 +231,11 @@ const Action = enum { bump, wait, talent, move };
 /// Mirrors TomeGame.autoPlayStep: adjacent bump, rest when safe, spend the
 /// whole hotbar on nearby enemies, then A* toward the stairs.
 fn autoStep(s: *tome.Sim) Action {
+    s.auto_allocate = true;
+    defer s.auto_allocate = false;
+    while (s.hero.pending_points > 0) {
+        if (!s.spendPoint(s.mainStatIndex())) break;
+    }
     const hero = s.hero.pos;
 
     if (s.aoe_armed and intent_mod.bossAoeDue(s.turn +| 1)) {

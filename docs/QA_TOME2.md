@@ -160,6 +160,6 @@ zig build test-qa --summary all
 | 超时 | 0 | 0 | 0 | 0 |
 
 - 固定 seed 12345 三职业均通关：狂战士第 100 回合剩 66 HP、元素法师第 75 回合剩 61 HP、时空法师第 84 回合剩 69 HP。
-- zig build test：135/135；zig build test-qa：78/78；0 不变量违规；stairs_wins=0，193 胜全部来自 Boss 击杀。
+- zig build test：137/137；zig build test-qa：79/79；0 不变量违规；stairs_wins=0，193 胜全部来自 Boss 击杀。
 - 速度带已启用：精英幽魂 150（每 2 回合多一次行动），石魔像 70（每 2 回合跳过行动）。
 - 旧第 6.1/6.2 节保留为“AOE 不可躲”时期的历史基线；本节取代其通关率结论。README 已同步。
