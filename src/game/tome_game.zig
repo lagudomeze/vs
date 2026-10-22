@@ -72,6 +72,8 @@ const Visual = struct {
     anim: rig.AnimState = .{},
 };
 
+pub const SlotMenu = enum(u8) { none, save, load };
+
 pub const Input = struct {
     step_x: i32 = 0,
     step_y: i32 = 0,
@@ -122,6 +124,20 @@ pub const TomeGame = struct {
     step_cooldown: f32 = 0,
     seed: u64,
     class: sim_mod.Class,
+    slot_menu: SlotMenu = .none,
+    slot_labels: [3][]const u8 = .{ "空", "空", "空" },
+    slot_bufs: [3][96]u8 = undefined,
+    slot_runs: [3][]const u8 = .{
+        "saves/tome-run.json",
+        "saves/slot2-run.json",
+        "saves/slot3-run.json",
+    },
+    slot_gears: [3][]const u8 = .{
+        "saves/tome-gear.json",
+        "saves/slot2-gear.json",
+        "saves/slot3-gear.json",
+    },
+    save_ok: bool = true,
     /// Window play presents a short "敌人行动" phase; tests/bots leave this
     /// false so their turns resolve synchronously.
     presentation: bool = false,
@@ -303,6 +319,53 @@ pub const TomeGame = struct {
     /// F5: write the pure run snapshot and the bag/equipment sidecar.
     /// The parent directory is created on demand; a failure leaves the
     /// currently running game untouched and is reported in the log.
+    pub fn openSlotMenu(self: *TomeGame, io: std.Io, mode: SlotMenu) void {
+        self.slot_menu = mode;
+        self.clearAim();
+        self.show_help = false;
+        self.panel = .none;
+        self.refreshSlotLabels(io);
+        self.fillHudState();
+    }
+
+    pub fn closeSlotMenu(self: *TomeGame) void {
+        self.slot_menu = .none;
+        self.fillHudState();
+    }
+
+    fn refreshSlotLabels(self: *TomeGame, io: std.Io) void {
+        var i: usize = 0;
+        while (i < self.slot_runs.len) : (i += 1) {
+            self.slot_labels[i] = "空";
+            const loaded = save_mod.loadFile(io, self.gpa, self.slot_runs[i]) catch |err| {
+                if (err != error.FileNotFound) self.slot_labels[i] = "坏档";
+                continue;
+            };
+            self.slot_labels[i] = std.fmt.bufPrint(
+                &self.slot_bufs[i],
+                "{s} 第{d}层 {d}级 回合{d}",
+                .{ sim_mod.class_names[@backingInt(loaded.class)], loaded.floor, loaded.hero.level, loaded.turn },
+            ) catch "有效存档";
+        }
+    }
+
+    pub fn saveSlot(self: *TomeGame, io: std.Io, slot: usize) void {
+        if (slot >= self.slot_runs.len) return;
+        self.saveRun(io, self.slot_runs[slot], self.slot_gears[slot]);
+        self.slot_menu = .none;
+        self.refreshSlotLabels(io);
+        if (self.save_ok) self.sim.pushLog("已保存到槽 {d}", .{slot + 1});
+        self.fillHudState();
+    }
+
+    pub fn loadSlot(self: *TomeGame, io: std.Io, slot: usize) void {
+        if (slot >= self.slot_runs.len) return;
+        self.loadRun(io, self.slot_runs[slot], self.slot_gears[slot]);
+        self.slot_menu = .none;
+        self.refreshSlotLabels(io);
+        self.fillHudState();
+    }
+
     pub fn saveRun(self: *TomeGame, io: std.Io, sim_path: []const u8, gear_path: []const u8) void {
         if (self.sim.enemy_phase_pending) {
             self.sim.resolvePendingEnemyPhase();
@@ -313,13 +376,16 @@ pub const TomeGame = struct {
             std.Io.Dir.cwd().createDirPath(io, dir) catch {};
         }
         save_mod.saveFile(io, self.gpa, sim_path, &self.sim) catch |err| {
+            self.save_ok = false;
             self.sim.pushLog("存档失败 {s}", .{@errorName(err)});
             return;
         };
         gear_save.saveFileWithRng(io, self.gpa, gear_path, &self.inventory, &self.loot_rng) catch |err| {
+            self.save_ok = false;
             self.sim.pushLog("装备存档失败 {s}", .{@errorName(err)});
             return;
         };
+        self.save_ok = true;
         self.sim.pushLog("已存档", .{});
     }
 
@@ -577,6 +643,10 @@ pub const TomeGame = struct {
             return;
         }
 
+        if (self.slot_menu != .none) {
+            self.fillHudState();
+            return;
+        }
         if (self.presentation) self.sim.defer_enemies = true;
         if (self.sim.enemy_phase_pending) {
             if (self.enemy_phase_timer <= 0) self.enemy_phase_timer = 0.30;
@@ -1360,6 +1430,8 @@ pub const TomeGame = struct {
             .floor = self.sim.floor,
             .floors = self.sim.floors,
             .enemy_phase = self.sim.enemy_phase_pending,
+            .slot_mode = @backingInt(self.slot_menu),
+            .slot_labels = self.slot_labels,
             .initiative = .{ "玩家", self.fastestEnemyName() },
             .initiative_count = if (self.fastestEnemyName().len > 0) 2 else 1,
             .kills = self.sim.kills,
@@ -1822,6 +1894,28 @@ test "tome game: held repeat is throttled to one step per 0.3s" {
     try std.testing.expectEqual(turn, g.sim.turn);
     g.update(.{ .step_x = dx, .step_y = dy }, 0.31);
     try std.testing.expect(g.sim.turn >= turn);
+}
+
+test "tome game: slots save metadata and load" {
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    defer g.destroy();
+    g.started = true;
+    const run_path = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "slot-run.json" });
+    defer gpa.free(run_path);
+    const gear_path = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "slot-gear.json" });
+    defer gpa.free(gear_path);
+    g.slot_runs[0] = run_path;
+    g.slot_gears[0] = gear_path;
+    const hp = g.sim.hero.hp;
+    g.saveSlot(io, 0);
+    try std.testing.expect(!std.mem.eql(u8, g.slot_labels[0], "空"));
+    g.sim.hero.hp = 1;
+    g.loadSlot(io, 0);
+    try std.testing.expectApproxEqAbs(hp, g.sim.hero.hp, 0.01);
 }
 
 test "tome game: initiative shows the player and fastest enemy" {
