@@ -59,6 +59,7 @@ pub const State = struct {
     turn: u32 = 1,
     floor: u8 = 1,
     floors: u8 = 3,
+    enemy_phase: bool = false,
     kills: u32 = 0,
     enemies_left: u32 = 0,
     stairs_hint: []const u8 = "",
@@ -249,8 +250,8 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         const stairs = fmt(&buf, "{s} {d}", .{ state.stairs_hint, state.stairs_dist });
         r.drawText(w - 154, 37, stairs, palette.muted, 1, false);
     }
-    const turn = fmt(&buf, "玩家回合 {d}", .{state.turn});
-    r.drawText(w - 154, 51, turn, palette.gold_light, 1, false);
+    const turn = if (state.enemy_phase) "敌人行动" else fmt(&buf, "玩家回合 {d}", .{state.turn});
+    r.drawText(w - 154, 51, turn, if (state.enemy_phase) palette.red else palette.gold_light, 1, false);
     if (state.has_minimap) {
         const mx0 = w - 40;
         const my0 = 8;

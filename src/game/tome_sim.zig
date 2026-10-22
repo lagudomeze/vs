@@ -194,6 +194,10 @@ pub const Sim = struct {
     /// historical automatic main-stat growth. Human play leaves it false and
     /// allocates via Sim.spendPoint.
     auto_allocate: bool = false,
+    /// Interactive presentation defers enemy actions to a short animation
+    /// phase; bots leave this false for immediate resolution.
+    defer_enemies: bool = false,
+    enemy_phase_pending: bool = false,
     kills: u32 = 0,
     chest_loot_events: u32 = 0,
     kill_loot_events: u32 = 0,
@@ -226,6 +230,8 @@ pub const Sim = struct {
         self.kill_loot_events = 0;
         self.aoe_armed = false;
         self.state = .playing;
+        self.enemy_phase_pending = false;
+        self.defer_enemies = false;
         self.log_head = 0;
         self.log_total = 0;
         self.recomputeHero();
@@ -584,10 +590,27 @@ pub const Sim = struct {
             self.state = .dead;
             return;
         }
+        if (self.defer_enemies) {
+            self.enemy_phase_pending = true;
+            return;
+        }
         self.enemyPhase();
         self.armBossAoe();
         if (self.hero.hp <= 0) self.state = .dead;
         if (self.enemy_count == 0 and self.floor >= self.floors) {
+            self.state = .victory;
+            self.pushLog("深渊守卫倒下，胜利", .{});
+        }
+    }
+
+    /// Finish a deferred enemy phase. Safe to call when nothing is pending.
+    pub fn resolvePendingEnemyPhase(self: *Sim) void {
+        if (!self.enemy_phase_pending) return;
+        self.enemy_phase_pending = false;
+        self.enemyPhase();
+        self.armBossAoe();
+        if (self.hero.hp <= 0) self.state = .dead;
+        if (self.enemy_count == 0 and self.floor >= self.floors and self.state == .playing) {
             self.state = .victory;
             self.pushLog("深渊守卫倒下，胜利", .{});
         }
@@ -1103,6 +1126,32 @@ test "tome sim: level-up banks a point and auto allocate spends it" {
     auto.playerAttack(0, 1.0);
     try std.testing.expectEqual(base + 1, auto.hero.stats.strength);
     try std.testing.expectEqual(@as(u8, 0), auto.hero.pending_points);
+}
+
+test "tome sim: deferred enemy phase waits for resolution" {
+    var s = Sim.init(51, .warrior);
+    s.defer_enemies = true;
+    s.enemy_count = 1;
+    s.enemies[0] = .{
+        .kind = 0,
+        .name = "骷髅兵",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 70,
+        .hp_max = 70,
+        .attack = 99,
+        .armor = 0,
+        .speed = 100,
+        .range = 1,
+        .xp = 20,
+        .alive = true,
+    };
+    const hp = s.hero.hp;
+    try std.testing.expect(s.wait());
+    try std.testing.expect(s.enemy_phase_pending);
+    try std.testing.expectEqual(hp, s.hero.hp);
+    s.resolvePendingEnemyPhase();
+    try std.testing.expect(!s.enemy_phase_pending);
+    try std.testing.expect(s.hero.hp < hp or s.state == .dead);
 }
 
 test "tome sim: boss AOE resolves on the telegraphed turn" {
