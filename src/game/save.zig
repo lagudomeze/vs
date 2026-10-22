@@ -815,6 +815,7 @@ fn patchedSave(alloc: std.mem.Allocator, bytes: []const u8, patch: anytype) ![]u
 test "save: fresh run round-trips (short log, no events)" {
     const alloc = testing.allocator;
     var sim = Sim.init(4242, .warrior);
+    sim.hero.pending_points = 2;
     try testing.expect(sim.log_total < log_lines_max);
 
     const bytes = try saveAlloc(alloc, &sim);
