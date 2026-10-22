@@ -656,6 +656,13 @@ pub const Sim = struct {
         return true;
     }
 
+    /// Terrain-only line of sight over the same `blocked` grid used for
+    /// movement. Read-only, used by the aim preview before confirming a
+    /// ranged talent. The target cell itself may be occupied.
+    pub fn hasLineOfSight(self: *const Sim, a: GridPos, b: GridPos) bool {
+        return self.lineClear(a, b);
+    }
+
     fn lineClear(self: *const Sim, a: GridPos, b: GridPos) bool {
         var x = a.x;
         var y = a.y;
