@@ -12,6 +12,7 @@ const dungeon = @import("../game/dungeon.zig");
 const content_mod = @import("../game/content.zig");
 const attributes = @import("../game/attributes.zig");
 const items_mod = @import("../game/items.zig");
+const intent_mod = @import("../game/intent.zig");
 
 /// Seeds used by the generation matrix and by the autoplay batch.
 pub const seed_count: usize = 100;
@@ -211,7 +212,9 @@ fn checkAfterAction(s: *const tome.Sim, before: Snapshot) !void {
         },
         .dead => {
             if (s.hero.hp > 0) return error.DeadWithPositiveHp;
-            if (s.turn != before.turn + 1) return error.DeadTurnNotAdvanced;
+            // A trap can kill during the move itself, before endTurn advances
+            // the counter; terminal actions may therefore leave the turn alone.
+            if (s.turn != before.turn and s.turn != before.turn + 1) return error.DeadTurnNotAdvanced;
         },
         .victory => {
             if (s.hero.hp <= 0) return error.VictoryWhileDead;
@@ -229,6 +232,25 @@ const Action = enum { bump, wait, talent, move };
 /// whole hotbar on nearby enemies, then A* toward the stairs.
 fn autoStep(s: *tome.Sim) Action {
     const hero = s.hero.pos;
+
+    if (s.aoe_armed and intent_mod.bossAoeDue(s.turn +| 1)) {
+        var best: ?[2]i32 = null;
+        var best_d: i32 = -1;
+        for (dirs4) |d| {
+            const nx = hero.x + d[0];
+            const ny = hero.y + d[1];
+            if (!s.canMove(d[0], d[1])) continue;
+            if (s.enemyAt(nx, ny) != null) continue;
+            const dd: i32 = @intCast(@abs(nx - s.aoe_target.x) + @abs(ny - s.aoe_target.y));
+            if (dd > best_d) {
+                best_d = dd;
+                best = d;
+            }
+        }
+        if (best) |d| {
+            if (s.move(d[0], d[1])) return .move;
+        }
+    }
 
     for (dirs4) |d| {
         if (s.enemyAt(hero.x + d[0], hero.y + d[1]) != null) {
