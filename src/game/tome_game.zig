@@ -259,7 +259,7 @@ pub const TomeGame = struct {
             self.sim.pushLog("存档失败 {s}", .{@errorName(err)});
             return;
         };
-        gear_save.saveFile(io, self.gpa, gear_path, &self.inventory) catch |err| {
+        gear_save.saveFileWithRng(io, self.gpa, gear_path, &self.inventory, &self.loot_rng) catch |err| {
             self.sim.pushLog("装备存档失败 {s}", .{@errorName(err)});
             return;
         };
@@ -304,7 +304,11 @@ pub const TomeGame = struct {
         self.inventory = loaded_inv;
         self.mods.clear();
         self.rebuildMods();
-        self.loot_rng = std.Random.DefaultPrng.init(loaded.seed ^ 0x9e3779b97f4a7c15 ^ @as(u64, loaded.turn));
+        if (gear_save.rngNonZero(gear.loot_rng)) {
+            self.loot_rng.s = gear.loot_rng;
+        } else {
+            self.loot_rng = std.Random.DefaultPrng.init(loaded.seed ^ 0x9e3779b97f4a7c15 ^ @as(u64, loaded.turn));
+        }
         self.chest_loot_seen = loaded.chest_loot_events;
         self.kill_loot_seen = loaded.kill_loot_events;
         self.last_level = loaded.hero.level;
@@ -1478,6 +1482,7 @@ test "tome game: save/load round-trips the sim and gear" {
     if (g.content.items.len == 0) return error.SkipZigTest;
     if (!g.inventory.pickup(0)) return error.SkipZigTest;
     const turn = g.sim.turn;
+    const rng_state = g.loot_rng.s;
     g.saveRun(io, sim_path, gear_path);
 
     g.sim.hero.hp = 1;
@@ -1486,6 +1491,7 @@ test "tome game: save/load round-trips the sim and gear" {
     try std.testing.expectEqual(@as(f32, 77), g.sim.hero.hp);
     try std.testing.expectEqual(turn, g.sim.turn);
     try std.testing.expectEqual(@as(usize, 1), g.inventory.len);
+    try std.testing.expect(std.meta.eql(rng_state, g.loot_rng.s));
 }
 
 test "tome game: H toggles help without spending a turn" {
