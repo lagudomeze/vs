@@ -83,6 +83,7 @@ pub const State = struct {
     res_per_turn: f32 = 0,
     equip: [3][]const u8 = .{ "", "", "" },
     items: [12][]const u8 = .{ "", "", "", "", "", "", "", "", "", "", "", "" },
+    item_details: [12][]const u8 = .{ "", "", "", "", "", "", "", "", "", "", "", "" },
     item_count: usize = 0,
     dead: bool = false,
     victory: bool = false,
@@ -415,8 +416,12 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                 for (state.items[0..n], 0..) |name, i| {
                     const col = @as(i32, @intCast(i % 2));
                     const row = @as(i32, @intCast(i / 2));
+                    const y = iy + 42 + row * 28;
                     const label = if (i < 3) fmt(&ibuf, "{d} {s}", .{ i + 1, name }) else fmt(&ibuf, "  {s}", .{name});
-                    r.drawText(ix + 16 + col * 190, iy + 42 + row * 20, label, palette.cream, 1, false);
+                    r.drawText(ix + 16 + col * 190, y, label, palette.cream, 1, false);
+                    if (i < state.item_details.len and state.item_details[i].len > 0) {
+                        r.drawText(ix + 26 + col * 190, y + 10, state.item_details[i], palette.muted, 1, false);
+                    }
                 }
             }
             r.drawText(ix + 16, iy + ih - 18, "数字键 1/2/3 装备；I 关闭", palette.muted, 1, false);
