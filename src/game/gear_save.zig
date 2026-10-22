@@ -55,13 +55,34 @@ pub fn fromSlice(alloc: std.mem.Allocator, bytes: []const u8) (GearError || std.
     if (!std.mem.eql(u8, save.format, format_name)) return error.NotGearFormat;
     if (save.version != gear_version) return error.UnsupportedVersion;
     if (save.len > items.max_inventory) return error.InvalidLength;
-    return save;
+    var owned = save;
+    owned.format = format_name; // the parsed slice points into the input buffer
+    return owned;
+}
+
+/// Write the gear half of a run save. Parent directories must exist.
+pub fn saveFile(io: std.Io, alloc: std.mem.Allocator, path: []const u8, inv: *const items.Inventory) !void {
+    const bytes = try toAlloc(alloc, inv);
+    defer alloc.free(bytes);
+    const file = if (std.fs.path.isAbsolute(path))
+        try std.Io.Dir.createFileAbsolute(io, path, .{})
+    else
+        try std.Io.Dir.cwd().createFile(io, path, .{});
+    defer file.close(io);
+    try file.writeStreamingAll(io, bytes);
+}
+
+/// Read and validate the gear half. Bad files are left untouched on disk.
+pub fn loadFile(io: std.Io, alloc: std.mem.Allocator, path: []const u8) !GearSave {
+    const bytes = try std.Io.Dir.cwd().readFileAlloc(io, path, alloc, .limited(max_bytes));
+    defer alloc.free(bytes);
+    return fromSlice(alloc, bytes);
 }
 
 test "gear save: capture/restore keeps bag and equipment" {
     var inv = items.Inventory.init();
-    _ = try inv.pickup(1);
-    _ = try inv.pickup(2);
+    _ = inv.pickup(1);
+    _ = inv.pickup(2);
     try inv.equip(&test_defs, 1);
     var copy = GearSave{};
     copy = capture(&inv);
@@ -74,7 +95,7 @@ test "gear save: capture/restore keeps bag and equipment" {
 
 test "gear save: JSON roundtrip and bad inputs" {
     var inv = items.Inventory.init();
-    _ = try inv.pickup(2);
+    _ = inv.pickup(2);
     const bytes = try toAlloc(std.testing.allocator, &inv);
     defer std.testing.allocator.free(bytes);
     const save = try fromSlice(std.testing.allocator, bytes);
@@ -87,7 +108,7 @@ test "gear save: JSON roundtrip and bad inputs" {
 }
 
 const test_defs = [_]items.ItemDef{
-    .{ .id = 0, .name = "测试剑", .slot = .main_hand, .quality = .common, .description = "" },
-    .{ .id = 1, .name = "测试甲", .slot = .body, .quality = .common, .description = "" },
-    .{ .id = 2, .name = "测试饰品", .slot = .trinket, .quality = .common, .description = "" },
+    .{ .id = "test_sword", .name = "测试剑", .slot = .main_hand, .quality = .common, .description = "" },
+    .{ .id = "test_body", .name = "测试甲", .slot = .body, .quality = .common, .description = "" },
+    .{ .id = "test_trinket", .name = "测试饰品", .slot = .trinket, .quality = .common, .description = "" },
 };

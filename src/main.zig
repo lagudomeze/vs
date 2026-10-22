@@ -58,7 +58,7 @@ fn usage() void {
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
         \\          TAB switch target, ESC cancel aim/close panel/quit,
         \\          Q/E or right-drag orbit, wheel zoom, I inventory, C character,
-        \\          R reset, F1 debug, F12 shot.
+        \\          R reset, F5 save, F9 load, F1 debug, F12 shot.
         \\
     , .{});
 }
@@ -313,6 +313,8 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
             }
         }
         if (pin.toggle_debug) game.debug = !game.debug;
+        if (pin.save_slot) game.saveRun(io, "saves/tome-run.json", "saves/tome-gear.json");
+        if (pin.load_slot) game.loadRun(io, "saves/tome-run.json", "saves/tome-gear.json");
 
         var input = vx.tome_game.Input{};
         input.step_x = @as(i32, @intFromBool(pin.step_e)) - @as(i32, @intFromBool(pin.step_w));
