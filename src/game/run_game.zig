@@ -407,7 +407,7 @@ pub const RunGame = struct {
             if (err == error.FileNotFound) {
                 self.loadRun(io, self.slot_runs[slot], self.slot_gears[slot]);
             } else {
-                self.sim.pushLog("读档失败：{s}", .{@errorName(err)});
+                self.sim.pushLog("读档失败：{s}", .{loadErrorText(err)});
             }
             self.slot_menu = .none;
             self.refreshSlotLabels(io);
@@ -472,8 +472,7 @@ pub const RunGame = struct {
     pub fn loadAutoSlot(self: *RunGame, io: std.Io, slot: usize) void {
         if (slot >= self.auto_files.len) return;
         const loaded = slot_bundle.loadFile(io, self.gpa, self.auto_files[slot]) catch |err| {
-            const msg = if (err == error.FileNotFound) "没有自动存档" else @errorName(err);
-            self.sim.pushLog("读档失败：{s}", .{msg});
+            self.sim.pushLog("读档失败：{s}", .{loadErrorText(err)});
             self.slot_menu = .none;
             self.fillHudState();
             return;
@@ -509,15 +508,34 @@ pub const RunGame = struct {
 
     /// F9: load both halves. A missing/corrupt gear file leaves the current
     /// run alone; a fresh save still loads with an empty bag.
+    /// Map save/load errors to a player-facing Chinese reason. The switch is
+    /// exhaustive for SaveError; JSON and IO errors fall back to a generic line.
+    fn loadErrorText(err: anyerror) []const u8 {
+        return switch (err) {
+            error.FileNotFound => "没有存档",
+            error.AccessDenied => "没有权限读取存档",
+            error.UnsupportedVersion => "v1 旧档不兼容，请开新局",
+            error.NotSaveFormat => "不是 VX 存档文件",
+            error.EmptySave => "存档为空",
+            error.SaveTooLarge => "存档文件异常大",
+            error.InvalidCoordinate => "存档坐标越界，可能来自旧地图版本",
+            error.InvalidEnemyKind, error.InvalidEnemyName => "存档包含未知敌人",
+            error.InvalidLog, error.InvalidRng, error.InvalidValue, error.InvalidState => "存档内容损坏",
+            error.InconsistentMap => "存档地图不一致",
+            error.TooManyEnemies => "存档敌人数量异常",
+            error.OutOfMemory => "内存不足，无法读档",
+            else => "存档损坏或无法读取",
+        };
+    }
+
     pub fn loadRun(self: *RunGame, io: std.Io, sim_path: []const u8, gear_path: []const u8) void {
         const loaded = save_mod.loadFile(io, self.gpa, sim_path) catch |err| {
-            const msg = if (err == error.FileNotFound) "没有存档" else @errorName(err);
-            self.sim.pushLog("读档失败：{s}", .{msg});
+            self.sim.pushLog("读档失败：{s}", .{loadErrorText(err)});
             return;
         };
         const gear = gear_save.loadFile(io, self.gpa, gear_path) catch |err| blk: {
             if (err == error.FileNotFound) break :blk gear_save.GearSave{};
-            self.sim.pushLog("装备读档失败：{s}", .{@errorName(err)});
+            self.sim.pushLog("装备读档失败：{s}", .{loadErrorText(err)});
             return;
         };
         self.applyLoaded(loaded, gear);
@@ -2065,6 +2083,30 @@ test "run game: save/load round-trips the sim and gear" {
     try std.testing.expectEqual(turn, g.sim.turn);
     try std.testing.expectEqual(@as(usize, 1), g.inventory.len);
     try std.testing.expect(std.meta.eql(rng_state, g.loot_rng.s));
+}
+
+test "run game: v1 save reports a Chinese incompatibility reason" {
+    const alloc = std.testing.allocator;
+    const io = std.testing.io;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const sim_path = try std.fs.path.join(alloc, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "run.json" });
+    defer alloc.free(sim_path);
+    const gear_path = try std.fs.path.join(alloc, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "gear.json" });
+    defer alloc.free(gear_path);
+
+    const g = try RunGame.create(alloc, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    const bytes = try save_mod.saveAlloc(alloc, &g.sim);
+    defer alloc.free(bytes);
+    const old = try std.mem.replaceOwned(u8, alloc, bytes, "\"version\":2", "\"version\":1");
+    defer alloc.free(old);
+    try tmp.dir.writeFile(io, .{ .sub_path = "run.json", .data = old });
+
+    g.loadRun(io, sim_path, gear_path);
+    const last = g.sim.logAt(g.sim.log_total - 1);
+    try std.testing.expect(std.mem.indexOf(u8, last, "旧档不兼容") != null);
+    try std.testing.expect(std.mem.indexOf(u8, last, "UnsupportedVersion") == null);
 }
 
 test "run game: H toggles help without spending a turn" {

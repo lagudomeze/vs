@@ -160,7 +160,7 @@ docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 
 ## 验证
 
-- zig build / zig build test：13/13 steps、153/153 tests。
+- zig build / zig build test：13/13 steps、154/154 tests。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/run_select.png`。
 - 职业菜单显示的 SEED 就是本局真实 seed；选择职业只按同一 seed 重开，R 重开保持职业和 seed。
 - 大图 QA（100 seed × 3 职业，纯逻辑 bot）：通关率 63.0%（189/300）；狂战士 44%、元素法师 80%、时空法师 65%，0 超时/不变量违规；test-qa 86/86。
