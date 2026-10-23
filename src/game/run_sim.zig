@@ -312,6 +312,7 @@ pub const ActionState = struct {
     /// Action points; 100 points buys one turn. Accumulates speed each enemy
     /// phase and is never negative after subtraction.
     energy: i16 = 0,
+    special_cd: u8 = 0,
 };
 
 /// Enemy actor as a composition of small components. Systems should take the
@@ -1085,6 +1086,7 @@ pub const Sim = struct {
         if (!e.life.alive) return;
         if (e.status.consumeStun()) return;
         e.status.consumeSlow();
+        if (e.action.special_cd > 0) e.action.special_cd -= 1;
         if (e.identity.kind == intent_mod.boss_kind and self.aoe_armed and self.bossAoeDue(self.turn)) {
             self.aoe_armed = false;
             if (@as(f32, @floatFromInt(dist(self.hero.pos, self.aoe_target))) <= intent_mod.boss_aoe_radius) {
@@ -1105,6 +1107,14 @@ pub const Sim = struct {
             .{ .x = self.hero.pos.x, .y = self.hero.pos.y },
             null,
         );
+        if (e.identity.kind == 2 and d == 2 and los and e.action.special_cd == 0) {
+            e.action.special_cd = 2;
+            const raw = e.combat.attack.val * 0.4;
+            const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount;
+            self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
+            self.pushLog("石魔像 震地 -{d:.0}", .{dmg});
+            return;
+        }
         if (d <= 1 or (d <= e.combat.range and los)) {
             self.enemyAttack(idx);
             return;
@@ -1660,6 +1670,27 @@ test "run sim: affixes are deterministic and vampiric heals on hit" {
     });
     _ = s.wait();
     try std.testing.expect(s.enemies[0].vitals.val > 40);
+}
+
+test "run sim: golem shockwave hits at range two" {
+    var s = Sim.init(83, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{
+        .kind = 2,
+        .name = "石魔像",
+        .pos = .{ .x = s.hero.pos.x + 2, .y = s.hero.pos.y },
+        .hp = 140,
+        .hp_max = 140,
+        .attack = 12,
+        .armor = 9,
+        .speed = 70,
+        .range = 1,
+        .xp = 40,
+        .energy = 100,
+    });
+    const hp = s.hero.vitals.val;
+    s.enemyAct(0);
+    try std.testing.expect(s.hero.vitals.val < hp);
 }
 
 test "run sim: golem hit applies vulnerable to hero" {
