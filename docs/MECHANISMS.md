@@ -179,7 +179,7 @@ cells(shape, origin, dir) []Cell
 - 消耗/冷却在 Sim.talentCost/talentCooldown；
 - 执行 switch 在 Sim.useTalentOn；
 - skills.json 已有 SkillDef，但玩家天赋实际没走它；
-- Boss 深渊斩是 Sim.enemyAct 的特判，不是 ActionSpec；Boss 35% 血量进入狂暴（攻击/速度提升，深渊斩周期不变）；
+- Boss 深渊斩是 Sim.enemyAct 的特判，不是 ActionSpec；Boss 50% 血量召唤 1 只半血骷髅（入场眩晕 1 回合），35% 血量进入狂暴（攻击/速度提升，深渊斩周期不变）；
 - 普攻、冲锋、火球、闪现、回溯各自一套校验。
 
 ### M6 伤害/生命

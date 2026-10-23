@@ -182,6 +182,7 @@ const MapSave = struct {
     shop: GridPosSave = .{ .x = 0, .y = 0 },
     shop_active: bool = false,
     shop_used: bool = false,
+    boss_summoned: bool = false,
 };
 
 const SaveRoot = struct {
@@ -409,6 +410,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .shop = savePos(sim.shop),
             .shop_active = sim.shop_active,
             .shop_used = sim.shop_used,
+            .boss_summoned = sim.boss_summoned,
         },
         .log = log_buf[0..sim.log_total],
     };
@@ -612,6 +614,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     sim.shop = loadPos(map.shop);
     sim.shop_active = map.shop_active;
     sim.shop_used = map.shop_used;
+    sim.boss_summoned = map.boss_summoned;
     sim.blocked = map.blocked;
     sim.stairs = loadPos(map.stairs);
     for (map.chests, 0..) |p, i| sim.chests[i] = loadPos(p);
@@ -819,6 +822,7 @@ fn expectSameRun(expected: *const Sim, actual: *const Sim) !void {
     try testing.expectEqual(expected.gold, actual.gold);
     try testing.expectEqual(expected.shop_active, actual.shop_active);
     try testing.expectEqual(expected.shop_used, actual.shop_used);
+    try testing.expectEqual(expected.boss_summoned, actual.boss_summoned);
     try testing.expectEqual(expected.shop.x, actual.shop.x);
     try testing.expectEqual(expected.shop.y, actual.shop.y);
     try testing.expectEqual(expected.shrine.x, actual.shrine.x);
@@ -898,6 +902,7 @@ test "save: fresh run round-trips (short log, no events)" {
     sim.hero.progression.pending_points = 2;
     sim.boss_enraged = true;
     sim.floor_mod = .ember;
+    sim.boss_summoned = true;
     sim.enemies[0].status.vulnerable_turns = 2;
     try testing.expect(sim.log_total < log_lines_max);
 
