@@ -1207,7 +1207,13 @@ pub const Sim = struct {
                     if (self.enemies[idx].life.alive and !self.enemies[idx].status.applySlow(2)) self.pushLog("Boss 免疫减速", .{});
                 } else {
                     self.playerAttack(idx, 1.2);
-                    if (!self.enemies[idx].status.applyStun(2)) self.pushLog("Boss 免疫眩晕", .{});
+                    if (!self.enemies[idx].status.applyStun(2)) {
+                        if (self.enemies[idx].life.alive) {
+                            _ = self.enemies[idx].status.applySlow(2);
+                            self.playerAttack(idx, 0.5);
+                            self.pushLog("Boss 抗眩晕 减速+反噬", .{});
+                        }
+                    }
                 }
                 self.endTurn();
                 return true;
@@ -1467,6 +1473,7 @@ test "run sim: boss is immune to stun and slow" {
     s.hero.resource.val = 100;
     try std.testing.expect(s.useTalent(1));
     try std.testing.expectEqual(@as(u16, 0), s.enemies[0].status.stun_turns);
+    try std.testing.expect(s.enemies[0].status.slow_turns > 0);
 }
 
 test "run sim: killing the last boss wins" {
