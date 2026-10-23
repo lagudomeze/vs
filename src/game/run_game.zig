@@ -1631,6 +1631,10 @@ pub const RunGame = struct {
                     const vx = std.math.clamp(x - renderer.Renderer.textWidth("VULN", 1), 2, w - 2);
                     self.renderer.drawText(vx, y + 42, "VULN", color.pack(220, 120, 255), 1, true);
                 }
+                if (self.sim.enemies[i].status.guard_turns > 0) {
+                    const gx = std.math.clamp(x - renderer.Renderer.textWidth("GUARD", 1), 2, w - 2);
+                    self.renderer.drawText(gx, y + 51, "GUARD", color.pack(180, 200, 230), 1, true);
+                }
                 if (self.sim.enemies[i].status.stun_immune) {
                     const bx = std.math.clamp(x - renderer.Renderer.textWidth("BOSS", 1), 2, w - 2);
                     self.renderer.drawText(bx, y + 15, "BOSS", palette.red, 1, true);
