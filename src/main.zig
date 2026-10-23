@@ -21,6 +21,7 @@ const Options = struct {
     cast: bool = false,
     auto_demo: bool = false,
     enemy_phase_shot: bool = false,
+    slots_shot: bool = false,
     debug: bool = false,
     lineup: bool = false,
     inventory: bool = false,
@@ -52,6 +53,7 @@ fn usage() void {
         \\  --cast            headless: cast once at the end
         \\  --auto            headless demo: cast every 1.5s
         \\  --enemy-phase     headless: wait once and capture the enemy-phase HUD
+        \\  --slots           open the save-slot panel (screenshots/QA)
         \\  --aim N           headless: open aim on talent N for screenshots (no confirm)
         \\  --help-screen     show the in-game controls panel for screenshots
         \\  --debug           show the debug HUD
@@ -123,6 +125,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.auto_demo = true;
         } else if (std.mem.eql(u8, a, "--enemy-phase")) {
             o.enemy_phase_shot = true;
+        } else if (std.mem.eql(u8, a, "--slots")) {
+            o.slots_shot = true;
         } else if (std.mem.eql(u8, a, "--debug")) {
             o.debug = true;
         } else if (std.mem.eql(u8, a, "--lineup")) {
@@ -296,7 +300,7 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
     var elapsed: f32 = 0;
     var quit = false;
     var captured = false;
-    var load_armed: f32 = 0;
+    var slot_frame = false;
     std.debug.print("tome: {d}x{d} logical, {d}x scale - class menu 1/2/3, WASD step, 1/2/3 aim, SPACE confirm, ESC cancel, I/C panels, Q/E orbit, R restart\n", .{
         options.width, options.height, options.scale,
     });
@@ -314,7 +318,10 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
         // Escape is hierarchical: cancel aim first (never lose the run just
         // for cancelling a target), then close a modal panel, then quit.
         if (pin.escape) {
-            if (!game.cancelAim()) {
+            if (game.slot_menu != .none) {
+                game.closeSlotMenu();
+                slot_frame = true;
+            } else if (!game.cancelAim()) {
                 if (game.show_help) {
                     game.show_help = false;
                 } else if (game.panel != .none) {
@@ -325,37 +332,50 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
             }
         }
         if (pin.toggle_debug) game.debug = !game.debug;
-        load_armed = @max(0, load_armed - dt);
-        if (pin.save_slot) game.saveRun(io, "saves/tome-run.json", "saves/tome-gear.json");
+        if (pin.save_slot) {
+            game.openSlotMenu(io, .save);
+            slot_frame = true;
+        }
         if (pin.load_slot) {
-            if (load_armed > 0) {
-                game.loadRun(io, "saves/tome-run.json", "saves/tome-gear.json");
-                load_armed = 0;
-            } else {
-                load_armed = 2.0;
-                game.sim.pushLog("再按 F9 确认读档", .{});
+            game.openSlotMenu(io, .load);
+            slot_frame = true;
+        }
+        if (game.slot_menu != .none) {
+            var chosen: ?usize = null;
+            if (pin.talent_1) chosen = 0;
+            if (pin.talent_2) chosen = 1;
+            if (pin.talent_3) chosen = 2;
+            if (chosen) |idx| {
+                if (game.slot_menu == .save) {
+                    game.saveSlot(io, idx);
+                } else {
+                    game.loadSlot(io, idx);
+                }
+                slot_frame = true;
             }
         }
 
         var input = vx.tome_game.Input{};
-        input.step_x = @as(i32, @intFromBool(pin.step_e)) - @as(i32, @intFromBool(pin.step_w));
-        input.step_y = @as(i32, @intFromBool(pin.step_s)) - @as(i32, @intFromBool(pin.step_n));
-        if (pin.talent_1) input.talent = 0;
-        if (pin.talent_2) input.talent = 1;
-        if (pin.talent_3) input.talent = 2;
-        input.confirm = pin.cast;
-        input.wait = pin.wait;
-        input.target_next = pin.toggle_hero;
-        input.inventory = pin.inventory;
-        input.character = pin.character;
-        input.restart = pin.reset;
-        input.help = pin.help;
-        input.mouse_x = pin.mouse_x;
-        input.mouse_y = pin.mouse_y;
-        input.click = pin.click;
-        input.stat = pin.stat;
-        input.yaw_delta = pin.yaw_delta;
-        input.zoom_delta = pin.zoom_delta;
+        if (!slot_frame) {
+            input.step_x = @as(i32, @intFromBool(pin.step_e)) - @as(i32, @intFromBool(pin.step_w));
+            input.step_y = @as(i32, @intFromBool(pin.step_s)) - @as(i32, @intFromBool(pin.step_n));
+            if (pin.talent_1) input.talent = 0;
+            if (pin.talent_2) input.talent = 1;
+            if (pin.talent_3) input.talent = 2;
+            input.confirm = pin.cast;
+            input.wait = pin.wait;
+            input.target_next = pin.toggle_hero;
+            input.inventory = pin.inventory;
+            input.character = pin.character;
+            input.restart = pin.reset;
+            input.help = pin.help;
+            input.mouse_x = pin.mouse_x;
+            input.mouse_y = pin.mouse_y;
+            input.click = pin.click;
+            input.stat = pin.stat;
+            input.yaw_delta = pin.yaw_delta;
+            input.zoom_delta = pin.zoom_delta;
+        }
 
         game.update(input, dt);
         game.render();
@@ -456,6 +476,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
 
     if (options.inventory) game.panel = .inventory;
     if (options.character) game.panel = .character;
+    if (options.slots_shot) game.openSlotMenu(io, .save);
     if (options.loot > 0) game.debugGrantLoot(options.loot);
 
     if (options.headless) {

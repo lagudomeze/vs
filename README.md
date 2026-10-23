@@ -17,7 +17,8 @@
 - **属性/装备/掉落**：六属性、HP/资源、攻击/护甲/暴击/速度；宝箱和击杀产出版本内物品，空槽自动装备，装备即时改变面板数值。
 - **天赋瞄准**：1/2/3 先进入瞄准，显示目标/距离/预计伤害/范围；空格/同键/左键确认，Esc 取消，Tab 换目标；火球可点地面格，AOE 范围环实时预览；超距/无视线/缺资源红色提示。
 - **敌人阶段/先攻**：玩家行动后 HUD 显示“敌人行动”，锁定输入约 0.3 秒再结算敌人移动/攻击；顶栏同时显示“先攻 玩家>最快敌人”，与敌人阶段的速度排序一致。自动跑局和 QA 仍即时结算。
-- **存档/读档**：F5 写 saves/tome-run.json（Sim 全状态 + RNG）和 saves/tome-gear.json（背包/装备），每个文件走临时文件 + 原子替换；F9 两次确认后读取；坏档不覆盖当前局。
+- **三槽存档**：F5/F9 打开槽位面板，1/2/3 保存或读取；面板显示职业/楼层/等级/回合，每个文件原子替换。
+- **存档/读档**：F5 写 saves/tome-run.json（Sim 全状态 + RNG）和 saves/tome-gear.json（背包/装备），每个文件走临时文件 + 原子替换；F9 打开槽位面板后读取；坏档不覆盖当前局。
 - **中文 HUD（常驻面板 <30%）**：角色卡、楼层卡、战斗日志、天赋栏、角色/背包面板；背包显示品质/属性摘要，天赋栏显示消耗、基础冷却和当前状态（可用/冷却中/缺资源），角色面板可复查。H 打开操作说明。Ark Pixel 12px 子集。
 - **3D 像素场景**：地牢地砖、墙、楼梯、宝箱、陷阱、精英和 Boss 模型；脚底环、目标血条、危险标记、楼梯光柱。
 - **无窗口验证**：headless 截图；自动跑局用于 QA。
@@ -66,13 +67,15 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | Tab | 瞄准中切换目标 |
 | 鼠标 | 悬停高亮/选择目标；瞄准中左键确认 |
 | R | 游戏中第一次按进入确认（2 秒内再按）；死亡/胜利立即重开；保留职业与 seed |
-| F5 / F9 | 存档 / 读档（F9 按两次确认） |
+| F5 / F9 | 打开存档 / 读档槽位面板；1/2/3 选择，Esc 取消 |
 | H | 打开/关闭操作说明 |
 | F1 / F12 | 调试 / 截图 |
 
 ![help](docs/screenshots/tome_help.png)
 
 ![inventory](docs/screenshots/tome_inventory.png)
+
+![save slots](docs/screenshots/tome_slots.png)
 
 ![character](docs/screenshots/tome_character.png)
 
@@ -149,7 +152,7 @@ docs/           TOME_V1 / SAVE / ART_PASS / UX_REVIEW_TOME / screenshots
 
 ## 验证
 
-- zig build / zig build test：13/13 steps、141/141 tests。
+- zig build / zig build test：13/13 steps、142/142 tests。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/tome_select.png`。
 - 职业菜单显示的 SEED 就是本局真实 seed；选择职业只按同一 seed 重开，R 重开保持职业和 seed。
 - 自动跑局（seed 12345）：三职业均可通关；狂战士约第 100 回合剩 66 HP，元素法师第 75 回合、时空法师第 84 回合。

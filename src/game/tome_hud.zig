@@ -60,6 +60,8 @@ pub const State = struct {
     floor: u8 = 1,
     floors: u8 = 3,
     enemy_phase: bool = false,
+    slot_mode: u8 = 0,
+    slot_labels: [3][]const u8 = .{ "空", "空", "空" },
     /// Player + at most one fastest living enemy, matching enemyPhase order.
     initiative: [2][]const u8 = .{ "", "" },
     initiative_count: u8 = 0,
@@ -113,7 +115,7 @@ fn fmt(buf: []u8, comptime f: []const u8, args: anytype) []const u8 {
 
 const menu_title = "选职业";
 const menu_hint = "按 1 / 2 / 3 开始";
-const menu_footer = "1/2/3 选择  F9x2 读档  R 重开同职业";
+const menu_footer = "1/2/3 选择  F9 读档槽  R 重开同职业";
 const talent_label = "天赋";
 const help_title = "操作说明";
 const help_footer = "H 关闭";
@@ -201,7 +203,7 @@ fn drawHelp(r: *renderer.Renderer, w: i32, h: i32) void {
         "瞄准 Tab换目标 火球鼠标点地面",
         "Esc 取消瞄准 / 关闭面板 / 退出",
         "背包 I     角色 C",
-        "存档 F5    读档 F9x2",
+        "存档 F5    读档 F9 槽位",
         "相机 Q/E/右键   鼠标悬停选目标",
         "升级 C 面板 1-6 加点  R 重开",
         "目标  击杀第 3 层深渊守卫",
@@ -458,6 +460,29 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         const sw = renderer.Renderer.textWidth(sub, 1);
         r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), @divTrunc(h, 2) + 23, sub, palette.muted, 1, true);
     }
+
+    // save / load slot modal, on top of everything
+    if (state.slot_mode != 0) {
+        r.fillRect(0, 0, w, h, palette.deep);
+        const pw: i32 = 320;
+        const ph: i32 = 164;
+        const px = @divTrunc(w - pw, 2);
+        const py = @divTrunc(h - ph, 2);
+        r.fillRect(px, py, pw, ph, palette.panel);
+        r.strokeRect(px, py, pw, ph, palette.gold);
+        const title = if (state.slot_mode == 1) "保存到槽位" else "从槽位读取";
+        r.drawText(px + 16, py + 12, title, palette.gold, 1, true);
+        var i: usize = 0;
+        while (i < 3) : (i += 1) {
+            const y = py + 42 + @as(i32, @intCast(i)) * 30;
+            r.fillRect(px + 12, y - 4, pw - 24, 26, palette.deep);
+            const num = fmt(&buf, "{d}", .{i + 1});
+            r.drawText(px + 20, y, num, palette.gold_light, 1, true);
+            const label = if (state.slot_labels[i].len > 0) state.slot_labels[i] else "空";
+            r.drawText(px + 44, y, label, palette.cream, 1, true);
+        }
+        r.drawText(px + 16, py + ph - 24, "1/2/3 选择   Esc 取消", palette.muted, 1, true);
+    }
 }
 
 fn expectGlyphs(text: []const u8) !void {
@@ -499,6 +524,10 @@ test "tome hud: hint strings have embedded CJK glyphs" {
         "视线受阻",
         "取消瞄准",
         "地面",
+        "保存到槽位",
+        "从槽位读取",
+        "坏档",
+        "空",
     };
     for (fixed) |text| try expectGlyphs(text);
     const targeting = @import("tome_target.zig");

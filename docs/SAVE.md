@@ -1,6 +1,6 @@
 # 存档模块（RunState v1）
 
-纯逻辑的 ToME 存档/读档，位于 `src/game/save.zig`；窗口已接入 **F5 存档 / F9 读档**（`TomeGame.saveRun/loadRun`），装备侧车在 `src/game/gear_save.zig`。
+纯逻辑的 ToME 存档/读档，位于 `src/game/save.zig`；窗口已接入 **F5 存档 / F9 读档槽位**（`TomeGame.saveSlot/loadSlot`），装备侧车在 `src/game/gear_save.zig`。
 
 ## 范围
 
@@ -69,12 +69,12 @@ var from_disk = try save.loadFile(io, alloc, "saves/tome.json");
 
 窗口里：
 
-- **F5**：`saves/tome-run.json` + `saves/tome-gear.json`；目录不存在会自动创建；失败写日志，不打断当前局。
-- **F9**：连按两次确认后，先完整读入并校验两半，再替换当前局；坏档/未知物品/版本不符/空 gear 对象只写日志并保留当前局。读档后重建 mesh、视觉、HUD，清空瞄准。
-- 存档槽位尚未实现；当前固定单槽。
-- 职业菜单底部提示 **F9x2 读档**；没有 gear 文件时按空背包读取，装备 sidecar 缺失不会阻断 Sim。
+- **F5**：打开存档槽位面板；按 1/2/3 保存到对应槽，Esc 取消。
+- **F9**：打开读档槽位面板；按 1/2/3 读取；Esc 取消。坏档/未知物品/版本不符/空 gear 对象只写日志并保留当前局。读档后重建 mesh、视觉、HUD，清空瞄准。
+- 三个槽位：1=saves/tome-run.json + tome-gear.json（兼容旧档），2/3=saves/slot{2,3}-*.json。面板显示每槽的“职业/楼层/等级/回合”，空槽显示“空”，解析失败显示“坏档”。
+- 职业菜单底部提示 **F9 读档槽**；没有 gear 文件时按空背包读取，装备 sidecar 缺失不会阻断 Sim。
 
-实现入口：`TomeGame.saveRun(io, sim_path, gear_path)` / `TomeGame.loadRun(...)`；`src/game/gear_save.zig` 有 `saveFile/loadFile`。
+实现入口：TomeGame.saveSlot/loadSlot 选槽，内部仍调用 saveRun/loadRun；src/game/gear_save.zig 有 saveFile/loadFile。
 
 要点：
 
@@ -83,3 +83,4 @@ var from_disk = try save.loadFile(io, alloc, "saves/tome.json");
 3. **掉落 RNG**：gear sidecar 的 `loot_rng` 保存 xoshiro256 状态；读档后续接同一掉落序列。旧档没有该字段（全 0）时回退 `init(seed ^ turn)`，并靠 `*_seen = sim.*_loot_events` 防重放。
 4. **地图**由 blocked + stairs/chests/traps 重建，装饰不跨档；不影响 LOS/A*。
 5. **R/重开**：`restart()` 重新 `Sim.reset`，与读档互不影响。
+6. **跨文件**：每个文件原子替换，但 Sim/gear 仍是两个文件；没有 manifest，极端情况下可能一旧一新。
