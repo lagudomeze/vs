@@ -13,8 +13,8 @@ const Options = struct {
     yaw: f32 = -0.35,
     pitch: f32 = 0.70,
     dist: f32 = 8.2,
-    width: u32 = 480,
-    height: u32 = 270,
+    width: u32 = 640,
+    height: u32 = 360,
     scale: u32 = 3,
     run_seconds: f32 = 0,
     walk: bool = false,
@@ -48,7 +48,7 @@ fn usage() void {
         \\  --yaw DEG         camera yaw (default -20)
         \\  --pitch DEG       camera pitch (default 40)
         \\  --dist U          camera orbit distance (default 8.2)
-        \\  --res WxH         internal pixel resolution (default 480x270)
+        \\  --res WxH         internal pixel resolution (default 640x360)
         \\  --scale N         integer window scale in window mode (default 3)
         \\  --walk            headless: hold W so the party walks into frame
         \\  --cast            headless: cast once at the end
