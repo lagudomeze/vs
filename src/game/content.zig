@@ -21,8 +21,9 @@ pub const file_skills = "skills.json";
 
 pub const SkillKind = enum(u8) { player, enemy };
 
-/// 天赋效果类型（docs/RUN_V1.md 第 6 节）。
-pub const SkillEffect = enum(u8) {
+/// Effect tag; the payload below is a tagged union so a blink cannot carry
+/// damage fields and a buff cannot carry a teleport range.
+pub const SkillEffectKind = enum(u8) {
     damage,
     damage_knockback,
     attack_buff,
@@ -32,36 +33,83 @@ pub const SkillEffect = enum(u8) {
     recall,
 };
 
+pub const DamageEffect = struct {
+    mult: f32 = 0,
+    /// Enemy skills use a flat value instead of hero attack scaling.
+    flat: f32 = 0,
+    /// Radius in cells; 0 = single target.
+    aoe_cells: f32 = 0,
+};
+
+pub const KnockbackEffect = struct {
+    damage: DamageEffect,
+    knockback_cells: u16 = 0,
+};
+
+pub const BuffEffect = struct {
+    pct: f32 = 0,
+    duration_turns: u16 = 0,
+};
+
+pub const BlinkEffect = struct {
+    max_cells: u16 = 0,
+};
+
+pub const SlowEffect = struct {
+    damage: DamageEffect,
+    slow_pct: f32 = 0,
+    duration_turns: u16 = 0,
+};
+
+pub const StunEffect = struct {
+    duration_turns: u16 = 0,
+};
+
+pub const RecallEffect = struct {
+    turns: u16 = 0,
+};
+
+pub const SkillEffect = union(SkillEffectKind) {
+    damage: DamageEffect,
+    damage_knockback: KnockbackEffect,
+    attack_buff: BuffEffect,
+    blink: BlinkEffect,
+    damage_slow: SlowEffect,
+    stun: StunEffect,
+    recall: RecallEffect,
+
+    pub fn kind(self: SkillEffect) SkillEffectKind {
+        return std.meta.activeTag(self);
+    }
+
+    pub fn damagePayload(self: SkillEffect) ?DamageEffect {
+        return switch (self) {
+            .damage => |e| e,
+            .damage_knockback => |e| e.damage,
+            .damage_slow => |e| e.damage,
+            else => null,
+        };
+    }
+};
+
 pub const SkillDef = struct {
     id: []const u8,
     name: []const u8,
     kind: SkillKind = .player,
     /// 玩家天赋的职业；敌人技能必须为 null。
     class: ?attributes.Class = null,
-    effect: SkillEffect = .damage,
     /// 资源消耗（回合制，整数）。
     cost: u16 = 0,
     /// 冷却回合数。
     cooldown_turns: u16 = 0,
-    /// 玩家技能伤害 = 攻击 x damage_mult。
-    damage_mult: f32 = 0,
-    /// 敌人技能的固定伤害。
-    flat_damage: f32 = 0,
     /// 施法距离（格）；1 = 相邻近战。
     range_cells: u16 = 1,
-    /// 范围半径（格）。
-    aoe_cells: f32 = 0,
-    /// 冲锋击退格数。
-    knockback_cells: u16 = 0,
-    /// 闪现最大传送格数。
-    teleport_cells: u16 = 0,
-    /// 战吼攻击加成（0.30 = +30%）。
-    buff_pct: f32 = 0,
-    /// 增益 / 减速 / 停滞 / 回溯持续的回合数。
-    duration_turns: u16 = 0,
-    /// 减速比例。
-    slow_pct: f32 = 0,
+    effect: SkillEffect = .{ .damage = .{} },
     description: []const u8 = "",
+
+    pub fn effectKind(self: SkillDef) SkillEffectKind {
+        return self.effect.kind();
+    }
 };
 
 pub const EnemyDef = struct {
@@ -462,10 +510,9 @@ pub const builtin_skills = [_]SkillDef{
         .name = "重击",
         .kind = .player,
         .class = .warrior,
-        .effect = .damage,
+        .effect = .{ .damage = .{ .mult = 2.0 } },
         .cost = 25,
         .cooldown_turns = 4,
-        .damage_mult = 2.0,
         .range_cells = 1,
         .description = "狂战士：近战 2.0 倍伤害，冷却 4 回合。",
     },
@@ -474,12 +521,10 @@ pub const builtin_skills = [_]SkillDef{
         .name = "冲锋",
         .kind = .player,
         .class = .warrior,
-        .effect = .damage_knockback,
+        .effect = .{ .damage_knockback = .{ .damage = .{ .mult = 1.5 }, .knockback_cells = 2 } },
         .cost = 20,
         .cooldown_turns = 6,
-        .damage_mult = 1.5,
         .range_cells = 2,
-        .knockback_cells = 2,
         .description = "狂战士：直线 2 格冲锋并击退 2 格，冷却 6 回合。",
     },
     .{
@@ -487,11 +532,9 @@ pub const builtin_skills = [_]SkillDef{
         .name = "战吼",
         .kind = .player,
         .class = .warrior,
-        .effect = .attack_buff,
+        .effect = .{ .attack_buff = .{ .pct = 0.30, .duration_turns = 3 } },
         .cost = 15,
         .cooldown_turns = 8,
-        .buff_pct = 0.30,
-        .duration_turns = 3,
         .description = "狂战士：3 回合内攻击 +30%，冷却 8 回合。",
     },
     .{
@@ -499,12 +542,10 @@ pub const builtin_skills = [_]SkillDef{
         .name = "火球",
         .kind = .player,
         .class = .mage,
-        .effect = .damage,
+        .effect = .{ .damage = .{ .mult = 2.5, .aoe_cells = 1.5 } },
         .cost = 30,
         .cooldown_turns = 5,
-        .damage_mult = 2.5,
         .range_cells = 5,
-        .aoe_cells = 1.5,
         .description = "元素法师：范围 1.5 格，2.5 倍伤害，冷却 5 回合。",
     },
     .{
@@ -512,13 +553,10 @@ pub const builtin_skills = [_]SkillDef{
         .name = "冰锥",
         .kind = .player,
         .class = .mage,
-        .effect = .damage_slow,
+        .effect = .{ .damage_slow = .{ .damage = .{ .mult = 1.5 }, .slow_pct = 0.50, .duration_turns = 2 } },
         .cost = 25,
         .cooldown_turns = 6,
-        .damage_mult = 1.5,
         .range_cells = 3,
-        .duration_turns = 2,
-        .slow_pct = 0.50,
         .description = "元素法师：锥形 3 格，减速 2 回合（50%），冷却 6 回合。",
     },
     .{
@@ -526,11 +564,10 @@ pub const builtin_skills = [_]SkillDef{
         .name = "闪现",
         .kind = .player,
         .class = .mage,
-        .effect = .blink,
+        .effect = .{ .blink = .{ .max_cells = 5 } },
         .cost = 20,
         .cooldown_turns = 10,
         .range_cells = 5,
-        .teleport_cells = 5,
         .description = "元素法师：传送到 5 格内空地，冷却 10 回合。",
     },
     .{
@@ -538,13 +575,10 @@ pub const builtin_skills = [_]SkillDef{
         .name = "时光箭",
         .kind = .player,
         .class = .chronomancer,
-        .effect = .damage_slow,
+        .effect = .{ .damage_slow = .{ .damage = .{ .mult = 2.0 }, .slow_pct = 0.50, .duration_turns = 2 } },
         .cost = 25,
         .cooldown_turns = 4,
-        .damage_mult = 2.0,
         .range_cells = 5,
-        .duration_turns = 2,
-        .slow_pct = 0.50,
         .description = "时空法师：2.0 倍伤害并减速 2 回合，冷却 4 回合。",
     },
     .{
@@ -552,11 +586,10 @@ pub const builtin_skills = [_]SkillDef{
         .name = "时间停滞",
         .kind = .player,
         .class = .chronomancer,
-        .effect = .stun,
+        .effect = .{ .stun = .{ .duration_turns = 1 } },
         .cost = 30,
         .cooldown_turns = 8,
         .range_cells = 5,
-        .duration_turns = 1,
         .description = "时空法师：目标跳过 1 回合，冷却 8 回合。",
     },
     .{
@@ -564,22 +597,19 @@ pub const builtin_skills = [_]SkillDef{
         .name = "回溯",
         .kind = .player,
         .class = .chronomancer,
-        .effect = .recall,
+        .effect = .{ .recall = .{ .turns = 2 } },
         .cost = 35,
         .cooldown_turns = 12,
         .range_cells = 0,
-        .duration_turns = 2,
         .description = "时空法师：回到 2 回合前的位置，冷却 12 回合。",
     },
     .{
         .id = "abyss_cleave",
         .name = "深渊斩",
         .kind = .enemy,
-        .effect = .damage,
+        .effect = .{ .damage = .{ .flat = 45, .aoe_cells = 2.2 } },
         .cooldown_turns = 3,
-        .flat_damage = 45,
         .range_cells = 1,
-        .aoe_cells = 2.2,
         .description = "深渊守卫：近战 AOE，伤害 45，2.2 格范围。",
     },
 };
@@ -624,7 +654,56 @@ fn convertItems(alloc: std.mem.Allocator, raw: []const RawItemDef) ![]const item
     return out;
 }
 const EnemiesFile = struct { version: u32 = 1, enemies: []const EnemyDef = &.{} };
-const SkillsFile = struct { version: u32 = 1, skills: []const SkillDef = &.{} };
+/// Flat wire schema; runtime uses SkillEffect union.
+const RawSkillDef = struct {
+    id: []const u8,
+    name: []const u8,
+    kind: SkillKind = .player,
+    class: ?attributes.Class = null,
+    effect: SkillEffectKind = .damage,
+    cost: u16 = 0,
+    cooldown_turns: u16 = 0,
+    damage_mult: f32 = 0,
+    flat_damage: f32 = 0,
+    range_cells: u16 = 1,
+    aoe_cells: f32 = 0,
+    knockback_cells: u16 = 0,
+    teleport_cells: u16 = 0,
+    buff_pct: f32 = 0,
+    duration_turns: u16 = 0,
+    slow_pct: f32 = 0,
+    description: []const u8 = "",
+};
+
+const SkillsFile = struct { version: u32 = 1, skills: []const RawSkillDef = &.{} };
+
+fn convertSkills(alloc: std.mem.Allocator, raw: []const RawSkillDef) ![]const SkillDef {
+    const out = try alloc.alloc(SkillDef, raw.len);
+    for (raw, out) |src, *dst| {
+        const damage = DamageEffect{ .mult = src.damage_mult, .flat = src.flat_damage, .aoe_cells = src.aoe_cells };
+        const effect: SkillEffect = switch (src.effect) {
+            .damage => .{ .damage = damage },
+            .damage_knockback => .{ .damage_knockback = .{ .damage = damage, .knockback_cells = src.knockback_cells } },
+            .attack_buff => .{ .attack_buff = .{ .pct = src.buff_pct, .duration_turns = src.duration_turns } },
+            .blink => .{ .blink = .{ .max_cells = src.teleport_cells } },
+            .damage_slow => .{ .damage_slow = .{ .damage = damage, .slow_pct = src.slow_pct, .duration_turns = src.duration_turns } },
+            .stun => .{ .stun = .{ .duration_turns = src.duration_turns } },
+            .recall => .{ .recall = .{ .turns = src.duration_turns } },
+        };
+        dst.* = .{
+            .id = src.id,
+            .name = src.name,
+            .kind = src.kind,
+            .class = src.class,
+            .cost = src.cost,
+            .cooldown_turns = src.cooldown_turns,
+            .range_cells = src.range_cells,
+            .effect = effect,
+            .description = src.description,
+        };
+    }
+    return out;
+}
 
 const parse_options: std.json.ParseOptions = .{
     .ignore_unknown_fields = true,
@@ -678,15 +757,18 @@ pub fn loadFrom(
     if (!items_ok) report.items = .fallback;
 
     var skill_list: []const SkillDef = &builtin_skills;
+    var skills_ok = false;
     if (parseFile(SkillsFile, arena_alloc, file_skills, skills_bytes, &report)) |file| {
-        if (validateSkills(file.skills, &report)) {
-            skill_list = file.skills;
-        } else {
-            report.skills = .fallback;
+        if (convertSkills(arena_alloc, file.skills)) |converted| {
+            if (validateSkills(converted, &report)) {
+                skill_list = converted;
+                skills_ok = true;
+            }
+        } else |err| {
+            report.add(file_skills, "技能转换失败", @errorName(err));
         }
-    } else {
-        report.skills = .fallback;
     }
+    if (!skills_ok) report.skills = .fallback;
 
     var enemy_list: []const EnemyDef = &builtin_enemies;
     if (parseFile(EnemiesFile, arena_alloc, file_enemies, enemies_bytes, &report)) |file| {
@@ -866,24 +948,8 @@ fn validateSkills(list: []const SkillDef, report: *Report) bool {
             report.add(file_skills, "技能冷却回合过大", def.id);
             ok = false;
         }
-        if (def.range_cells > 50 or def.teleport_cells > 50 or def.knockback_cells > 50) {
+        if (def.range_cells > 50) {
             report.add(file_skills, "技能距离非法", def.id);
-            ok = false;
-        }
-        if (!finiteInRange(def.damage_mult, 0, 1000) or !finiteInRange(def.flat_damage, 0, 100000)) {
-            report.add(file_skills, "技能伤害非法", def.id);
-            ok = false;
-        }
-        if (!finiteInRange(def.aoe_cells, 0, 100)) {
-            report.add(file_skills, "技能范围非法", def.id);
-            ok = false;
-        }
-        if (!finiteInRange(def.buff_pct, 0, 10)) {
-            report.add(file_skills, "技能增益比例非法", def.id);
-            ok = false;
-        }
-        if (!finiteInRange(def.slow_pct, 0, 1)) {
-            report.add(file_skills, "技能减速比例必须在 0..1", def.id);
             ok = false;
         }
         if (!validateSkillEffect(def, report)) ok = false;
@@ -891,46 +957,85 @@ fn validateSkills(list: []const SkillDef, report: *Report) bool {
     return ok;
 }
 
-/// Effect-specific sanity: a charge needs knockback, a blink needs a range,
-/// a buff/stun/recall needs a duration, and damage talents need damage.
-fn validateSkillEffect(def: SkillDef, report: *Report) bool {
+fn validateDamage(def_id: []const u8, damage: DamageEffect, report: *Report) bool {
     var ok = true;
-    const damaging = switch (def.effect) {
-        .damage, .damage_knockback, .damage_slow => true,
-        else => false,
-    };
-    if (damaging and def.damage_mult <= 0 and def.flat_damage <= 0) {
-        report.add(file_skills, "伤害类天赋没有任何伤害", def.id);
+    if (!finiteInRange(damage.mult, 0, 1000) or !finiteInRange(damage.flat, 0, 100000)) {
+        report.add(file_skills, "技能伤害非法", def_id);
         ok = false;
     }
-    switch (def.effect) {
-        .damage => {},
-        .damage_knockback => if (def.knockback_cells == 0) {
-            report.add(file_skills, "冲锋缺少击退格数", def.id);
-            ok = false;
-        },
-        .attack_buff => if (def.buff_pct <= 0 or def.duration_turns == 0) {
-            report.add(file_skills, "战吼缺少攻击加成或持续回合", def.id);
-            ok = false;
-        },
-        .blink => if (def.teleport_cells == 0) {
-            report.add(file_skills, "闪现缺少传送格数", def.id);
-            ok = false;
-        },
-        .damage_slow => if (def.slow_pct <= 0 or def.duration_turns == 0) {
-            report.add(file_skills, "减速天赋缺少减速比例或持续回合", def.id);
-            ok = false;
-        },
-        .stun => if (def.duration_turns == 0) {
-            report.add(file_skills, "时间停滞缺少持续回合", def.id);
-            ok = false;
-        },
-        .recall => if (def.duration_turns == 0) {
-            report.add(file_skills, "回溯缺少回溯回合数", def.id);
-            ok = false;
-        },
+    if (damage.mult <= 0 and damage.flat <= 0) {
+        report.add(file_skills, "伤害类天赋没有任何伤害", def_id);
+        ok = false;
+    }
+    if (!finiteInRange(damage.aoe_cells, 0, 100)) {
+        report.add(file_skills, "技能范围非法", def_id);
+        ok = false;
     }
     return ok;
+}
+
+/// Effect-specific sanity is exhaustive over the union: each variant only
+/// exposes the fields that make sense for it.
+fn validateSkillEffect(def: SkillDef, report: *Report) bool {
+    return switch (def.effect) {
+        .damage => |damage| validateDamage(def.id, damage, report),
+        .damage_knockback => |e| blk: {
+            var ok = validateDamage(def.id, e.damage, report);
+            if (e.knockback_cells == 0 or e.knockback_cells > 50) {
+                report.add(file_skills, "冲锋击退格数非法", def.id);
+                ok = false;
+            }
+            break :blk ok;
+        },
+        .attack_buff => |e| blk: {
+            var ok = true;
+            if (!finiteInRange(e.pct, 0, 10) or e.pct <= 0) {
+                report.add(file_skills, "战吼攻击加成非法", def.id);
+                ok = false;
+            }
+            if (e.duration_turns == 0 or e.duration_turns > 100) {
+                report.add(file_skills, "战吼持续回合非法", def.id);
+                ok = false;
+            }
+            break :blk ok;
+        },
+        .blink => |e| blk: {
+            var ok = true;
+            if (e.max_cells == 0 or e.max_cells > 50) {
+                report.add(file_skills, "闪现传送格数非法", def.id);
+                ok = false;
+            }
+            break :blk ok;
+        },
+        .damage_slow => |e| blk: {
+            var ok = validateDamage(def.id, e.damage, report);
+            if (!finiteInRange(e.slow_pct, 0, 1) or e.slow_pct <= 0) {
+                report.add(file_skills, "减速比例必须在 0..1", def.id);
+                ok = false;
+            }
+            if (e.duration_turns == 0 or e.duration_turns > 100) {
+                report.add(file_skills, "减速持续回合非法", def.id);
+                ok = false;
+            }
+            break :blk ok;
+        },
+        .stun => |e| blk: {
+            var ok = true;
+            if (e.duration_turns == 0 or e.duration_turns > 100) {
+                report.add(file_skills, "时间停滞持续回合非法", def.id);
+                ok = false;
+            }
+            break :blk ok;
+        },
+        .recall => |e| blk: {
+            var ok = true;
+            if (e.turns == 0 or e.turns > 100) {
+                report.add(file_skills, "回溯回合数非法", def.id);
+                ok = false;
+            }
+            break :blk ok;
+        },
+    };
 }
 
 fn validateEnemySkills(enemies: []const EnemyDef, skills: []const SkillDef, report: *Report) bool {
@@ -1006,7 +1111,7 @@ test "embedded tables match the RUN v1 content plan" {
     try std.testing.expectEqual(SkillKind.player, heavy.kind);
     try std.testing.expectEqual(attributes.Class.warrior, heavy.class.?);
     try std.testing.expectEqual(@as(u16, 4), heavy.cooldown_turns);
-    try std.testing.expectEqual(@as(f32, 2.0), heavy.damage_mult);
+    try std.testing.expectEqual(@as(f32, 2.0), heavy.effect.damage.mult);
 
     // 每个职业 3 个天赋，顺序就是热键 1/2/3。
     var hotbar: [4]*const SkillDef = undefined;
@@ -1018,14 +1123,14 @@ test "embedded tables match the RUN v1 content plan" {
 
     const mage_talents = content.talentsFor(.mage, &hotbar);
     try std.testing.expectEqual(@as(usize, 3), mage_talents.len);
-    try std.testing.expectEqual(SkillEffect.blink, mage_talents[2].effect);
+    try std.testing.expectEqual(SkillEffectKind.blink, mage_talents[2].effectKind());
 
     // 敌人技能引用必须解析到 enemy 技能。
     for (content.enemies) |def| {
         const id = def.skill orelse continue;
         const skill = content.skill(id) orelse return error.MissingSkill;
         try std.testing.expectEqual(SkillKind.enemy, skill.kind);
-        try std.testing.expect(skill.flat_damage > 0);
+        try std.testing.expect(skill.effect.damagePayload().?.flat > 0);
     }
 }
 
