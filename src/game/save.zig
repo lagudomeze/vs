@@ -290,12 +290,12 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
         !std.math.isFinite(hero.combat.crit) or !std.math.isFinite(hero.resource_regen.val) or
         !std.math.isFinite(hero.status.buff_pct) or !std.math.isFinite(hero.status.burn_damage) or !allFinite(&hero.sheet.eff_stats) or
         !statsFinite(.{
-            .strength = hero.sheet.stats.strength,
-            .agility = hero.sheet.stats.agility,
-            .constitution = hero.sheet.stats.constitution,
-            .perception = hero.sheet.stats.perception,
-            .magic = hero.sheet.stats.magic,
-            .will = hero.sheet.stats.will,
+            .strength = hero.sheet.stats.strength.val,
+            .agility = hero.sheet.stats.agility.val,
+            .constitution = hero.sheet.stats.constitution.val,
+            .perception = hero.sheet.stats.perception.val,
+            .magic = hero.sheet.stats.magic.val,
+            .will = hero.sheet.stats.will.val,
         }))
     {
         return error.InvalidState;
@@ -340,12 +340,12 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .pos = savePos(hero.pos),
             .last_pos = savePos(hero.last_pos),
             .stats = .{
-                .strength = hero.sheet.stats.strength,
-                .agility = hero.sheet.stats.agility,
-                .constitution = hero.sheet.stats.constitution,
-                .perception = hero.sheet.stats.perception,
-                .magic = hero.sheet.stats.magic,
-                .will = hero.sheet.stats.will,
+                .strength = hero.sheet.stats.strength.val,
+                .agility = hero.sheet.stats.agility.val,
+                .constitution = hero.sheet.stats.constitution.val,
+                .perception = hero.sheet.stats.perception.val,
+                .magic = hero.sheet.stats.magic.val,
+                .will = hero.sheet.stats.will.val,
             },
             .hp = hero.vitals.val,
             .hp_max = hero.vitals.full,
@@ -533,14 +533,14 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
             .pos = loadPos(h.pos),
             .last_pos = loadPos(h.last_pos),
             .sheet = .{
-                .stats = .{
-                    .strength = h.stats.strength,
-                    .agility = h.stats.agility,
-                    .constitution = h.stats.constitution,
-                    .perception = h.stats.perception,
-                    .magic = h.stats.magic,
-                    .will = h.stats.will,
-                },
+                .stats = numeric.PrimarySheet.fromArray(.{
+                    h.stats.strength,
+                    h.stats.agility,
+                    h.stats.constitution,
+                    h.stats.perception,
+                    h.stats.magic,
+                    h.stats.will,
+                }),
                 .eff_stats = h.eff_stats,
             },
             .vitals = .{ .val = h.hp, .full = h.hp_max, .raw_full = h.hp_max },
