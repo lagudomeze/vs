@@ -221,7 +221,58 @@ HasSkill (relationship)
 - 如果要做词缀/耐久/附魔，再引入 ItemInstance entity；
 - 否则 Inventory 继续存 DefId 即可。
 
-## 9. 风险清单
+## 9. Phase 0 实测结果（2026-10-23）
+
+结论：**未通过，暂不迁移 ItemDef/SkillDef。**
+
+环境：
+
+- zflecs 0.2.0-dev；
+- meta_addon=true、script_addon=true；
+- ecs_init 已经自动 import FlecsMeta / FlecsScript，重复调用 FlecsMetaImport/FlecsScriptImport 反而会干扰。
+
+已验证通过：
+
+~~~text
+probe_entity {}
+~~~
+
+脚本能创建实体，ecs.lookup 能取到。
+
+未通过：
+
+1. 文档语法 struct ProbeCost(value: u32)
+   - flecs.c: cannot open scope for 'flecs.meta.struct' (missing reflection data)
+   - probe:1: missing type for initializer
+
+2. 尝试 struct ProbeCost { value: u32 }
+   - probe:2: unexpected newline
+
+3. Zig 侧 ecs.COMPONENT + ecs.struct_init 注册 ProbeCost
+   - 组件实体没有可解析的名字，ecs.lookup(world, "ProbeCost") 返回 0；
+   - 对组件实体调用 get_name 直接崩溃；
+   - 脚本引用 ProbeCost 时 rc=-1，error_ 为空。
+
+这意味着：
+
+- 当前绑定下，FlecsScript 只能稳定创建实体/标签；
+- 反射字段赋值和 Zig 组件命名/解析没有打通；
+- 直接删 ItemDef/SkillDef 会失去现有可用的内容定义，换来的只是脚本实体。
+
+保留的 smoke test：
+
+- src/game/flecs_script_probe.zig 只验证“脚本能创建实体”；
+- 测试基线从 152 变为 153。
+
+重新评估的前提：
+
+- zflecs 提供可用的组件反射注册/命名 API，或；
+- 用 C 侧注册组件并暴露稳定的 Zig 绑定；
+- 有最小 C 示例证明 Component: { field: value } 能读回。
+
+在以上任一条件满足前，继续使用当前 Zig comptime 内容表，不迁移。
+
+## 10. 风险清单
 
 | 风险 | 影响 | 缓解 |
 | --- | --- | --- |
@@ -234,12 +285,12 @@ HasSkill (relationship)
 | 测试需 zflecs world | 单测变重 | 小 fixture world |
 | 两套内容源 | 数据漂移 | 一次只保留 scripts |
 
-## 10. 判断
+## 11. 判断
 
 - **ItemDef / SkillDef 可以删**，但它们是“authoring 结构”；删掉后需要 DefCatalog view 和反射层。
 - **FlecsScript 适合做内容组合**，不适合做数值系统。
 - **先 content-only**，不要全 Sim 迁移。
-- **先 Phase 0 探针**；如果反射层成本过高，就继续用 Zig comptime 表，而不是退回胖 JSON。
+- **Phase 0 已实测未通过**；继续用 Zig comptime 表，而不是退回胖 JSON，也不先删 ItemDef/SkillDef。
 
 在当前代码上，直接删 ItemDef/SkillDef 会破坏：
 - items/skills loader；

@@ -34,6 +34,7 @@ pub const platform = @import("platform/sdl.zig");
 
 test {
     std.testing.refAllDecls(@This());
+    _ = @import("game/flecs_script_probe.zig");
 }
 
 test "all embedded models load" {
