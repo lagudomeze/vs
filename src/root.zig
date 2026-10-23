@@ -2,6 +2,7 @@
 const std = @import("std");
 
 pub const mech = @import("core/mech.zig");
+pub const records = @import("game/records.zig");
 pub const numeric_ecs = @import("game/numeric_ecs.zig");
 pub const math = @import("core/math.zig");
 pub const color = @import("core/color.zig");
