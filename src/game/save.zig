@@ -5,16 +5,16 @@
 //! helpers, so the windowed game, headless QA and unit tests all use the same
 //! code path.
 //!
-//! Format v1
+//! Format v2
 //! ---------
 //! One minified `std.json` document:
 //!
-//!   {"format":"vx-run-save","version":1,"seed":12345,"class":"warrior",
+//!   {"format":"vx-run-save","version":2,"seed":12345,"class":"warrior",
 //!    "floor":1,"floors":3,"turn":42,"state":"playing","kills":2,
 //!    "chest_loot":1,"kill_loot":2,"rng":[u64,u64,u64,u64],
 //!    "hero":{...},"enemies":[...],"map":{...},"log":["...",...]}
 //!
-//! * `version` is checked exactly; a different version is an error.
+//! * `version` is checked exactly; v1 (13x13) saves are rejected as UnsupportedVersion; the 31x31 map cannot be migrated by re-seeding.
 //! * Coordinates are the simulation's 31x31 grid coordinates and are checked to
 //!   be in bounds and walkable where the run state requires it.
 //! * Enemy names are derived from the enemy kind in `run_sim`, so they
@@ -52,7 +52,7 @@ const Enemy = sim_mod.Enemy;
 pub const save_version: u16 = 2;
 pub const format_name = "vx-run-save";
 
-/// Hard cap for `loadAlloc` / `loadFile`. A real v1 save is a few
+/// Hard cap for `loadAlloc` / `loadFile`. A real v2 save is a few
 /// kilobytes; anything larger is treated as a bad file instead of being parsed.
 pub const max_save_bytes: usize = 256 * 1024;
 
@@ -81,7 +81,7 @@ pub const SaveError = error{
     UnsupportedVersion,
     /// JSON value is followed by another token or trailing garbage.
     TrailingData,
-    /// A grid coordinate is outside 0..12.
+    /// A grid coordinate is outside 0..30.
     InvalidCoordinate,
     /// Enemy kind has no entry in the name table.
     InvalidEnemyKind,

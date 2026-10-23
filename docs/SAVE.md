@@ -16,7 +16,7 @@
 | 顶层 | format、version、seed、class、floor、floors、turn、state、kills、chest_loot、kill_loot、rng |
 | hero | pos、last_pos、stats(6)、hp、hp_max、resource、resource_max、attack、armor、crit、speed、res_per_turn、level、xp、pending_points、cooldowns(3)、buff_turns、buff_pct、eff_stats(6) |
 | enemies | kind、name、pos、hp、hp_max、attack、armor、speed、range、xp、stun_turns、slow_turns、alive |
-| map | blocked(169)、entrance、stairs、chests(4)/chest_alive(4)、traps(4)/trap_alive(4)、aoe_target、aoe_armed |
+| map | blocked(961)、entrance、stairs、chests(4)/chest_alive(4)、traps(4)/trap_alive(4)、aoe_target、aoe_armed |
 | 日志 | 最近 6 条，按从旧到新保存 |
 
 JSON 由 `std.json` 生成，**压缩（无空白）**；一局第 2 层约 2.7 KB。
@@ -64,6 +64,14 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 不逐格保存 `dungeon.Dungeon` 的 tiles/props；读档时用 `blocked` + stairs/chests/traps 重建。
 模拟只通过 `Dungeon.isWalkable` 做 LOS/A*，所以行为一致；下一层会从 seed+floor 重新生成。
 因此地图装饰（柱子/水/火盆）和敌人出生点标记不跨读档保留（不影响玩法）。
+
+## 破坏性变更
+
+- **v2（当前）**：地图从 13×13 升到 31×31。v1 存档里的坐标和 seed 生成结果不再对应，**不做迁移**，读取时返回 UnsupportedVersion。
+- 玩家提示固定为：读档失败：v1 旧档不兼容，请开新局；不再把 UnsupportedVersion 裸英文名写进战斗日志。
+- 错误映射：NotSaveFormat / EmptySave / SaveTooLarge / InvalidCoordinate / InvalidEnemyKind / InvalidLog / InconsistentMap 都有中文原因，未知错误回退为“存档损坏或无法读取”。
+- **规则**：以后 bump save_version 时必须同时更新本节、loadErrorText 的提示，以及一个 v(N-1) fixture 测试；如果只是新增可忽略字段，优先保持版本并做默认值兼容。
+- 日志缓冲区每行只有 64 字节，loadErrorText 的提示必须控制在约 45 字节以内，否则 pushLog 会静默丢弃。
 
 ## F5/F9（已接入）
 
