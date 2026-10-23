@@ -73,7 +73,7 @@ const Visual = struct {
     anim: rig.AnimState = .{},
 };
 
-pub const SlotMenu = enum(u8) { none, save, load };
+pub const SlotMenu = enum(u8) { none, save, load, auto_load };
 
 pub const Input = struct {
     step_x: i32 = 0,
@@ -143,7 +143,12 @@ pub const TomeGame = struct {
         "saves/slot2.save",
         "saves/slot3.save",
     },
-    autosave_file: []const u8 = "saves/autosave.save",
+    auto_files: [3][]const u8 = .{
+        "saves/autosave1.save",
+        "saves/autosave2.save",
+        "saves/autosave3.save",
+    },
+    auto_tmp_file: []const u8 = "saves/autosave-new.save",
     autosave_pending: bool = false,
     save_ok: bool = true,
     /// Window play presents a short "敌人行动" phase; tests/bots leave this
@@ -419,11 +424,20 @@ pub const TomeGame = struct {
             self.sim.resolvePendingEnemyPhase();
             self.syncVisuals(false);
         }
-        if (std.fs.path.dirname(self.autosave_file)) |dir| {
+        if (std.fs.path.dirname(self.auto_files[0])) |dir| {
             std.Io.Dir.cwd().createDirPath(io, dir) catch {};
         }
-        slot_bundle.saveFileAtomic(io, self.gpa, self.autosave_file, &self.sim, &self.inventory, &self.loot_rng) catch |err| {
+        slot_bundle.saveFileAtomic(io, self.gpa, self.auto_tmp_file, &self.sim, &self.inventory, &self.loot_rng) catch |err| {
             self.sim.pushLog("自动存档失败 {s}", .{@errorName(err)});
+            self.fillHudState();
+            return;
+        };
+        // Rotate newest backups, then promote the new file to slot 1.
+        std.Io.Dir.cwd().deleteFile(io, self.auto_files[2]) catch {};
+        std.Io.Dir.cwd().rename(self.auto_files[1], std.Io.Dir.cwd(), self.auto_files[2], io) catch {};
+        std.Io.Dir.cwd().rename(self.auto_files[0], std.Io.Dir.cwd(), self.auto_files[1], io) catch {};
+        std.Io.Dir.cwd().rename(self.auto_tmp_file, std.Io.Dir.cwd(), self.auto_files[0], io) catch |err| {
+            self.sim.pushLog("自动存档轮换失败 {s}", .{@errorName(err)});
             self.fillHudState();
             return;
         };
@@ -431,14 +445,39 @@ pub const TomeGame = struct {
         self.fillHudState();
     }
 
-    pub fn loadAutoSlot(self: *TomeGame, io: std.Io) void {
-        const loaded = slot_bundle.loadFile(io, self.gpa, self.autosave_file) catch |err| {
+    pub fn openAutoMenu(self: *TomeGame, io: std.Io) void {
+        self.slot_menu = .auto_load;
+        self.clearAim();
+        self.show_help = false;
+        self.panel = .none;
+        self.refreshAutoLabels(io);
+        self.fillHudState();
+    }
+
+    fn refreshAutoLabels(self: *TomeGame, io: std.Io) void {
+        var i: usize = 0;
+        while (i < self.auto_files.len) : (i += 1) {
+            self.slot_labels[i] = "空";
+            const loaded = slot_bundle.loadFile(io, self.gpa, self.auto_files[i]) catch |err| {
+                if (err != error.FileNotFound) self.slot_labels[i] = "坏档";
+                continue;
+            };
+            self.slot_labels[i] = self.formatSlotLabel(i, &loaded.sim);
+        }
+    }
+
+    pub fn loadAutoSlot(self: *TomeGame, io: std.Io, slot: usize) void {
+        if (slot >= self.auto_files.len) return;
+        const loaded = slot_bundle.loadFile(io, self.gpa, self.auto_files[slot]) catch |err| {
             const msg = if (err == error.FileNotFound) "没有自动存档" else @errorName(err);
             self.sim.pushLog("读档失败：{s}", .{msg});
+            self.slot_menu = .none;
+            self.fillHudState();
             return;
         };
         self.applyLoaded(loaded.sim, loaded.gear);
         self.autosave_pending = false;
+        self.slot_menu = .none;
         self.fillHudState();
     }
 
@@ -1978,7 +2017,7 @@ test "tome game: held repeat is throttled to one step per 0.3s" {
     try std.testing.expect(g.sim.turn >= turn);
 }
 
-test "tome game: autosave flushes and loads" {
+test "tome game: autosave history rotates and loads" {
     const gpa = std.testing.allocator;
     const io = std.testing.io;
     var tmp = std.testing.tmpDir(.{});
@@ -1986,16 +2025,33 @@ test "tome game: autosave flushes and loads" {
     const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     g.started = true;
-    const auto_path = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "autosave.save" });
-    defer gpa.free(auto_path);
-    g.autosave_file = auto_path;
-    const hp = g.sim.hero.hp;
+    const auto1 = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "auto1.save" });
+    defer gpa.free(auto1);
+    const auto2 = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "auto2.save" });
+    defer gpa.free(auto2);
+    const auto3 = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "auto3.save" });
+    defer gpa.free(auto3);
+    const auto_tmp = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "auto-new.save" });
+    defer gpa.free(auto_tmp);
+    g.auto_files = .{ auto1, auto2, auto3 };
+    g.auto_tmp_file = auto_tmp;
+    const hp0 = g.sim.hero.hp;
     g.autosave_pending = true;
     g.flushAutosave(io);
-    try std.testing.expect(!g.autosave_pending);
+    g.sim.hero.hp = hp0 - 10;
+    g.autosave_pending = true;
+    g.flushAutosave(io);
+    g.sim.hero.hp = hp0 - 20;
+    g.autosave_pending = true;
+    g.flushAutosave(io);
     g.sim.hero.hp = 1;
-    g.loadAutoSlot(io);
-    try std.testing.expectApproxEqAbs(hp, g.sim.hero.hp, 0.01);
+    g.loadAutoSlot(io, 0);
+    try std.testing.expectApproxEqAbs(hp0 - 20, g.sim.hero.hp, 0.01);
+    g.loadAutoSlot(io, 2);
+    try std.testing.expectApproxEqAbs(hp0, g.sim.hero.hp, 0.01);
+    g.openAutoMenu(io);
+    try std.testing.expect(!std.mem.eql(u8, g.slot_labels[0], "空"));
+    try std.testing.expect(!std.mem.eql(u8, g.slot_labels[2], "空"));
 }
 
 test "tome game: slots fall back to legacy run+gear pair" {

@@ -22,6 +22,7 @@ const Options = struct {
     auto_demo: bool = false,
     enemy_phase_shot: bool = false,
     slots_shot: bool = false,
+    auto_slots_shot: bool = false,
     debug: bool = false,
     lineup: bool = false,
     inventory: bool = false,
@@ -54,6 +55,7 @@ fn usage() void {
         \\  --auto            headless demo: cast every 1.5s
         \\  --enemy-phase     headless: wait once and capture the enemy-phase HUD
         \\  --slots           open the save-slot panel (screenshots/QA)
+        \\  --auto-slots      open the auto-backup panel (screenshots/QA)
         \\  --aim N           headless: open aim on talent N for screenshots (no confirm)
         \\  --help-screen     show the in-game controls panel for screenshots
         \\  --debug           show the debug HUD
@@ -127,6 +129,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.enemy_phase_shot = true;
         } else if (std.mem.eql(u8, a, "--slots")) {
             o.slots_shot = true;
+        } else if (std.mem.eql(u8, a, "--auto-slots")) {
+            o.auto_slots_shot = true;
         } else if (std.mem.eql(u8, a, "--debug")) {
             o.debug = true;
         } else if (std.mem.eql(u8, a, "--lineup")) {
@@ -302,7 +306,6 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
     var quit = false;
     var captured = false;
     var slot_frame = false;
-    var auto_armed: f32 = 0;
     std.debug.print("tome: {d}x{d} logical, {d}x scale - class menu 1/2/3, WASD step, 1/2/3 aim, SPACE confirm, ESC cancel, I/C panels, Q/E orbit, R restart\n", .{
         options.width, options.height, options.scale,
     });
@@ -334,15 +337,8 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
             }
         }
         if (pin.toggle_debug) game.debug = !game.debug;
-        auto_armed = @max(0, auto_armed - dt);
         if (pin.load_auto) {
-            if (auto_armed > 0) {
-                game.loadAutoSlot(io);
-                auto_armed = 0;
-            } else {
-                auto_armed = 2.0;
-                game.sim.pushLog("再按 F10 确认读自动档", .{});
-            }
+            game.openAutoMenu(io);
             slot_frame = true;
         }
         if (pin.save_slot) {
@@ -359,10 +355,11 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
             if (pin.talent_2) chosen = 1;
             if (pin.talent_3) chosen = 2;
             if (chosen) |idx| {
-                if (game.slot_menu == .save) {
-                    game.saveSlot(io, idx);
-                } else {
-                    game.loadSlot(io, idx);
+                switch (game.slot_menu) {
+                    .save => game.saveSlot(io, idx),
+                    .load => game.loadSlot(io, idx),
+                    .auto_load => game.loadAutoSlot(io, idx),
+                    .none => {},
                 }
                 slot_frame = true;
             }
@@ -491,6 +488,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
     if (options.inventory) game.panel = .inventory;
     if (options.character) game.panel = .character;
     if (options.slots_shot) game.openSlotMenu(io, .save);
+    if (options.auto_slots_shot) game.openAutoMenu(io);
     if (options.loot > 0) game.debugGrantLoot(options.loot);
 
     if (options.headless) {

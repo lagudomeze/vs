@@ -470,7 +470,11 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         const py = @divTrunc(h - ph, 2);
         r.fillRect(px, py, pw, ph, palette.panel);
         r.strokeRect(px, py, pw, ph, palette.gold);
-        const title = if (state.slot_mode == 1) "保存到槽位" else "从槽位读取";
+        const title = switch (state.slot_mode) {
+            1 => "保存到槽位",
+            2 => "从槽位读取",
+            else => "自动档备份",
+        };
         r.drawText(px + 16, py + 12, title, palette.gold, 1, true);
         var i: usize = 0;
         while (i < 3) : (i += 1) {
@@ -528,6 +532,7 @@ test "tome hud: hint strings have embedded CJK glyphs" {
         "从槽位读取",
         "坏档",
         "空",
+        "自动档备份",
     };
     for (fixed) |text| try expectGlyphs(text);
     const targeting = @import("tome_target.zig");
