@@ -1424,7 +1424,13 @@ pub const RunGame = struct {
             if (!e.life.alive) continue;
             var ep: rig.Pose = .{};
             rig.compute(self.enemyModel(e.identity.kind), self.enemy_vis[i].anim, &ep);
-            const tint = if (self.enemy_vis[i].flash > 0) color.pack(255, 110, 90) else 0xffffff;
+            const affix_tint: u32 = switch (e.affix) {
+                .swift => color.pack(170, 235, 255),
+                .armored => color.pack(220, 210, 185),
+                .vampiric => color.pack(255, 150, 165),
+                else => 0xffffff,
+            };
+            const tint = if (self.enemy_vis[i].flash > 0) color.pack(255, 110, 90) else affix_tint;
             self.renderer.drawModel(self.enemyModel(e.identity.kind), ep.joints[0..ep.count], math.Mat4.compose(self.enemy_vis[i].pos, self.enemy_vis[i].yaw, 0, 0, enemyScale(e.identity.kind)), .{
                 .tint = tint,
                 .id = @intCast(300 + i),
