@@ -1,5 +1,4 @@
 const std = @import("std");
-const ecs = @import("zflecs");
 
 pub const HasModifier = struct {};
 
@@ -24,11 +23,6 @@ pub fn Value(comptime T: type, default: f32) type {
         _mark: T = undefined,
         val: f32 = default,
         base: f32 = default,
-
-        pub fn register(world: *ecs.world_t) void {
-            ecs.COMPONENT(world, Self);
-            ecs.COMPONENT(world, Modifier);
-        }
 
         pub fn newModifier(add: f32, mul: f32) Modifier {
             return .{ .add = add, .mul = mul };
@@ -122,6 +116,17 @@ fn GaugeCommonMixin(comptime Self: type, comptime full_spec: BoundSpec) type {
             self.clampVal();
         }
 
+        /// Set the raw/final full value directly, for formula-driven recompute.
+        /// Current value is preserved and clamped.
+        pub fn setFull(self: *Self, value: f32) void {
+            self.raw_full = @max(0, value);
+            self.full = self.raw_full;
+            if (comptime @hasField(Self, "base")) {
+                if (self.full < self.base) self.base = self.full;
+            }
+            self.clampVal();
+        }
+
         pub fn spend(self: *Self, amount: f32) bool {
             comptime {
                 if (!full_spec.clamp) {
@@ -162,16 +167,12 @@ pub fn SimpleGauge(comptime T: type, comptime spec: BoundSpec) type {
         pub const recomputeFull = Common.recomputeFull;
         pub const modify = Common.modify;
         pub const set = Common.set;
+        pub const setFull = Common.setFull;
         pub const spend = Common.spend;
 
         // 实现 Mixin 依赖的 clampVal
         pub fn clampVal(self: *Self) void {
             self.val = std.math.clamp(self.val, 0, self.upperBound());
-        }
-
-        pub fn register(world: *ecs.world_t) void {
-            ecs.COMPONENT(world, Self);
-            ecs.COMPONENT(world, FullModifier);
         }
     };
 }
@@ -208,6 +209,7 @@ pub fn BoundedGauge(comptime T: type, comptime full_spec: BoundSpec, comptime ba
         pub const recomputeFull = Common.recomputeFull;
         pub const modify = Common.modify;
         pub const set = Common.set;
+        pub const setFull = Common.setFull;
         pub const spend = Common.spend;
 
         // 实现 Mixin 依赖的 clampVal
@@ -245,21 +247,6 @@ pub fn BoundedGauge(comptime T: type, comptime full_spec: BoundSpec, comptime ba
 const Hp = struct {};
 const Xp = struct {};
 const Equilibrium = struct {};
-
-test "SimpleGauge: register and store as a pure ECS component" {
-    const HpGauge = SimpleGauge(Hp, .{ .default = 100.0, .clamp = true });
-    const world = ecs.init();
-    defer _ = ecs.fini(world);
-    HpGauge.register(world);
-
-    const e = ecs.new_id(world);
-    var hp = HpGauge{};
-    hp.modify(-30);
-    _ = ecs.set(world, e, HpGauge, hp);
-    const got = ecs.get(world, e, HpGauge) orelse return error.MissingHpGauge;
-    try std.testing.expectEqual(@as(f32, 70), got.val);
-    try std.testing.expectEqual(@as(f32, 100), got.full);
-}
 
 test "SimpleGauge: 基础加减与上限截断 (clamp=true)" {
     const HpGauge = SimpleGauge(Hp, .{ .default = 100.0, .clamp = true });

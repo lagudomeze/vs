@@ -155,7 +155,7 @@ cells(shape, origin, dir) []Cell
 
 - Modifier 的 stacking/source 规则未统一；
 - 资源回复在 endTurn 中直接写，未经过资源系统；
-- HP 当前值已进入 Hero.vitals / Enemy.vitals；Hero/Enemy 状态已统一为 StatusSet。
+- HP 已进入 Hero.vitals / Enemy.vitals（numeric.Health gauge）；Hero/Enemy 状态已统一为 StatusSet。
 
 ### M5 行动/目标
 

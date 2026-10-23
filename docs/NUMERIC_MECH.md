@@ -122,17 +122,18 @@ health.recomputeFull(full_mods);
 
 ## 5. 迁移阶段
 
-### Phase A：基础层（本轮）
+### Phase A：基础层（已完成）
 
 - 引入 mech.zig。
 - 修 register：SimpleGauge / BoundedGauge 也能注册。
 - 加 ECS 存储测试。
 - 不改游戏数值。
 
-### Phase B：HP / 资源
+### Phase B：HP / 资源（已完成）
 
-- Hero/Enemy 的 hp/hp_max 改成 Health gauge。
-- resource current/max 改成 Resource gauge。
+- ✅ Hero/Enemy 的 hp/hp_max 改成 numeric.Health（SimpleGauge）。
+- ✅ Hero resource current/max 改成 numeric.Resource；回复用 numeric.Regen。
+- ✅ Enemy 生死拆成 numeric.LifeState；zflecs 注册拆到 numeric_ecs.zig。
 - 死亡判断读 val <= 0。
 - 存档映射不变。
 - 测试/QA 行为等价。

@@ -145,18 +145,18 @@ fn checkEnemies(s: *const run.Sim) !void {
     var i: usize = 0;
     while (i < s.enemy_count) : (i += 1) {
         const e = s.enemies[i];
-        if (!e.vitals.alive) {
-            if (e.vitals.hp != 0) return error.DeadEnemyHasHp;
+        if (!e.life.alive) {
+            if (e.vitals.val != 0) return error.DeadEnemyHasHp;
             continue;
         }
-        if (e.vitals.hp <= 0) return error.AliveEnemyHasNoHp;
+        if (e.vitals.val <= 0) return error.AliveEnemyHasNoHp;
         if (outOfBounds(e.pos)) return error.EnemyOutOfBounds;
         if (s.isBlocked(e.pos.x, e.pos.y)) return error.EnemyInWall;
         if (samePos(e.pos, s.hero.pos)) return error.EnemyOnHero;
         var j: usize = 0;
         while (j < i) : (j += 1) {
             const other = s.enemies[j];
-            if (other.vitals.alive and samePos(other.pos, e.pos)) return error.OverlappingEnemies;
+            if (other.life.alive and samePos(other.pos, e.pos)) return error.OverlappingEnemies;
         }
     }
 }
@@ -176,7 +176,7 @@ fn snapshot(s: *const run.Sim) Snapshot {
     var first: ?run.GridPos = null;
     var i: usize = 0;
     while (i < s.enemy_count) : (i += 1) {
-        if (s.enemies[i].vitals.alive) {
+        if (s.enemies[i].life.alive) {
             first = s.enemies[i].pos;
             break;
         }
@@ -185,8 +185,8 @@ fn snapshot(s: *const run.Sim) Snapshot {
         .turn = s.turn,
         .floor = s.floor,
         .state = s.state,
-        .hp = s.hero.vitals.hp,
-        .resource = s.hero.resource.current,
+        .hp = s.hero.vitals.val,
+        .resource = s.hero.resource.val,
         .pos = s.hero.pos,
         .enemy_count = s.enemy_count,
         .first_enemy = first,
@@ -199,10 +199,10 @@ fn checkAfterAction(s: *const run.Sim, before: Snapshot) !void {
     if (s.turn < before.turn) return error.TurnWentBackwards;
     if (s.floor < before.floor) return error.FloorWentBackwards;
     if (s.floor > before.floor + 1) return error.FloorSkipped;
-    if (s.hero.vitals.hp < 0) return error.NegativeHp;
-    if (s.hero.vitals.hp > s.hero.vitals.hp_max + 0.001) return error.HpAboveMax;
-    if (s.hero.resource.current < -0.001) return error.NegativeResource;
-    if (s.hero.resource.current > s.hero.resource.max + 0.001) return error.ResourceAboveMax;
+    if (s.hero.vitals.val < 0) return error.NegativeHp;
+    if (s.hero.vitals.val > s.hero.vitals.full + 0.001) return error.HpAboveMax;
+    if (s.hero.resource.val < -0.001) return error.NegativeResource;
+    if (s.hero.resource.val > s.hero.resource.full + 0.001) return error.ResourceAboveMax;
     try checkEnemies(s);
 
     switch (s.state) {
@@ -211,13 +211,13 @@ fn checkAfterAction(s: *const run.Sim, before: Snapshot) !void {
             if (s.turn != before.turn + 1) return error.TurnDidNotAdvance;
         },
         .dead => {
-            if (s.hero.vitals.hp > 0) return error.DeadWithPositiveHp;
+            if (s.hero.vitals.val > 0) return error.DeadWithPositiveHp;
             // A trap can kill during the move itself, before endTurn advances
             // the counter; terminal actions may therefore leave the turn alone.
             if (s.turn != before.turn and s.turn != before.turn + 1) return error.DeadTurnNotAdvanced;
         },
         .victory => {
-            if (s.hero.vitals.hp <= 0) return error.VictoryWhileDead;
+            if (s.hero.vitals.val <= 0) return error.VictoryWhileDead;
             if (s.floor < 3) return error.VictoryBelowFloor3;
             // Victory can be triggered by a kill (turn unchanged) or by the
             // floor-3 stairs transition (nextFloor also leaves turn alone).
@@ -263,19 +263,19 @@ fn autoStep(s: *run.Sim) Action {
         }
     }
 
-    if (s.hero.vitals.hp < s.hero.vitals.hp_max * 0.35 and s.nearestEnemy(4) == null) {
+    if (s.hero.vitals.val < s.hero.vitals.full * 0.35 and s.nearestEnemy(4) == null) {
         if (s.wait()) return .wait;
     }
 
     if (s.nearestEnemy(5) != null) {
         if (s.class == .warrior and s.hero.status.buff_turns == 0 and
-            s.hero.talents.cooldowns[2] == 0 and s.hero.resource.current >= 20)
+            s.hero.talents.cooldowns[2] == 0 and s.hero.resource.val >= 20)
         {
             if (s.useTalent(2)) return .talent;
         }
         if (s.useTalent(0)) return .talent;
         if (s.useTalent(1)) return .talent;
-        if (s.hero.vitals.hp < s.hero.vitals.hp_max * 0.4 and s.useTalent(2)) return .talent;
+        if (s.hero.vitals.val < s.hero.vitals.full * 0.4 and s.useTalent(2)) return .talent;
     }
 
     if (s.map.astarToOccupiedGoal(
@@ -452,8 +452,8 @@ pub fn runAuto(
             &equipment_equipped,
         );
         // Equipping can change hp_max and clamp hp; state/turn never change.
-        if (s.hero.vitals.hp < 0 or s.hero.vitals.hp > s.hero.vitals.hp_max + 0.001) return error.HpOutOfRangeAfterLoot;
-        if (s.hero.resource.current < -0.001 or s.hero.resource.current > s.hero.resource.max + 0.001) {
+        if (s.hero.vitals.val < 0 or s.hero.vitals.val > s.hero.vitals.full + 0.001) return error.HpOutOfRangeAfterLoot;
+        if (s.hero.resource.val < -0.001 or s.hero.resource.val > s.hero.resource.full + 0.001) {
             return error.ResourceOutOfRangeAfterLoot;
         }
     }
@@ -471,8 +471,8 @@ pub fn runAuto(
         .items_dropped = items_dropped,
         .equipment_dropped = equipment_dropped,
         .equipment_equipped = equipment_equipped,
-        .hp = s.hero.vitals.hp,
-        .hp_max = s.hero.vitals.hp_max,
+        .hp = s.hero.vitals.val,
+        .hp_max = s.hero.vitals.full,
         .level = s.hero.progression.level,
         .timed_out = s.state == .playing,
         .victory_by_stairs = s.state == .victory and s.floor >= 4,
@@ -680,7 +680,7 @@ test "qa2: illegal moves never consume a turn or run the enemy phase" {
         try std.testing.expect(!s.move(0, 1000));
         try std.testing.expect(!s.move(0, 0));
         try std.testing.expectEqual(before.turn, s.turn);
-        try std.testing.expectEqual(before.hp, s.hero.vitals.hp);
+        try std.testing.expectEqual(before.hp, s.hero.vitals.val);
         try std.testing.expectEqual(before.state, s.state);
         try std.testing.expect(samePos(before.pos, s.hero.pos));
         try std.testing.expect(std.meta.eql(before.first_enemy, firstAliveEnemy(&s)));
@@ -689,12 +689,12 @@ test "qa2: illegal moves never consume a turn or run the enemy phase" {
         var wall_bumped = false;
         for (dirs4) |d| {
             if (s.isBlocked(hero.x + d[0], hero.y + d[1])) {
-                const hp = s.hero.vitals.hp;
+                const hp = s.hero.vitals.val;
                 const turn = s.turn;
                 const enemy = firstAliveEnemy(&s);
                 try std.testing.expect(!s.move(d[0], d[1]));
                 try std.testing.expectEqual(turn, s.turn);
-                try std.testing.expectEqual(hp, s.hero.vitals.hp);
+                try std.testing.expectEqual(hp, s.hero.vitals.val);
                 try std.testing.expect(std.meta.eql(enemy, firstAliveEnemy(&s)));
                 wall_bumped = true;
                 break;
@@ -705,12 +705,12 @@ test "qa2: illegal moves never consume a turn or run the enemy phase" {
         // Terminal states reject every action without spending a turn.
         s.state = .victory;
         const vt = s.turn;
-        const vhp = s.hero.vitals.hp;
+        const vhp = s.hero.vitals.val;
         try std.testing.expect(!s.move(1, 0));
         try std.testing.expect(!s.wait());
         try std.testing.expect(!s.useTalent(0));
         try std.testing.expectEqual(vt, s.turn);
-        try std.testing.expectEqual(vhp, s.hero.vitals.hp);
+        try std.testing.expectEqual(vhp, s.hero.vitals.val);
         s.state = .dead;
         try std.testing.expect(!s.move(1, 0));
         try std.testing.expect(!s.wait());
@@ -722,7 +722,7 @@ test "qa2: illegal moves never consume a turn or run the enemy phase" {
 fn firstAliveEnemy(s: *const run.Sim) ?run.GridPos {
     var i: usize = 0;
     while (i < s.enemy_count) : (i += 1) {
-        if (s.enemies[i].vitals.alive) return s.enemies[i].pos;
+        if (s.enemies[i].life.alive) return s.enemies[i].pos;
     }
     return null;
 }

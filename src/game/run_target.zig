@@ -171,7 +171,7 @@ pub fn preview(sim: *const run.Sim, talent: usize, target: ?usize) Preview {
         return p;
     }
     const cost = sim.talentCost(talent);
-    if (sim.hero.resource.current < @as(f32, @floatFromInt(cost))) {
+    if (sim.hero.resource.val < @as(f32, @floatFromInt(cost))) {
         p.verdict = .no_resource;
         return p;
     }
@@ -184,7 +184,7 @@ pub fn preview(sim: *const run.Sim, talent: usize, target: ?usize) Preview {
         return p;
     }
     const enemy = sim.enemies[idx];
-    if (!enemy.vitals.alive) {
+    if (!enemy.life.alive) {
         p.verdict = .no_target;
         return p;
     }
@@ -269,7 +269,7 @@ test "run target: adjacent enemy previews as valid with positive damage" {
     // Preview is read-only: no turn, no resource, no cooldown.
     try std.testing.expectEqual(@as(u32, 1), s.turn);
     try std.testing.expectEqual(@as(u16, 0), s.hero.talents.cooldowns[0]);
-    try std.testing.expectEqual(s.hero.resource.max, s.hero.resource.current);
+    try std.testing.expectEqual(s.hero.resource.full, s.hero.resource.val);
 }
 
 test "run target: missing or dead target is rejected" {
@@ -279,7 +279,7 @@ test "run target: missing or dead target is rejected" {
     placeEnemy(&s, .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y }, 70);
     try std.testing.expectEqual(Verdict.no_target, preview(&s, 0, 9).verdict);
 
-    s.enemies[0].vitals.alive = false;
+    s.enemies[0].life.alive = false;
     try std.testing.expectEqual(Verdict.no_target, preview(&s, 0, 0).verdict);
 }
 
@@ -329,9 +329,9 @@ test "run target: resources and cooldowns are checked before confirming" {
     var s = run.Sim.init(113, .warrior);
     placeEnemy(&s, .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y }, 70);
 
-    s.hero.resource.current = 0;
+    s.hero.resource.val = 0;
     try std.testing.expectEqual(Verdict.no_resource, preview(&s, 0, 0).verdict);
-    s.hero.resource.current = s.hero.resource.max;
+    s.hero.resource.val = s.hero.resource.full;
 
     s.hero.talents.cooldowns[0] = 2;
     try std.testing.expectEqual(Verdict.cooldown, preview(&s, 0, 0).verdict);
