@@ -129,7 +129,7 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 - 击杀获得 XP；升级 +1 主属性并回满；第 3 层击败深渊守卫、解除楼梯封印后胜利。
 - 死亡即结束，R 默认用新种子重开并保留当前职业；显式 `--seed N` 时才保持同一张图。
 
-数值/组件设计见 [docs/NUMERIC_ARCHITECTURE.md](docs/NUMERIC_ARCHITECTURE.md)；机制边界与 ECS 映射见 [docs/MECHANISMS.md](docs/MECHANISMS.md)；定义/组件/聚合审计见 [docs/DATA_MODEL.md](docs/DATA_MODEL.md)；FlecsScript 内容层评估见 [docs/FLECS_CONTENT.md](docs/FLECS_CONTENT.md)。
+数值/组件设计见 [docs/NUMERIC_ARCHITECTURE.md](docs/NUMERIC_ARCHITECTURE.md)；mech 数值层评估见 [docs/NUMERIC_MECH.md](docs/NUMERIC_MECH.md)；机制边界与 ECS 映射见 [docs/MECHANISMS.md](docs/MECHANISMS.md)；定义/组件/聚合审计见 [docs/DATA_MODEL.md](docs/DATA_MODEL.md)；FlecsScript 内容层评估见 [docs/FLECS_CONTENT.md](docs/FLECS_CONTENT.md)。
 
 ## 代码结构
 
@@ -160,7 +160,7 @@ docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 
 ## 验证
 
-- zig build / zig build test：13/13 steps、156/156 tests。
+- zig build / zig build test：13/13 steps、161/161 tests。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/run_select.png`。
 - 职业菜单显示的 SEED 就是本局真实 seed；选择职业只按同一 seed 重开；R 保留职业，未锁定时换新 seed。
 - 大图 QA（100 seed × 3 职业，纯逻辑 bot）：通关率 64.3%（193/300）；狂战士 43%、元素法师 84%、时空法师 66%，0 超时/不变量违规；test-qa 87/87。

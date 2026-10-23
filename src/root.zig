@@ -1,6 +1,7 @@
 //! VX: a real-3D pixel-art dungeon diorama built on SDL3 + zflecs.
 const std = @import("std");
 
+pub const mech = @import("core/mech.zig");
 pub const math = @import("core/math.zig");
 pub const color = @import("core/color.zig");
 pub const palette = @import("core/palette.zig");
