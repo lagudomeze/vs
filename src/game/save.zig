@@ -49,7 +49,7 @@ const Enemy = sim_mod.Enemy;
 
 /// Current on-disk format. Bump whenever a field changes meaning or the RNG
 /// representation changes.
-pub const save_version: u16 = 1;
+pub const save_version: u16 = 2;
 pub const format_name = "vx-tome-save";
 
 /// Hard cap for `loadAlloc` / `loadFile`. A real v1 save is a few
@@ -821,7 +821,7 @@ test "save: fresh run round-trips (short log, no events)" {
 
     const bytes = try saveAlloc(alloc, &sim);
     defer alloc.free(bytes);
-    try testing.expect(std.mem.startsWith(u8, bytes, "{\"format\":\"vx-tome-save\",\"version\":1,"));
+    try testing.expect(std.mem.startsWith(u8, bytes, "{\"format\":\"vx-tome-save\",\"version\":2,"));
     try testing.expect(std.mem.indexOfScalar(u8, bytes, '\n') == null);
 
     var loaded = try loadAlloc(alloc, bytes);
@@ -900,13 +900,13 @@ test "load: strict version, format, trailing data and enum checks" {
     const bytes = try saveAlloc(alloc, &sim);
     defer alloc.free(bytes);
 
-    const v2 = try patchedSave(alloc, bytes, struct {
+    const v_bad = try patchedSave(alloc, bytes, struct {
         fn patch(root: *SaveRoot) void {
-            root.version = 2;
+            root.version = 1;
         }
     }.patch);
-    defer alloc.free(v2);
-    try testing.expectError(error.UnsupportedVersion, loadAlloc(alloc, v2));
+    defer alloc.free(v_bad);
+    try testing.expectError(error.UnsupportedVersion, loadAlloc(alloc, v_bad));
 
     const other_format = try patchedSave(alloc, bytes, struct {
         fn patch(root: *SaveRoot) void {
@@ -1007,7 +1007,7 @@ test "save file: round-trip and a corrupt file is rejected without overwriting" 
     var loaded = try loadFile(io, alloc, save_path);
     try expectSameRun(&sim, &loaded);
 
-    const corrupt = "{\"format\":\"vx-tome-save\",\"version\":1,";
+    const corrupt = "{\"format\":\"vx-tome-save\",\"version\":2,";
     try tmp.dir.writeFile(io, .{ .sub_path = "run.json", .data = corrupt });
     const before = try tmp.dir.readFileAlloc(io, "run.json", alloc, .limited(max_save_bytes));
     defer alloc.free(before);
