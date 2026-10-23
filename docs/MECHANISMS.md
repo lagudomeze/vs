@@ -129,7 +129,7 @@ cells(shape, origin, dir) []Cell
 
 当前债：
 
-- Hero/Enemy 是巨型结构，混合位置、属性、资源、状态、AI、掉落。
+- Sim 的 Hero/Enemy 已拆为组件聚合；渲染 zflecs 的 Hero/Enemy 仍是场景聚合，待投影拆分。
 - 敌人 kind 同时承担模型、AI、Boss 判定、掉落表，多个机制读同一个裸 u8。
 
 ### M4 属性
@@ -155,7 +155,7 @@ cells(shape, origin, dir) []Cell
 
 - Modifier 的 stacking/source 规则未统一；
 - 资源回复在 endTurn 中直接写，未经过资源系统；
-- HP 当前值在 Hero/Enemy 中，未拆成 Vitals 组件。
+- HP 当前值已进入 Hero.vitals / Enemy.vitals；状态仍未统一为 StatusSet。
 
 ### M5 行动/目标
 
@@ -227,7 +227,7 @@ raw
 
 当前债：
 
-- Hero.buff_turns/buff_pct；
+- Hero.status.buff_turns/buff_pct；
 - Enemy.stun_turns/slow_turns；
 - 状态判定散落在 enemyAct/endTurn；
 - 没有通用 StatusDef/StatusSet，叠加/免疫/驱散无法扩展。

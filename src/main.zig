@@ -289,7 +289,7 @@ fn runRunHeadless(game: *vx.RunGame, io: std.Io, options: Options) !void {
     try game.saveScreenshot(io, path);
     std.debug.print(
         "run headless: {d}x{d} tris={d} drawn={d} floor={d} turn={d} hp={d:.0} -> {s}\n",
-        .{ game.renderer.width, game.renderer.height, game.renderer.stats.tris, game.renderer.stats.drawn, game.sim.floor, game.sim.turn, game.sim.hero.hp, path },
+        .{ game.renderer.width, game.renderer.height, game.renderer.stats.tris, game.renderer.stats.drawn, game.sim.floor, game.sim.turn, game.sim.hero.vitals.hp, path },
     );
 }
 
