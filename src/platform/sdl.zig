@@ -28,6 +28,7 @@ pub const FrameInput = struct {
     screenshot: bool = false,
     save_slot: bool = false,
     load_slot: bool = false,
+    load_auto: bool = false,
     help: bool = false,
     mouse_x: f32 = 0,
     mouse_y: f32 = 0,
@@ -150,6 +151,7 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F12))) input.screenshot = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F5))) input.save_slot = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F9))) input.load_slot = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F10))) input.load_auto = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_H))) input.help = true;
                 }
             } else if (t == @as(u32, @intCast(c.SDL_EVENT_MOUSE_WHEEL))) {

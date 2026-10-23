@@ -70,6 +70,7 @@ var from_disk = try save.loadFile(io, alloc, "saves/tome.json");
 窗口里：
 
 - **F5**：打开存档槽位面板；按 1/2/3 保存到对应槽，Esc 取消。
+- **F10**：连按两次读取自动档 saves/autosave.save；下到新楼层时自动写该文件，失败只写日志。
 - **F9**：打开读档槽位面板；按 1/2/3 读取；Esc 取消。坏档/未知物品/版本不符/空 gear 对象只写日志并保留当前局。读档后重建 mesh、视觉、HUD，清空瞄准。
 - 三个槽位：1=saves/tome-slot1.json，2=saves/slot2.save，3=saves/slot3.save；每个文件是 vx-tome-slot 容器，内含 run JSON + gear JSON，一次原子 replace。旧 tome-run/tome-gear 双文件仍可回退读取。
 - 职业菜单底部提示 **F9 读档槽**；没有 gear 文件时按空背包读取，装备 sidecar 缺失不会阻断 Sim。

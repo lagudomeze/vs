@@ -277,6 +277,7 @@ fn runTomeHeadless(game: *vx.TomeGame, io: std.Io, options: Options) !void {
             if (frame + 1 == frames) input.talent = @intCast(aim_talent);
         }
         game.update(input, 1.0 / 60.0);
+        if (game.autosave_pending) game.flushAutosave(io);
     }
     game.render();
     const path = options.out orelse "shots/tome.png";
@@ -301,6 +302,7 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
     var quit = false;
     var captured = false;
     var slot_frame = false;
+    var auto_armed: f32 = 0;
     std.debug.print("tome: {d}x{d} logical, {d}x scale - class menu 1/2/3, WASD step, 1/2/3 aim, SPACE confirm, ESC cancel, I/C panels, Q/E orbit, R restart\n", .{
         options.width, options.height, options.scale,
     });
@@ -332,6 +334,17 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
             }
         }
         if (pin.toggle_debug) game.debug = !game.debug;
+        auto_armed = @max(0, auto_armed - dt);
+        if (pin.load_auto) {
+            if (auto_armed > 0) {
+                game.loadAutoSlot(io);
+                auto_armed = 0;
+            } else {
+                auto_armed = 2.0;
+                game.sim.pushLog("再按 F10 确认读自动档", .{});
+            }
+            slot_frame = true;
+        }
         if (pin.save_slot) {
             game.openSlotMenu(io, .save);
             slot_frame = true;
@@ -378,6 +391,7 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
         }
 
         game.update(input, dt);
+        if (game.autosave_pending) game.flushAutosave(io);
         game.render();
         platform.present(game.renderer.color_buf);
 
