@@ -219,6 +219,8 @@ pub const StatusSet = struct {
     buff_pct: f32 = 0,
     burn_turns: u16 = 0,
     burn_damage: f32 = 0,
+    vulnerable_turns: u16 = 0,
+    vulnerable_pct: f32 = 0.20,
 
     pub fn canAct(self: StatusSet) bool {
         return self.stun_turns == 0;
@@ -251,6 +253,20 @@ pub const StatusSet = struct {
         const expired = self.buff_pct;
         self.buff_pct = 0;
         return expired;
+    }
+
+    pub fn applyVulnerable(self: *StatusSet, turns: u16) bool {
+        if (turns == 0) return false;
+        self.vulnerable_turns = @max(self.vulnerable_turns, turns);
+        return true;
+    }
+
+    pub fn damageTakenScale(self: StatusSet) f32 {
+        return if (self.vulnerable_turns > 0) 1.0 + self.vulnerable_pct else 1.0;
+    }
+
+    pub fn tickVulnerable(self: *StatusSet) void {
+        if (self.vulnerable_turns > 0) self.vulnerable_turns -= 1;
     }
 
     pub fn applyStun(self: *StatusSet, turns: u16) bool {
@@ -893,6 +909,10 @@ pub const Sim = struct {
             if (cd.* > 0) cd.* -= 1;
         }
         _ = self.hero.status.tickBuff();
+        var vi: usize = 0;
+        while (vi < self.enemy_count) : (vi += 1) {
+            self.enemies[vi].status.tickVulnerable();
+        }
         self.hero.resource.val = @min(self.hero.resource.full, self.hero.resource.val + self.hero.resource_regen.val * self.floor_mod.resourceScale());
         if (self.hero.vitals.val <= 0) {
             self.state = .dead;
@@ -971,7 +991,7 @@ pub const Sim = struct {
             self.aoe_armed = false;
             if (@as(f32, @floatFromInt(dist(self.hero.pos, self.aoe_target))) <= intent_mod.boss_aoe_radius) {
                 const raw = e.combat.attack.val * intent_mod.boss_aoe_damage_scale * e.status.slowDamageScale();
-                const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount;
+                const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount * self.hero.status.damageTakenScale();
                 self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
                 self.hero.status.applyBurn(2, e.combat.attack.val * 0.20 * self.floor_mod.burnScale());
                 self.pushLog("深渊守卫 深渊斩 -{d:.0}", .{dmg});
@@ -1056,7 +1076,7 @@ pub const Sim = struct {
         const e = &self.enemies[idx];
         var raw = e.combat.attack.val * 0.72;
         raw *= e.status.slowDamageScale();
-        const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount;
+        const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount * self.hero.status.damageTakenScale();
         self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
         if (e.affix == .vampiric and dmg > 0) e.vitals.set(e.vitals.val + dmg * 0.20);
         if (e.identity.kind == 6 and dmg > 0) {
@@ -1072,8 +1092,9 @@ pub const Sim = struct {
         raw *= self.hero.status.attackScale();
         const crit = self.rng.random().float(f32) < self.hero.combat.crit.val;
         const result = combat.resolve(.{ .raw = raw, .crit = crit }, .{ .armor = e.combat.armor.val });
-        e.vitals.val -= result.amount;
-        self.pushLog("命中 {s} {d:.0}{s}", .{ e.identity.name, result.amount, if (result.crit) " 暴击" else "" });
+        const dealt = result.amount * e.status.damageTakenScale();
+        e.vitals.val -= dealt;
+        self.pushLog("命中 {s} {d:.0}{s}", .{ e.identity.name, dealt, if (result.crit) " 暴击" else "" });
         self.checkBossEnrage(idx);
         if (e.vitals.val <= 0) self.killEnemy(idx);
     }
@@ -1208,6 +1229,7 @@ pub const Sim = struct {
                     self.playerAttack(idx, 2.2);
                 } else {
                     self.playerAttack(idx, 1.5);
+                    if (self.enemies[idx].life.alive) _ = self.enemies[idx].status.applyVulnerable(2);
                 }
                 self.endTurn();
                 return true;
@@ -1378,6 +1400,13 @@ test "run sim: status set interprets stun/slow/buff consistently" {
     try std.testing.expectApproxEqAbs(@as(f32, 5), st.tickBurn(), 0.0001);
     try std.testing.expectApproxEqAbs(@as(f32, 0), st.tickBurn(), 0.0001);
 
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), st.damageTakenScale(), 0.0001);
+    try std.testing.expect(st.applyVulnerable(2));
+    try std.testing.expectApproxEqAbs(@as(f32, 1.2), st.damageTakenScale(), 0.0001);
+    st.tickVulnerable();
+    st.tickVulnerable();
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), st.damageTakenScale(), 0.0001);
+
     var boss = StatusSet{ .stun_immune = true };
     try std.testing.expect(!boss.applyStun(2));
     try std.testing.expect(boss.applySlow(2));
@@ -1498,6 +1527,26 @@ test "run sim: affixes are deterministic and vampiric heals on hit" {
     });
     _ = s.wait();
     try std.testing.expect(s.enemies[0].vitals.val > 40);
+}
+
+test "run sim: warrior charge applies vulnerable" {
+    var s = Sim.init(81, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{
+        .kind = 0,
+        .name = "骷髅兵",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 200,
+        .hp_max = 200,
+        .attack = 8,
+        .armor = 4,
+        .speed = 100,
+        .range = 1,
+        .xp = 20,
+    });
+    s.hero.resource.val = 100;
+    try std.testing.expect(s.useTalent(1));
+    try std.testing.expect(s.enemies[0].status.vulnerable_turns > 0);
 }
 
 test "run sim: shrine grants one permanent stat choice" {

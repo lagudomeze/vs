@@ -1538,6 +1538,10 @@ pub const RunGame = struct {
                     const cx = std.math.clamp(x - renderer.Renderer.textWidth(cc_label, 1), 2, w - 2);
                     self.renderer.drawText(cx, y + 33, cc_label, if (std.mem.eql(u8, cc_label, "STUN")) palette.red else palette.cyan_light, 1, true);
                 }
+                if (self.sim.enemies[i].status.vulnerable_turns > 0) {
+                    const vx = std.math.clamp(x - renderer.Renderer.textWidth("VULN", 1), 2, w - 2);
+                    self.renderer.drawText(vx, y + 42, "VULN", color.pack(220, 120, 255), 1, true);
+                }
                 if (self.sim.enemies[i].status.stun_immune) {
                     const bx = std.math.clamp(x - renderer.Renderer.textWidth("BOSS", 1), 2, w - 2);
                     self.renderer.drawText(bx, y + 15, "BOSS", palette.red, 1, true);

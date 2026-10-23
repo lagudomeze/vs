@@ -135,6 +135,8 @@ const HeroSave = struct {
     buff_pct: f32,
     burn_turns: u16 = 0,
     burn_damage: f32 = 0,
+    vulnerable_turns: u16 = 0,
+    vulnerable_pct: f32 = 0.20,
     eff_stats: [stat_count]f32,
 };
 
@@ -157,6 +159,8 @@ const EnemySave = struct {
     energy: i16 = 0,
     burn_turns: u16 = 0,
     burn_damage: f32 = 0,
+    vulnerable_turns: u16 = 0,
+    vulnerable_pct: f32 = 0.20,
 };
 
 const MapSave = struct {
@@ -290,6 +294,8 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .energy = e.action.energy,
             .burn_turns = e.status.burn_turns,
             .burn_damage = e.status.burn_damage,
+            .vulnerable_turns = e.status.vulnerable_turns,
+            .vulnerable_pct = e.status.vulnerable_pct,
         };
     }
 
@@ -298,7 +304,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
         !std.math.isFinite(hero.resource.val) or !std.math.isFinite(hero.resource.full) or
         !std.math.isFinite(hero.combat.attack.val) or !std.math.isFinite(hero.combat.armor.val) or
         !std.math.isFinite(hero.combat.crit.val) or !std.math.isFinite(hero.resource_regen.val) or
-        !std.math.isFinite(hero.status.buff_pct) or !std.math.isFinite(hero.status.burn_damage) or !allFinite(&hero.sheet.eff_stats) or
+        !std.math.isFinite(hero.status.buff_pct) or !std.math.isFinite(hero.status.burn_damage) or !std.math.isFinite(hero.status.vulnerable_pct) or !allFinite(&hero.sheet.eff_stats) or
         !statsFinite(.{
             .strength = hero.sheet.stats.strength.val,
             .agility = hero.sheet.stats.agility.val,
@@ -375,6 +381,8 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .buff_pct = hero.status.buff_pct,
             .burn_turns = hero.status.burn_turns,
             .burn_damage = hero.status.burn_damage,
+            .vulnerable_turns = hero.status.vulnerable_turns,
+            .vulnerable_pct = hero.status.vulnerable_pct,
             .eff_stats = hero.sheet.eff_stats,
         },
         .enemies = enemy_buf[0..sim.enemy_count],
@@ -530,6 +538,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
         if (e.range > grid_w) return error.InvalidValue;
         if (e.energy < -100 or e.energy > 200) return error.InvalidValue;
         if (e.burn_turns > 100 or !std.math.isFinite(e.burn_damage) or e.burn_damage < 0 or e.burn_damage > 10000) return error.InvalidValue;
+        if (e.vulnerable_turns > 100 or !std.math.isFinite(e.vulnerable_pct) or e.vulnerable_pct < 0 or e.vulnerable_pct > 10) return error.InvalidValue;
         if (e.alive) {
             if (samePos(e.pos, h.pos)) return error.InconsistentMap;
             for (root.enemies[0..i]) |other| {
@@ -573,7 +582,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
                 .speed = numeric.valueOf(numeric.Speed, @floatFromInt(h.speed)),
             },
             .progression = .{ .level = h.level, .xp = h.xp, .pending_points = h.pending_points },
-            .status = .{ .buff_turns = h.buff_turns, .buff_pct = h.buff_pct, .burn_turns = h.burn_turns, .burn_damage = h.burn_damage },
+            .status = .{ .buff_turns = h.buff_turns, .buff_pct = h.buff_pct, .burn_turns = h.burn_turns, .burn_damage = h.burn_damage, .vulnerable_turns = h.vulnerable_turns, .vulnerable_pct = h.vulnerable_pct },
             .talents = .{ .cooldowns = h.cooldowns },
         },
     };
@@ -614,7 +623,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
                 .speed = numeric.valueOf(numeric.Speed, @floatFromInt(e.speed)),
                 .range = e.range,
             },
-            .status = .{ .stun_immune = e.kind == intent_mod.boss_kind, .stun_turns = e.stun_turns, .slow_turns = e.slow_turns, .burn_turns = e.burn_turns, .burn_damage = e.burn_damage },
+            .status = .{ .stun_immune = e.kind == intent_mod.boss_kind, .stun_turns = e.stun_turns, .slow_turns = e.slow_turns, .burn_turns = e.burn_turns, .burn_damage = e.burn_damage, .vulnerable_turns = e.vulnerable_turns, .vulnerable_pct = e.vulnerable_pct },
             .reward = .{ .xp = e.xp },
             .action = .{ .energy = e.energy },
         };
@@ -767,6 +776,8 @@ fn expectSameEnemy(expected: Enemy, actual: Enemy) !void {
     try testing.expectEqual(expected.status.stun_turns, actual.status.stun_turns);
     try testing.expectEqual(expected.status.slow_turns, actual.status.slow_turns);
     try testing.expectEqual(expected.status.burn_turns, actual.status.burn_turns);
+    try testing.expectEqual(expected.status.vulnerable_turns, actual.status.vulnerable_turns);
+    try testing.expectApproxEqAbs(expected.status.vulnerable_pct, actual.status.vulnerable_pct, 0.0001);
     try testing.expectEqual(expected.status.burn_damage, actual.status.burn_damage);
     try testing.expectEqual(expected.life.alive, actual.life.alive);
     try testing.expectEqual(expected.action.energy, actual.action.energy);
@@ -870,6 +881,7 @@ test "save: fresh run round-trips (short log, no events)" {
     sim.hero.progression.pending_points = 2;
     sim.boss_enraged = true;
     sim.floor_mod = .ember;
+    sim.enemies[0].status.vulnerable_turns = 2;
     try testing.expect(sim.log_total < log_lines_max);
 
     const bytes = try saveAlloc(alloc, &sim);
