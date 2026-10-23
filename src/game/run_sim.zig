@@ -3,6 +3,7 @@
 const std = @import("std");
 const dungeon_mod = @import("dungeon.zig");
 const attributes = @import("attributes.zig");
+const combat = @import("combat.zig");
 const intent_mod = @import("intent.zig");
 
 pub const grid_w = dungeon_mod.size;
@@ -324,6 +325,9 @@ pub const Sim = struct {
         if (intent.kind == .aoe and self.aoe_armed) {
             intent.target = .{ .x = self.aoe_target.x, .y = self.aoe_target.y };
         }
+        if (intent.damage_preview > 0) {
+            intent.damage_preview = combat.preview(.{ .raw = intent.damage_preview }, .{ .armor = self.hero.armor });
+        }
         return intent;
     }
 
@@ -623,7 +627,7 @@ pub const Sim = struct {
             self.aoe_armed = false;
             if (@as(f32, @floatFromInt(dist(self.hero.pos, self.aoe_target))) <= intent_mod.boss_aoe_radius) {
                 const raw = e.attack * intent_mod.boss_aoe_damage_scale * (if (e.slow_turns > 0) intent_mod.slow_damage_scale else 1.0);
-                const dmg = raw * (0.15 + 0.85 * 50 / (50 + self.hero.armor));
+                const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.armor }).amount;
                 self.hero.hp = @max(0, self.hero.hp - dmg);
                 self.pushLog("深渊守卫 深渊斩 -{d:.0}", .{dmg});
             } else {
@@ -707,7 +711,7 @@ pub const Sim = struct {
         const e = self.enemies[idx];
         var raw = e.attack * 0.72;
         if (e.slow_turns > 0) raw *= 0.55;
-        const dmg = raw * (0.15 + 0.85 * 50 / (50 + self.hero.armor));
+        const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.armor }).amount;
         self.hero.hp = @max(0, self.hero.hp - dmg);
         self.pushLog("{s} 造成 {d:.0} 伤害", .{ e.name, dmg });
     }
@@ -718,10 +722,9 @@ pub const Sim = struct {
         var raw = self.hero.attack * mult;
         if (self.hero.buff_turns > 0) raw *= 1.0 + self.hero.buff_pct;
         const crit = self.rng.random().float(f32) < self.hero.crit;
-        if (crit) raw *= 1.5;
-        const dmg = raw * (0.15 + 0.85 * 50 / (50 + e.armor));
-        e.hp -= dmg;
-        self.pushLog("命中 {s} {d:.0}{s}", .{ e.name, dmg, if (crit) " 暴击" else "" });
+        const result = combat.resolve(.{ .raw = raw, .crit = crit }, .{ .armor = e.armor });
+        e.hp -= result.amount;
+        self.pushLog("命中 {s} {d:.0}{s}", .{ e.name, result.amount, if (result.crit) " 暴击" else "" });
         if (e.hp <= 0) self.killEnemy(idx);
     }
 
@@ -1291,6 +1294,9 @@ test "run sim: intent preview is read-only" {
     const intent = s.intentFor(0) orelse return error.MissingIntent;
     try std.testing.expectEqual(intent_mod.IntentKind.melee, intent.kind);
     try std.testing.expect(intent.target.eql(.{ .x = s.hero.pos.x, .y = s.hero.pos.y }));
+    const expected = combat.preview(.{ .raw = 8 * 0.72 }, .{ .armor = s.hero.armor });
+    try std.testing.expectApproxEqAbs(expected, intent.damage_preview, 0.001);
+    try std.testing.expect(intent.damage_preview < 8 * 0.72);
     try std.testing.expectEqual(turn, s.turn);
     try std.testing.expectEqual(hp, s.hero.hp);
     try std.testing.expect(s.intentFor(1) == null);
