@@ -807,20 +807,35 @@ pub const RunGame = struct {
         return score;
     }
 
-    fn usePotion(self: *RunGame) bool {
+    fn usePotion(self: *RunGame, allow_resource: bool) bool {
         for (self.inventory.slice()) |id| {
             if (id >= self.content.items.len) continue;
             const def = &self.content.items[id];
             const use = def.use() orelse continue;
-            if (use.heal <= 0) continue;
-            if (self.sim.hero.vitals.val >= self.sim.hero.vitals.full) {
-                self.sim.pushLog("生命已满", .{});
-                return false;
-            }
+            const need_hp = use.heal > 0 and self.sim.hero.vitals.val < self.sim.hero.vitals.full;
+            const need_res = allow_resource and use.resource > 0 and self.sim.hero.resource.val < self.sim.hero.resource.full;
+            if (!need_hp and !need_res) continue;
             if (!self.inventory.remove(id)) continue;
-            const before = self.sim.hero.vitals.val;
-            self.sim.hero.vitals.set(before + use.heal);
-            self.sim.pushLog("{s} +{d:.0}", .{ def.name, self.sim.hero.vitals.val - before });
+
+            var hp_gain: f32 = 0;
+            var res_gain: f32 = 0;
+            if (need_hp) {
+                const before = self.sim.hero.vitals.val;
+                self.sim.hero.vitals.set(before + use.heal);
+                hp_gain = self.sim.hero.vitals.val - before;
+            }
+            if (need_res) {
+                const before = self.sim.hero.resource.val;
+                self.sim.hero.resource.set(before + use.resource);
+                res_gain = self.sim.hero.resource.val - before;
+            }
+            if (hp_gain > 0 and res_gain > 0) {
+                self.sim.pushLog("{s} +{d:.0} HP +{d:.0} RES", .{ def.name, hp_gain, res_gain });
+            } else if (hp_gain > 0) {
+                self.sim.pushLog("{s} +{d:.0}", .{ def.name, hp_gain });
+            } else {
+                self.sim.pushLog("{s} +{d:.0} RES", .{ def.name, res_gain });
+            }
             _ = self.sim.wait();
             return true;
         }
@@ -980,12 +995,12 @@ pub const RunGame = struct {
             self.equipBag(@intCast(input.talent));
         }
         if (self.panel == .inventory and input.use_item) {
-            _ = self.usePotion();
+            _ = self.usePotion(true);
         }
 
         var used_potion = false;
         if (self.panel == .none and self.sim.state == .playing and self.sim.hero.vitals.val < self.sim.hero.vitals.full * 0.35) {
-            used_potion = self.usePotion();
+            used_potion = self.usePotion(false);
         }
 
         if (!used_potion and self.panel == .none and self.sim.state == .playing) {
@@ -1956,6 +1971,31 @@ test "run game: menu toggles difficulty and restarts the preview" {
     g.update(.{ .difficulty = true }, 1.0 / 60.0);
     try std.testing.expectEqual(sim_mod.Difficulty.easy, g.difficulty);
     try std.testing.expectEqual(@as(u8, 2), g.hud_state.difficulty);
+}
+
+test "run game: inventory P consumes a resource potion" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .mage, 12345);
+    defer g.destroy();
+
+    var tonic: ?u16 = null;
+    for (g.content.items, 0..) |def, i| {
+        if (def.use()) |use| {
+            if (use.resource > 0 and use.heal == 0) {
+                tonic = @intCast(i);
+                break;
+            }
+        }
+    }
+    const id = tonic orelse return error.MissingManaTonic;
+    try std.testing.expect(g.inventory.pickup(id));
+    g.sim.hero.resource.val = 5;
+    g.panel = .inventory;
+    const before = g.inventory.count();
+
+    g.update(.{ .use_item = true }, 1.0 / 60.0);
+    try std.testing.expect(g.sim.hero.resource.val > 5);
+    try std.testing.expectEqual(before - 1, g.inventory.count());
 }
 
 test "run game: shrine panel consumes a choice once" {
