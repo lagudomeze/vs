@@ -816,6 +816,7 @@ pub const RunGame = struct {
             const need_res = allow_resource and use.resource > 0 and self.sim.hero.resource.val < self.sim.hero.resource.full;
             if (!need_hp and !need_res) continue;
             if (!self.inventory.remove(id)) continue;
+            self.clearAim();
 
             var hp_gain: f32 = 0;
             var res_gain: f32 = 0;
@@ -1003,7 +1004,10 @@ pub const RunGame = struct {
         }
 
         var used_potion = false;
-        if (self.panel == .none and self.sim.state == .playing and self.sim.hero.vitals.val < self.sim.hero.vitals.full * 0.35) {
+        if (self.panel == .none and self.sim.state == .playing and input.use_item) {
+            used_potion = self.usePotion(true);
+        }
+        if (!used_potion and self.panel == .none and self.sim.state == .playing and self.sim.hero.vitals.val < self.sim.hero.vitals.full * 0.35) {
             used_potion = self.usePotion(false);
         }
 
@@ -1524,6 +1528,16 @@ pub const RunGame = struct {
                     const bx = std.math.clamp(x - renderer.Renderer.textWidth("灼", 1), 2, w - 2);
                     self.renderer.drawText(bx, y + 24, "灼", palette.red, 1, true);
                 }
+                const cc_label: []const u8 = if (self.sim.enemies[i].status.stun_turns > 0)
+                    "STUN"
+                else if (self.sim.enemies[i].status.slow_turns > 0)
+                    "SLOW"
+                else
+                    "";
+                if (cc_label.len > 0) {
+                    const cx = std.math.clamp(x - renderer.Renderer.textWidth(cc_label, 1), 2, w - 2);
+                    self.renderer.drawText(cx, y + 33, cc_label, if (std.mem.eql(u8, cc_label, "STUN")) palette.red else palette.cyan_light, 1, true);
+                }
                 if (self.sim.enemies[i].status.stun_immune) {
                     const bx = std.math.clamp(x - renderer.Renderer.textWidth("BOSS", 1), 2, w - 2);
                     self.renderer.drawText(bx, y + 15, "BOSS", palette.red, 1, true);
@@ -1755,6 +1769,11 @@ pub const RunGame = struct {
 
     fn fillHudState(self: *RunGame) void {
         const initiative = self.initiativeNames();
+        var potion_count: u8 = 0;
+        for (self.inventory.slice()) |id| {
+            if (id >= self.content.items.len) continue;
+            if (self.content.items[id].use() != null) potion_count +|= 1;
+        }
         self.hud_state = .{
             .menu = !self.started,
             .help = self.show_help,
@@ -1762,6 +1781,7 @@ pub const RunGame = struct {
             .difficulty = @backingInt(self.difficulty),
             .shrine_open = self.shrine_open,
             .shrine_main_label = self.sim.shrineMainLabel(),
+            .potions = potion_count,
             .seed = self.sim.seed,
             .buff_turns = self.sim.hero.status.buff_turns,
             .buff_pct = self.sim.hero.status.buff_pct,
@@ -1922,6 +1942,7 @@ pub const RunGame = struct {
             }
         }
         self.plotMinimap(self.sim.stairs.x, self.sim.stairs.y, 2);
+        if (self.sim.shrine_active and !self.sim.shrine_used) self.plotMinimap(self.sim.shrine.x, self.sim.shrine.y, 6);
         var ci: usize = 0;
         while (ci < self.sim.chests.len) : (ci += 1) {
             if (!self.sim.chest_alive[ci]) continue;
@@ -1975,6 +1996,31 @@ test "run game: menu toggles difficulty and restarts the preview" {
     g.update(.{ .difficulty = true }, 1.0 / 60.0);
     try std.testing.expectEqual(sim_mod.Difficulty.easy, g.difficulty);
     try std.testing.expectEqual(@as(u8, 2), g.hud_state.difficulty);
+}
+
+test "run game: P quaffs a potion outside the inventory" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+
+    var potion: ?u16 = null;
+    for (g.content.items, 0..) |def, i| {
+        if (def.use()) |use| {
+            if (use.heal > 0) {
+                potion = @intCast(i);
+                break;
+            }
+        }
+    }
+    try std.testing.expect(g.inventory.pickup(potion orelse return error.MissingPotion));
+    g.sim.hero.vitals.val = 10;
+    g.fillHudState();
+    try std.testing.expect(g.hud_state.potions > 0);
+    const before = g.inventory.count();
+
+    g.update(.{ .use_item = true }, 1.0 / 60.0);
+    try std.testing.expect(g.sim.hero.vitals.val > 10);
+    try std.testing.expectEqual(before - 1, g.inventory.count());
 }
 
 test "run game: inventory P consumes a resource potion" {

@@ -181,7 +181,7 @@ zig build test-qa --summary all
 | 平均到达层 | 2.99 | 3.00 | 3.00 | 3.00 |
 | 超时 | 0 | 0 | 0 | 0 |
 
-- zig build test：173/173；zig build test-qa：99/99；test-qa3：170/170。
+- zig build test：174/174；zig build test-qa：99/99；test-qa3：171/171。
 - 0 不变量违规；死亡集中在 F3（95），F2 18。
 - 第 9 节的 64.3% 保留为 13×13 历史基线。
 - auto 仍是巡检 bot，在 31×31 Boss 层可能停住；以 test-qa 批量结果为准。
