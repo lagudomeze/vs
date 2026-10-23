@@ -157,6 +157,7 @@ const EnemySave = struct {
     alive: bool,
     /// Action points; absent in older v2 files means 0.
     energy: i16 = 0,
+    special_cd: u8 = 0,
     burn_turns: u16 = 0,
     burn_damage: f32 = 0,
     vulnerable_turns: u16 = 0,
@@ -297,6 +298,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .slow_turns = e.status.slow_turns,
             .alive = e.life.alive,
             .energy = e.action.energy,
+            .special_cd = e.action.special_cd,
             .burn_turns = e.status.burn_turns,
             .burn_damage = e.status.burn_damage,
             .vulnerable_turns = e.status.vulnerable_turns,
@@ -640,7 +642,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
             },
             .status = .{ .stun_immune = e.kind == intent_mod.boss_kind, .stun_turns = e.stun_turns, .slow_turns = e.slow_turns, .burn_turns = e.burn_turns, .burn_damage = e.burn_damage, .vulnerable_turns = e.vulnerable_turns, .vulnerable_pct = e.vulnerable_pct },
             .reward = .{ .xp = e.xp },
-            .action = .{ .energy = e.energy },
+            .action = .{ .energy = e.energy, .special_cd = e.special_cd },
         };
     }
     sim.enemy_count = root.enemies.len;
@@ -903,6 +905,7 @@ test "save: fresh run round-trips (short log, no events)" {
     sim.boss_enraged = true;
     sim.floor_mod = .ember;
     sim.boss_summoned = true;
+    sim.enemies[0].action.special_cd = 2;
     sim.enemies[0].status.vulnerable_turns = 2;
     try testing.expect(sim.log_total < log_lines_max);
 
