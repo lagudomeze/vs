@@ -21,6 +21,7 @@ pub const shop_heal_cost: u32 = 25;
 pub const shop_power_cost: u32 = 60;
 pub const shop_vitality_cost: u32 = 60;
 pub const shop_cleanse_cost: u32 = 20;
+pub const shop_loot_cost: u32 = 80;
 
 pub const Affix = enum(u8) { none, swift, armored, vampiric };
 
@@ -716,6 +717,15 @@ pub const Sim = struct {
             },
         }
         self.gold -= cost;
+        self.shop_used = true;
+        return true;
+    }
+
+    /// Deduct the blind-loot price. The Game owns the item roll so content
+    /// stays out of Sim.
+    pub fn buyShopLoot(self: *Sim) bool {
+        if (!self.atShop() or self.gold < shop_loot_cost) return false;
+        self.gold -= shop_loot_cost;
         self.shop_used = true;
         return true;
     }
@@ -1690,6 +1700,14 @@ test "run sim: shop buys healing and permanent power" {
     try std.testing.expectEqual(@as(u16, 0), c.hero.status.burn_turns);
     try std.testing.expectEqual(@as(u16, 0), c.hero.status.slow_turns);
     try std.testing.expectEqual(@as(u16, 0), c.hero.status.vulnerable_turns);
+
+    var l = Sim.init(94, .warrior);
+    l.hero.pos = l.shop;
+    l.gold = 100;
+    try std.testing.expect(l.buyShopLoot());
+    try std.testing.expectEqual(@as(u32, 20), l.gold);
+    try std.testing.expect(l.shop_used);
+    try std.testing.expect(!l.buyShopLoot());
 }
 
 test "run sim: shrine grants one permanent stat choice" {
