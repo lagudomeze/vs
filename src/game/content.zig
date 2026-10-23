@@ -112,13 +112,12 @@ pub const SkillDef = struct {
     }
 };
 
-pub const EnemyDef = struct {
-    id: []const u8,
-    name: []const u8,
-    /// 模型名，对应 assets/baked 里的模型。
-    model: []const u8,
-    /// game.zig 的动画/模型序号（0 骷髅, 1 幽魂, 2 石魔像, 3 Boss, 4-5 精英）。
-    kind: u8,
+pub const EnemyTags = struct {
+    elite: bool = false,
+    boss: bool = false,
+};
+
+pub const CombatProfile = struct {
     hp: f32,
     damage: f32,
     armor: f32 = 0,
@@ -128,16 +127,38 @@ pub const EnemyDef = struct {
     attack_range: u16 = 1,
     /// 普攻冷却回合数。
     attack_cooldown_turns: u16 = 1,
-    scale: f32 = 1.0,
+};
+
+pub const AIProfile = struct {
+    /// game.zig 的动画/模型序号（0 骷髅, 1 幽魂, 2 石魔像, 3 精英骷髅,
+    /// 4 精英幽魂, 5 Boss）。
+    kind: u8,
+    /// 特殊技能 id（skills.json 里 kind == enemy 的条目），Boss AOE 用。
+    skill: ?[]const u8 = null,
+};
+
+pub const LootProfile = struct {
     xp: u32 = 0,
     drop_chance: f32 = 0.3,
+};
+
+pub const SpawnProfile = struct {
     /// 出现层数（1..3），供关卡生成筛选。
     min_layer: u8 = 1,
     max_layer: u8 = 3,
-    elite: bool = false,
-    boss: bool = false,
-    /// 特殊技能 id（skills.json 里 kind == enemy 的条目），Boss AOE 用。
-    skill: ?[]const u8 = null,
+};
+
+pub const EnemyDef = struct {
+    id: []const u8,
+    name: []const u8,
+    /// 模型名，对应 assets/baked 里的模型。
+    model: []const u8,
+    scale: f32 = 1.0,
+    tags: EnemyTags = .{},
+    combat: CombatProfile,
+    ai: AIProfile,
+    loot: LootProfile = .{},
+    spawn: SpawnProfile = .{},
 };
 
 /// Per-file origin after loading.
@@ -260,7 +281,7 @@ pub const Content = struct {
         enemy_def: *const EnemyDef,
     ) ?items.ItemId {
         if (self.items.len == 0) return null;
-        if (chance_roll > enemy_def.drop_chance) return null;
+        if (chance_roll > enemy_def.loot.drop_chance) return null;
 
         var total: f32 = 0;
         for (self.items) |def| {
@@ -405,101 +426,64 @@ pub const builtin_enemies = [_]EnemyDef{
         .id = "skeleton",
         .name = "骷髅兵",
         .model = "skeleton",
-        .kind = 0,
-        .hp = 70,
-        .damage = 8,
-        .armor = 4,
-        .speed = 90,
-        .attack_range = 1,
-        .attack_cooldown_turns = 1,
         .scale = 1.18,
-        .xp = 20,
-        .min_layer = 1,
-        .max_layer = 3,
+        .combat = .{ .hp = 70, .damage = 8, .armor = 4, .speed = 100, .attack_range = 1, .attack_cooldown_turns = 1 },
+        .ai = .{ .kind = 0 },
+        .loot = .{ .xp = 20 },
+        .spawn = .{ .min_layer = 1, .max_layer = 3 },
     },
     .{
         .id = "wraith",
         .name = "幽魂",
         .model = "wraith",
-        .kind = 1,
-        .hp = 55,
-        .damage = 7,
-        .armor = 1,
-        .speed = 100,
-        .attack_range = 4,
-        .attack_cooldown_turns = 2,
         .scale = 1.32,
-        .xp = 25,
-        .min_layer = 1,
-        .max_layer = 3,
+        .combat = .{ .hp = 55, .damage = 7, .armor = 1, .speed = 110, .attack_range = 3, .attack_cooldown_turns = 2 },
+        .ai = .{ .kind = 1 },
+        .loot = .{ .xp = 25 },
+        .spawn = .{ .min_layer = 1, .max_layer = 3 },
     },
     .{
         .id = "golem",
         .name = "石魔像",
         .model = "golem",
-        .kind = 2,
-        .hp = 150,
-        .damage = 12,
-        .armor = 12,
-        .speed = 70,
-        .attack_range = 1,
-        .attack_cooldown_turns = 2,
         .scale = 1.55,
-        .xp = 40,
-        .min_layer = 2,
-        .max_layer = 3,
+        .combat = .{ .hp = 150, .damage = 12, .armor = 12, .speed = 70, .attack_range = 1, .attack_cooldown_turns = 2 },
+        .ai = .{ .kind = 2 },
+        .loot = .{ .xp = 40 },
+        .spawn = .{ .min_layer = 2, .max_layer = 3 },
     },
     .{
         .id = "abyss_guard",
         .name = "深渊守卫",
         .model = "abyss_guard",
-        .kind = 3,
-        .hp = 420,
-        .damage = 16,
-        .armor = 15,
-        .speed = 80,
-        .attack_range = 1,
-        .attack_cooldown_turns = 2,
         .scale = 1.95,
-        .xp = 200,
-        .min_layer = 3,
-        .max_layer = 3,
-        .boss = true,
-        .skill = "abyss_cleave",
+        .tags = .{ .boss = true },
+        .combat = .{ .hp = 420, .damage = 16, .armor = 15, .speed = 90, .attack_range = 1, .attack_cooldown_turns = 2 },
+        .ai = .{ .kind = 5, .skill = "abyss_cleave" },
+        .loot = .{ .xp = 200 },
+        .spawn = .{ .min_layer = 3, .max_layer = 3 },
     },
     .{
         .id = "elite_skeleton",
         .name = "精英骷髅",
         .model = "skeleton",
-        .kind = 4,
-        .hp = 100,
-        .damage = 11,
-        .armor = 7,
-        .speed = 100,
-        .attack_range = 1,
-        .attack_cooldown_turns = 1,
         .scale = 1.28,
-        .xp = 50,
-        .min_layer = 2,
-        .max_layer = 3,
-        .elite = true,
+        .tags = .{ .elite = true },
+        .combat = .{ .hp = 100, .damage = 11, .armor = 7, .speed = 110, .attack_range = 1, .attack_cooldown_turns = 1 },
+        .ai = .{ .kind = 3 },
+        .loot = .{ .xp = 50 },
+        .spawn = .{ .min_layer = 2, .max_layer = 3 },
     },
     .{
         .id = "elite_wraith",
         .name = "精英幽魂",
         .model = "wraith",
-        .kind = 5,
-        .hp = 85,
-        .damage = 10,
-        .armor = 2,
-        .speed = 110,
-        .attack_range = 4,
-        .attack_cooldown_turns = 2,
         .scale = 1.42,
-        .xp = 50,
-        .min_layer = 2,
-        .max_layer = 3,
-        .elite = true,
+        .tags = .{ .elite = true },
+        .combat = .{ .hp = 85, .damage = 10, .armor = 2, .speed = 150, .attack_range = 4, .attack_cooldown_turns = 2 },
+        .ai = .{ .kind = 4 },
+        .loot = .{ .xp = 50 },
+        .spawn = .{ .min_layer = 2, .max_layer = 3 },
     },
 };
 
@@ -653,7 +637,53 @@ fn convertItems(alloc: std.mem.Allocator, raw: []const RawItemDef) ![]const item
     }
     return out;
 }
-const EnemiesFile = struct { version: u32 = 1, enemies: []const EnemyDef = &.{} };
+const RawEnemyDef = struct {
+    id: []const u8,
+    name: []const u8,
+    model: []const u8,
+    kind: u8,
+    hp: f32,
+    damage: f32,
+    armor: f32 = 0,
+    speed: u16 = 100,
+    attack_range: u16 = 1,
+    attack_cooldown_turns: u16 = 1,
+    scale: f32 = 1.0,
+    xp: u32 = 0,
+    drop_chance: f32 = 0.3,
+    min_layer: u8 = 1,
+    max_layer: u8 = 3,
+    elite: bool = false,
+    boss: bool = false,
+    skill: ?[]const u8 = null,
+};
+
+const EnemiesFile = struct { version: u32 = 1, enemies: []const RawEnemyDef = &.{} };
+
+fn convertEnemies(alloc: std.mem.Allocator, raw: []const RawEnemyDef) ![]const EnemyDef {
+    const out = try alloc.alloc(EnemyDef, raw.len);
+    for (raw, out) |src, *dst| {
+        dst.* = .{
+            .id = src.id,
+            .name = src.name,
+            .model = src.model,
+            .scale = src.scale,
+            .tags = .{ .elite = src.elite, .boss = src.boss },
+            .combat = .{
+                .hp = src.hp,
+                .damage = src.damage,
+                .armor = src.armor,
+                .speed = src.speed,
+                .attack_range = src.attack_range,
+                .attack_cooldown_turns = src.attack_cooldown_turns,
+            },
+            .ai = .{ .kind = src.kind, .skill = src.skill },
+            .loot = .{ .xp = src.xp, .drop_chance = src.drop_chance },
+            .spawn = .{ .min_layer = src.min_layer, .max_layer = src.max_layer },
+        };
+    }
+    return out;
+}
 /// Flat wire schema; runtime uses SkillEffect union.
 const RawSkillDef = struct {
     id: []const u8,
@@ -771,17 +801,20 @@ pub fn loadFrom(
     if (!skills_ok) report.skills = .fallback;
 
     var enemy_list: []const EnemyDef = &builtin_enemies;
+    var enemies_ok = false;
     if (parseFile(EnemiesFile, arena_alloc, file_enemies, enemies_bytes, &report)) |file| {
-        if (validateEnemies(file.enemies, &report) and
-            validateEnemySkills(file.enemies, skill_list, &report))
-        {
-            enemy_list = file.enemies;
-        } else {
-            report.enemies = .fallback;
+        if (convertEnemies(arena_alloc, file.enemies)) |converted| {
+            if (validateEnemies(converted, &report) and
+                validateEnemySkills(converted, skill_list, &report))
+            {
+                enemy_list = converted;
+                enemies_ok = true;
+            }
+        } else |err| {
+            report.add(file_enemies, "敌人转换失败", @errorName(err));
         }
-    } else {
-        report.enemies = .fallback;
     }
+    if (!enemies_ok) report.enemies = .fallback;
 
     return .{
         .arena = arena,
@@ -864,32 +897,32 @@ fn validateEnemies(list: []const EnemyDef, report: *Report) bool {
                 report.add(file_enemies, "敌人 id 重复", def.id);
                 ok = false;
             }
-            if (prev.kind == def.kind) {
+            if (prev.ai.kind == def.ai.kind) {
                 report.add(file_enemies, "敌人 kind 重复", def.id);
                 ok = false;
             }
         }
-        if (!finiteInRange(def.hp, 1, 100000)) {
+        if (!finiteInRange(def.combat.hp, 1, 100000)) {
             report.add(file_enemies, "敌人 HP 非法", def.id);
             ok = false;
         }
-        if (!finiteInRange(def.damage, 0, 10000)) {
+        if (!finiteInRange(def.combat.damage, 0, 10000)) {
             report.add(file_enemies, "敌人攻击非法", def.id);
             ok = false;
         }
-        if (!finiteInRange(def.armor, 0, 10000)) {
+        if (!finiteInRange(def.combat.armor, 0, 10000)) {
             report.add(file_enemies, "敌人护甲非法", def.id);
             ok = false;
         }
-        if (def.speed < 1 or def.speed > 999) {
+        if (def.combat.speed < 1 or def.combat.speed > 999) {
             report.add(file_enemies, "敌人速度非法", def.id);
             ok = false;
         }
-        if (def.attack_range < 1 or def.attack_range > 20) {
+        if (def.combat.attack_range < 1 or def.combat.attack_range > 20) {
             report.add(file_enemies, "敌人攻击距离非法", def.id);
             ok = false;
         }
-        if (def.attack_cooldown_turns < 1 or def.attack_cooldown_turns > 100) {
+        if (def.combat.attack_cooldown_turns < 1 or def.combat.attack_cooldown_turns > 100) {
             report.add(file_enemies, "敌人攻击冷却回合非法", def.id);
             ok = false;
         }
@@ -897,15 +930,15 @@ fn validateEnemies(list: []const EnemyDef, report: *Report) bool {
             report.add(file_enemies, "敌人缩放非法", def.id);
             ok = false;
         }
-        if (!finiteInRange(def.drop_chance, 0, 1)) {
+        if (!finiteInRange(def.loot.drop_chance, 0, 1)) {
             report.add(file_enemies, "掉落概率必须在 0..1", def.id);
             ok = false;
         }
-        if (def.elite and def.boss) {
+        if (def.tags.elite and def.tags.boss) {
             report.add(file_enemies, "敌人不能同时是精英和 Boss", def.id);
             ok = false;
         }
-        if (def.min_layer < 1 or def.min_layer > 3 or def.max_layer < def.min_layer or def.max_layer > 3) {
+        if (def.spawn.min_layer < 1 or def.spawn.min_layer > 3 or def.spawn.max_layer < def.spawn.min_layer or def.spawn.max_layer > 3) {
             report.add(file_enemies, "敌人层数范围非法", def.id);
             ok = false;
         }
@@ -1041,7 +1074,7 @@ fn validateSkillEffect(def: SkillDef, report: *Report) bool {
 fn validateEnemySkills(enemies: []const EnemyDef, skills: []const SkillDef, report: *Report) bool {
     var ok = true;
     for (enemies) |def| {
-        const id = def.skill orelse continue;
+        const id = def.ai.skill orelse continue;
         const found = findSkill(skills, id) orelse {
             report.add(file_enemies, "敌人引用了不存在的技能", id);
             ok = false;
@@ -1104,8 +1137,8 @@ test "embedded tables match the RUN v1 content plan" {
     try std.testing.expect(sigil.allowsClass(.chronomancer));
 
     const boss = content.enemy("abyss_guard") orelse return error.MissingEnemy;
-    try std.testing.expect(boss.boss);
-    try std.testing.expectEqual(@as(f32, 420), boss.hp);
+    try std.testing.expect(boss.tags.boss);
+    try std.testing.expectEqual(@as(f32, 420), boss.combat.hp);
 
     const heavy = content.skill("heavy_strike") orelse return error.MissingSkill;
     try std.testing.expectEqual(SkillKind.player, heavy.kind);
@@ -1127,7 +1160,7 @@ test "embedded tables match the RUN v1 content plan" {
 
     // 敌人技能引用必须解析到 enemy 技能。
     for (content.enemies) |def| {
-        const id = def.skill orelse continue;
+        const id = def.ai.skill orelse continue;
         const skill = content.skill(id) orelse return error.MissingSkill;
         try std.testing.expectEqual(SkillKind.enemy, skill.kind);
         try std.testing.expect(skill.effect.damagePayload().?.flat > 0);
@@ -1189,6 +1222,28 @@ test "enemy referencing an unknown skill is rejected" {
     try std.testing.expectEqual(Source.fallback, content.report.enemies);
     try std.testing.expectEqual(Source.embedded, content.report.items);
     try std.testing.expectEqual(builtin_enemies.len, content.enemies.len);
+}
+
+test "enemy kinds stay canonical and unique" {
+    const expected = [_]struct { id: []const u8, kind: u8, speed: u16, range: u16 }{
+        .{ .id = "skeleton", .kind = 0, .speed = 100, .range = 1 },
+        .{ .id = "wraith", .kind = 1, .speed = 110, .range = 3 },
+        .{ .id = "golem", .kind = 2, .speed = 70, .range = 1 },
+        .{ .id = "elite_skeleton", .kind = 3, .speed = 110, .range = 1 },
+        .{ .id = "elite_wraith", .kind = 4, .speed = 150, .range = 4 },
+        .{ .id = "abyss_guard", .kind = 5, .speed = 90, .range = 1 },
+    };
+    var seen: [6]bool = @splat(false);
+    for (expected) |want| {
+        const def = for (builtin_enemies) |candidate| {
+            if (std.mem.eql(u8, candidate.id, want.id)) break candidate;
+        } else return error.MissingEnemyDef;
+        try std.testing.expectEqual(want.kind, def.ai.kind);
+        try std.testing.expectEqual(want.speed, def.combat.speed);
+        try std.testing.expectEqual(want.range, def.combat.attack_range);
+        if (seen[def.ai.kind]) return error.DuplicateKind;
+        seen[def.ai.kind] = true;
+    }
 }
 
 test "enemy skill must be an enemy-kind skill" {

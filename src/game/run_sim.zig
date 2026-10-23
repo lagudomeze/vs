@@ -4,6 +4,7 @@ const std = @import("std");
 const dungeon_mod = @import("dungeon.zig");
 const attributes = @import("attributes.zig");
 const combat = @import("combat.zig");
+const content_mod = @import("content.zig");
 const intent_mod = @import("intent.zig");
 
 pub const grid_w = dungeon_mod.size;
@@ -136,25 +137,6 @@ pub const Enemy = struct {
     alive: bool = true,
 };
 
-pub const EnemyDef = struct {
-    name: []const u8,
-    hp: f32,
-    attack: f32,
-    armor: f32,
-    speed: u16,
-    range: u16,
-    xp: u32,
-};
-
-const enemy_defs = [_]EnemyDef{
-    .{ .name = "骷髅兵", .hp = 70, .attack = 8, .armor = 4, .speed = 100, .range = 1, .xp = 20 },
-    .{ .name = "幽魂", .hp = 55, .attack = 7, .armor = 1, .speed = 110, .range = 3, .xp = 25 },
-    .{ .name = "石魔像", .hp = 150, .attack = 12, .armor = 12, .speed = 70, .range = 1, .xp = 40 },
-    .{ .name = "精英骷髅", .hp = 100, .attack = 11, .armor = 7, .speed = 110, .range = 1, .xp = 50 },
-    .{ .name = "精英幽魂", .hp = 85, .attack = 10, .armor = 2, .speed = 150, .range = 4, .xp = 50 },
-    .{ .name = "深渊守卫", .hp = 420, .attack = 16, .armor = 15, .speed = 90, .range = 1, .xp = 200 },
-};
-
 pub const LogLine = struct { text: [64]u8 = undefined, len: usize = 0 };
 
 pub const Sim = struct {
@@ -164,6 +146,9 @@ pub const Sim = struct {
     hero: Hero,
     enemies: [max_enemies]Enemy = undefined,
     enemy_count: usize = 0,
+    /// Content-owned definitions; index order is not kind order, so lookups
+    /// match ai.kind. Tests default to the embedded table.
+    enemy_table: []const content_mod.EnemyDef = &content_mod.builtin_enemies,
     blocked: [grid_w * grid_h]bool = @splat(false),
     stairs: GridPos = .{ .x = 10, .y = 2 },
     chests: [4]GridPos = .{ .{ .x = 2, .y = 2 }, .{ .x = 10, .y = 10 }, .{ .x = 2, .y = 10 }, .{ .x = 10, .y = 2 } },
@@ -408,24 +393,35 @@ pub const Sim = struct {
         self.pushLog("第 {d} 层：{d} 个敌人", .{ self.floor, self.enemy_count });
     }
 
+    pub fn setEnemyDefs(self: *Sim, defs: []const content_mod.EnemyDef) void {
+        if (defs.len > 0) self.enemy_table = defs;
+    }
+
+    fn enemyDefForKind(self: *const Sim, kind: u8) content_mod.EnemyDef {
+        for (self.enemy_table) |*def| {
+            if (def.ai.kind == kind) return def.*;
+        }
+        return self.enemy_table[0];
+    }
+
     fn spawnEnemyAt(self: *Sim, kind: u8, pos: GridPos) void {
         if (self.enemy_count >= max_enemies) return;
         if (self.isBlocked(pos.x, pos.y)) return;
         if (self.enemyAt(pos.x, pos.y) != null) return;
         if (pos.x == self.hero.pos.x and pos.y == self.hero.pos.y) return;
-        const def = enemy_defs[@min(kind, enemy_defs.len - 1)];
+        const def = self.enemyDefForKind(kind);
         const idx = self.enemy_count;
         self.enemies[idx] = .{
-            .kind = kind,
+            .kind = def.ai.kind,
             .name = def.name,
             .pos = pos,
-            .hp = def.hp,
-            .hp_max = def.hp,
-            .attack = def.attack,
-            .armor = def.armor,
-            .speed = def.speed,
-            .range = def.range,
-            .xp = def.xp,
+            .hp = def.combat.hp,
+            .hp_max = def.combat.hp,
+            .attack = def.combat.damage,
+            .armor = def.combat.armor,
+            .speed = def.combat.speed,
+            .range = def.combat.attack_range,
+            .xp = def.loot.xp,
         };
         self.enemy_count += 1;
     }
@@ -1145,9 +1141,9 @@ test "run sim: boss AOE resolves on the telegraphed turn" {
 test "run sim: enemy speeds cover the extra/skip bands" {
     var fast = false;
     var slow = false;
-    for (enemy_defs) |def| {
-        if (def.speed >= 150) fast = true;
-        if (def.speed <= 75) slow = true;
+    for (content_mod.builtin_enemies) |def| {
+        if (def.combat.speed >= 150) fast = true;
+        if (def.combat.speed <= 75) slow = true;
     }
     try std.testing.expect(fast);
     try std.testing.expect(slow);

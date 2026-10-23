@@ -3,7 +3,7 @@
 > 结论先说：**ItemDef 不是 ECS 组件**，它是不可变的内容定义（registry/resource）。
 > 但你的直觉是对的：现在的数据结构大量使用“大平铺结构 + 可选字段”，没有按变体拆成 Tagged Union，也没有把 Actor 拆成组件。ECS 只做了一半。
 
-> 2026-10-23：Phase 1 的 ItemDef 与 SkillDef 已落地 —— 运行时分别是 ItemKind/SkillEffect union，JSON 仍用扁平 wire DTO 并转换。
+> 2026-10-23：Phase 1 的 ItemDef/SkillDef/EnemyDef 已落地 —— 运行时分别是 ItemKind/SkillEffect union 与 EnemyDef 子结构；JSON 仍用扁平 wire DTO 并转换。
 
 ## 1. 四种数据要分开
 
@@ -139,7 +139,7 @@ pub const SkillDef = struct {
 
 这样“伤害技能”只声明伤害字段，“闪现”只声明距离；执行器按 union tag 分派。
 
-### EnemyDef（18 字段）
+### EnemyDef（18 字段，已拆为子结构）
 
 ~~~text
 id, name, model, kind,
@@ -275,8 +275,8 @@ ECS 组件是“每个实体都有一份”的状态。ItemDef/SkillDef/EnemyDef
 
 1. ✅ ItemDef -> ItemKind union；JSON loader 按 kind 校验。
 2. ✅ SkillDef -> SkillEffect union；现有 9 个玩家技能 + Boss AOE 已映射。
-3. EnemyDef -> Combat/AI/Loot/Spawn 子结构；tags 代替 bool。
-4. 删除 run_sim.EnemyDef 重复表，Sim 改用 content registry。
+3. ✅ EnemyDef -> Combat/AI/Loot/Spawn 子结构；tags 代替 bool。
+4. ✅ 删除 run_sim.EnemyDef 重复表，Sim 改用 content registry（enemy_table）。
 
 ### Phase 2：Actor 组件化（行为不变）
 
