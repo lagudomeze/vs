@@ -144,10 +144,10 @@ health.recomputeFull(full_mods);
 - 加点/装备/UI 用字段表遍历。
 - ✅ Save DTO 的 stats 仍是六个 f32，加载时重建 PrimarySheet。
 
-### Phase D：派生值
+### Phase D：派生值（已完成）
 
-- attack/armor/crit/speed 改成 Value。
-- attributes.recompute 写 base，再应用 modifier 列表。
+- ✅ Hero/Enemy 的 attack/armor/crit/speed 改成 4 个独立 Value。
+- ✅ attributes.recompute 写 base/val；装备 modifier 仍由 attributes 聚合处理。
 - 公式仍集中。
 
 ### Phase E：装备修正

@@ -148,6 +148,7 @@ cells(shape, origin, dir) []Cell
 当前状态：
 
 - attributes.recompute 是唯一公式入口；六维存储为 PrimarySheet 的 6 个 Value；
+- 攻击/护甲/暴击/速度存储为 4 个 Value；
 - Sim.recomputeHero 已改为调用它；
 - ClassDef / DerivedDef 已表单化。
 

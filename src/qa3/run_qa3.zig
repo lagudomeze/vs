@@ -462,7 +462,7 @@ test "qa3: empty gear object is rejected without clearing the bag" {
 
 fn setupFighter(s: *run.Sim, speed: u16) void {
     s.turn = 1;
-    s.hero.combat.armor = 0;
+    s.hero.combat.armor.val = 0;
     s.hero.vitals.val = s.hero.vitals.full;
     s.enemy_count = 1;
     s.enemies[0] = run.enemyFromParts(.{
@@ -505,7 +505,7 @@ test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
     var s = run.Sim.init(47, .warrior);
     s.turn = 2;
     s.hero.pos = .{ .x = 6, .y = 6 };
-    s.hero.combat.armor = 0;
+    s.hero.combat.armor.val = 0;
     s.hero.vitals.val = s.hero.vitals.full;
     s.aoe_armed = true;
     s.aoe_target = .{ .x = 7, .y = 6 };
@@ -530,7 +530,7 @@ test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
     var h = run.Sim.init(49, .warrior);
     h.turn = 2;
     h.hero.pos = .{ .x = 6, .y = 6 };
-    h.hero.combat.armor = 0;
+    h.hero.combat.armor.val = 0;
     h.hero.vitals.val = h.hero.vitals.full;
     h.aoe_armed = true;
     h.aoe_target = h.hero.pos;
