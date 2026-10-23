@@ -16,6 +16,8 @@ pub const Class = attributes.Class;
 
 pub const ShrineChoice = enum(u8) { main_stat, constitution, will };
 
+pub const Affix = enum(u8) { none, swift, armored, vampiric };
+
 pub const Difficulty = enum(u8) {
     normal,
     hard,
@@ -253,6 +255,7 @@ pub const ActionState = struct {
 /// component they need rather than the whole aggregate.
 pub const Enemy = struct {
     identity: EnemyIdentity = .{},
+    affix: Affix = .none,
     pos: GridPos = .{ .x = 0, .y = 0 },
     vitals: numeric.Health = .{},
     life: numeric.LifeState = .{},
@@ -267,6 +270,7 @@ pub fn enemyFromParts(parts: anytype) Enemy {
     const T = @TypeOf(parts);
     return .{
         .identity = .{ .kind = parts.kind, .name = parts.name },
+        .affix = if (@hasField(T, "affix")) parts.affix else .none,
         .pos = .{ .x = parts.pos.x, .y = parts.pos.y },
         .vitals = numeric.gaugeAt(numeric.Health, parts.hp_max, parts.hp),
         .life = .{ .alive = if (@hasField(T, "alive")) parts.alive else true },
@@ -614,6 +618,22 @@ pub const Sim = struct {
         if (defs.len > 0) self.enemy_table = defs;
     }
 
+    /// Deterministic affix roll; does not consume the run RNG, so loot order
+    /// and enemy turns stay stable when content changes.
+    fn rollAffix(seed: u64, floor: u8, kind: u8, pos: GridPos) Affix {
+        const h = seed ^
+            (@as(u64, floor) *% 0x9e3779b97f4a7c15) ^
+            (@as(u64, kind) *% 0xbf58476d1ce4e5b9) ^
+            (@as(u64, @intCast(@max(0, pos.x))) *% 0x94d049bb133111eb) ^
+            (@as(u64, @intCast(@max(0, pos.y))) *% 0xd6e8feb86659fd93);
+        var rng = std.Random.DefaultPrng.init(h);
+        const roll = rng.random().float(f32);
+        if (roll < 0.06) return .swift;
+        if (roll < 0.12) return .armored;
+        if (roll < 0.16) return .vampiric;
+        return .none;
+    }
+
     fn enemyDefForKind(self: *const Sim, kind: u8) content_mod.EnemyDef {
         for (self.enemy_table) |*def| {
             if (def.ai.kind == kind) return def.*;
@@ -630,14 +650,18 @@ pub const Sim = struct {
         const idx = self.enemy_count;
         const hp = def.combat.hp * self.difficulty.hpScale();
         const dmg = def.combat.damage * self.difficulty.damageScale();
+        const affix: Affix = if (def.ai.kind == intent_mod.boss_kind or self.floor < 2) .none else rollAffix(self.seed, self.floor, def.ai.kind, pos);
+        const speed = @as(f32, @floatFromInt(def.combat.speed)) + (if (affix == .swift) @as(f32, 15) else 0);
+        const armor = def.combat.armor + (if (affix == .armored) @as(f32, 3) else 0);
         self.enemies[idx] = .{
             .identity = .{ .kind = def.ai.kind, .name = def.name },
+            .affix = affix,
             .pos = pos,
             .vitals = numeric.gaugeFull(numeric.Health, hp),
             .combat = .{
                 .attack = numeric.valueOf(numeric.Attack, dmg),
-                .armor = numeric.valueOf(numeric.Armor, def.combat.armor),
-                .speed = numeric.valueOf(numeric.Speed, @floatFromInt(def.combat.speed)),
+                .armor = numeric.valueOf(numeric.Armor, armor),
+                .speed = numeric.valueOf(numeric.Speed, speed),
                 .range = def.combat.attack_range,
             },
             .reward = .{ .xp = def.loot.xp },
@@ -967,11 +991,12 @@ pub const Sim = struct {
     }
 
     fn enemyAttack(self: *Sim, idx: usize) void {
-        const e = self.enemies[idx];
+        const e = &self.enemies[idx];
         var raw = e.combat.attack.val * 0.72;
         raw *= e.status.slowDamageScale();
         const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount;
         self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
+        if (e.affix == .vampiric and dmg > 0) e.vitals.set(e.vitals.val + dmg * 0.20);
         self.pushLog("{s} 造成 {d:.0} 伤害", .{ e.identity.name, dmg });
     }
 
@@ -1340,6 +1365,33 @@ test "run sim: stepping on stairs advances the floor" {
         _ = s.move(0, 1);
         try std.testing.expect(s.floor >= 2);
     }
+}
+
+test "run sim: affixes are deterministic and vampiric heals on hit" {
+    var a = Sim.init(77, .warrior);
+    var b = Sim.init(77, .warrior);
+    for (a.enemies[0..a.enemy_count], b.enemies[0..b.enemy_count]) |ea, eb| {
+        try std.testing.expectEqual(ea.affix, eb.affix);
+    }
+
+    var s = Sim.init(78, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{
+        .kind = 0,
+        .name = "骷髅兵",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 40,
+        .hp_max = 70,
+        .attack = 10,
+        .armor = 0,
+        .speed = 100,
+        .range = 1,
+        .xp = 20,
+        .affix = .vampiric,
+        .energy = 100,
+    });
+    _ = s.wait();
+    try std.testing.expect(s.enemies[0].vitals.val > 40);
 }
 
 test "run sim: shrine grants one permanent stat choice" {

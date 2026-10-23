@@ -140,6 +140,7 @@ const HeroSave = struct {
 
 const EnemySave = struct {
     kind: u8,
+    affix: u8 = 0,
     name: []const u8,
     pos: GridPosSave,
     hp: f32,
@@ -271,6 +272,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
         }
         enemy_buf[i] = .{
             .kind = e.identity.kind,
+            .affix = @backingInt(e.affix),
             .name = e.identity.name,
             .pos = savePos(e.pos),
             .hp = e.vitals.val,
@@ -513,6 +515,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     for (root.enemies, 0..) |e, i| {
         if (@as(usize, e.kind) >= enemy_names.len) return error.InvalidEnemyKind;
         if (!std.mem.eql(u8, e.name, enemy_names[e.kind])) return error.InvalidEnemyName;
+        if (e.affix > @backingInt(sim_mod.Affix.vampiric)) return error.InvalidValue;
         if (!inBounds(e.pos)) return error.InvalidCoordinate;
         if (mapBlocked(map, e.pos)) return error.InconsistentMap;
         if (!std.math.isFinite(e.hp) or !std.math.isFinite(e.hp_max) or
@@ -596,6 +599,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     for (root.enemies, 0..) |e, i| {
         sim.enemies[i] = .{
             .identity = .{ .kind = e.kind, .name = enemy_names[e.kind] },
+            .affix = @fromBackingInt(@intCast(e.affix)),
             .pos = loadPos(e.pos),
             .vitals = numeric.gaugeAt(numeric.Health, e.hp_max, e.hp),
             .life = .{ .alive = e.alive },
@@ -743,6 +747,7 @@ fn drive(sim: *Sim, steps: usize) void {
 
 fn expectSameEnemy(expected: Enemy, actual: Enemy) !void {
     try testing.expectEqual(expected.identity.kind, actual.identity.kind);
+    try testing.expectEqual(expected.affix, actual.affix);
     try testing.expectEqualStrings(expected.identity.name, actual.identity.name);
     try testing.expectEqual(expected.pos.x, actual.pos.x);
     try testing.expectEqual(expected.pos.y, actual.pos.y);
