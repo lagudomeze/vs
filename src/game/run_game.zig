@@ -1877,6 +1877,24 @@ pub const RunGame = struct {
         self.hud_state.minimap[@as(usize, @intCast(my)) * 13 + @as(usize, @intCast(mx))] = value;
     }
 
+    fn itemPower(def: items_mod.ItemDef) f32 {
+        var score: f32 = 0;
+        for (def.mods()) |m| {
+            const weight: f32 = switch (m.stat) {
+                .strength, .agility, .constitution, .perception, .magic, .will => 8,
+                .hp_max => 1,
+                .resource_max => 0.5,
+                .attack => 5,
+                .armor => 4,
+                .crit => 150,
+                .speed => 1,
+                .resource_per_turn => 2,
+            };
+            score += m.flat * weight + m.pct * 300;
+        }
+        return score;
+    }
+
     fn fillHudState(self: *RunGame) void {
         self.trackRunEnd();
         const initiative = self.initiativeNames();
@@ -2048,6 +2066,26 @@ pub const RunGame = struct {
                 self.hud_state.item_details[ii] = "";
             }
         }
+        self.hud_state.item_deltas = @splat(0);
+        self.hud_state.item_delta_valid = @splat(false);
+        self.hud_state.item_delta_new = @splat(false);
+        var di: usize = 0;
+        while (di < self.hud_state.item_count) : (di += 1) {
+            const item = self.inventory.at(di);
+            if (item >= self.content.items.len) continue;
+            const def = &self.content.items[item];
+            const slot = def.slot() orelse continue;
+            const equipped = self.inventory.equipped.get(slot);
+            self.hud_state.item_delta_valid[di] = true;
+            if (equipped) |eq| {
+                if (eq >= self.content.items.len) continue;
+                const delta = itemPower(def.*) - itemPower(self.content.items[eq]);
+                self.hud_state.item_deltas[di] = @intFromFloat(@round(delta));
+            } else {
+                self.hud_state.item_delta_new[di] = true;
+            }
+        }
+
         self.hud_state.has_minimap = true;
         self.hud_state.minimap = @splat(0);
         const mm = 13;
@@ -2140,6 +2178,21 @@ test "run game: P quaffs a potion outside the inventory" {
     g.update(.{ .use_item = true }, 1.0 / 60.0);
     try std.testing.expect(g.sim.hero.vitals.val > 10);
     try std.testing.expectEqual(before - 1, g.inventory.count());
+}
+
+test "run game: inventory comparison marks equippable items" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.debugGrantLoot(8);
+    g.panel = .inventory;
+    g.fillHudState();
+    var any = false;
+    var i: usize = 0;
+    while (i < g.hud_state.item_count) : (i += 1) {
+        if (g.hud_state.item_delta_valid[i]) any = true;
+    }
+    try std.testing.expect(any);
 }
 
 test "run game: inventory P consumes a resource potion" {
