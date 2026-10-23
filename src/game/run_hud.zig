@@ -564,7 +564,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
 
 fn drawShop(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const pw: i32 = 300;
-    const ph: i32 = 160;
+    const ph: i32 = 182;
     const px = @divTrunc(w - pw, 2);
     const py = @divTrunc(h - ph, 2);
     r.fillRect(0, 0, w, h, palette.deep);
@@ -580,11 +580,11 @@ fn drawShop(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const gw = renderer.Renderer.textWidth(gold, 1);
     r.drawText(px + @divTrunc(pw - gw, 2), py + 38, gold, palette.gold, 1, false);
 
-    const lines = [_][]const u8{ "1 治疗 25G", "2 主属性 +2 60G", "3 体质 +2 60G" };
+    const lines = [_][]const u8{ "1 治疗 25G", "2 主属性 +2 60G", "3 体质 +2 60G", "4 CLEANSE 20G" };
     for (lines, 0..) |line, i| {
-        r.drawText(px + 40, py + 64 + @as(i32, @intCast(i)) * 22, line, palette.cream, 1, false);
+        r.drawText(px + 40, py + 62 + @as(i32, @intCast(i)) * 21, line, if (i == 3) palette.cyan_light else palette.cream, 1, false);
     }
-    r.drawText(px + 16, py + ph - 22, "1/2/3 选择   Esc 关闭", palette.muted, 1, false);
+    r.drawText(px + 16, py + ph - 20, "1/2/3/4 选择   Esc 关闭", palette.muted, 1, false);
 }
 
 fn drawShrine(r: *renderer.Renderer, state: State, w: i32, h: i32) void {

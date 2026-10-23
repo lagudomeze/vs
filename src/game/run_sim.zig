@@ -16,10 +16,11 @@ pub const Class = attributes.Class;
 
 pub const ShrineChoice = enum(u8) { main_stat, constitution, will, risk };
 
-pub const ShopChoice = enum(u8) { heal, power, vitality };
+pub const ShopChoice = enum(u8) { heal, power, vitality, cleanse };
 pub const shop_heal_cost: u32 = 25;
 pub const shop_power_cost: u32 = 60;
 pub const shop_vitality_cost: u32 = 60;
+pub const shop_cleanse_cost: u32 = 20;
 
 pub const Affix = enum(u8) { none, swift, armored, vampiric };
 
@@ -687,6 +688,7 @@ pub const Sim = struct {
             .heal => shop_heal_cost,
             .power => shop_power_cost,
             .vitality => shop_vitality_cost,
+            .cleanse => shop_cleanse_cost,
         };
         if (self.gold < cost) return false;
         switch (choice) {
@@ -704,6 +706,13 @@ pub const Sim = struct {
                 self.hero.sheet.stats.add(.constitution, 2);
                 self.recomputeHero();
                 self.pushLog("SHOP 体质 +2", .{});
+            },
+            .cleanse => {
+                self.hero.status.burn_turns = 0;
+                self.hero.status.burn_damage = 0;
+                self.hero.status.slow_turns = 0;
+                self.hero.status.vulnerable_turns = 0;
+                self.pushLog("SHOP 净化", .{});
             },
         }
         self.gold -= cost;
@@ -1670,6 +1679,17 @@ test "run sim: shop buys healing and permanent power" {
     try std.testing.expectApproxEqAbs(magic + 2, p.hero.sheet.stats.magic.val, 0.001);
     try std.testing.expectEqual(@as(u32, 0), p.gold);
     try std.testing.expect(!p.useShop(.heal));
+
+    var c = Sim.init(93, .warrior);
+    c.hero.pos = c.shop;
+    c.gold = 20;
+    c.hero.status.burn_turns = 2;
+    c.hero.status.slow_turns = 2;
+    c.hero.status.vulnerable_turns = 2;
+    try std.testing.expect(c.useShop(.cleanse));
+    try std.testing.expectEqual(@as(u16, 0), c.hero.status.burn_turns);
+    try std.testing.expectEqual(@as(u16, 0), c.hero.status.slow_turns);
+    try std.testing.expectEqual(@as(u16, 0), c.hero.status.vulnerable_turns);
 }
 
 test "run sim: shrine grants one permanent stat choice" {

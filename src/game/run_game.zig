@@ -407,7 +407,7 @@ pub const RunGame = struct {
     }
 
     fn buyShop(self: *RunGame, index: usize) void {
-        if (index >= 3) return;
+        if (index >= 4) return;
         const choice: sim_mod.ShopChoice = @fromBackingInt(@intCast(index));
         if (self.sim.useShop(choice)) {
             self.shop_open = false;
@@ -973,7 +973,11 @@ pub const RunGame = struct {
         }
 
         if (self.shop_open) {
-            if (input.talent >= 0) self.buyShop(@intCast(input.talent));
+            if (input.talent >= 0) {
+                self.buyShop(@intCast(input.talent));
+            } else if (input.stat == 3) {
+                self.buyShop(3);
+            }
             self.syncVisuals(false);
             self.updateVisuals(dt);
             self.followCamera();
