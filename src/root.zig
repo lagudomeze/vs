@@ -2,6 +2,7 @@
 const std = @import("std");
 
 pub const mech = @import("core/mech.zig");
+pub const numeric_ecs = @import("game/numeric_ecs.zig");
 pub const math = @import("core/math.zig");
 pub const color = @import("core/color.zig");
 pub const palette = @import("core/palette.zig");
@@ -36,6 +37,7 @@ pub const platform = @import("platform/sdl.zig");
 test {
     std.testing.refAllDecls(@This());
     _ = @import("game/flecs_script_probe.zig");
+    _ = @import("game/numeric_ecs.zig");
 }
 
 test "all embedded models load" {

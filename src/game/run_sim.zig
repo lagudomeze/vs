@@ -5,6 +5,7 @@ const dungeon_mod = @import("dungeon.zig");
 const attributes = @import("attributes.zig");
 const combat = @import("combat.zig");
 const content_mod = @import("content.zig");
+const numeric = @import("numeric.zig");
 const intent_mod = @import("intent.zig");
 
 pub const grid_w = dungeon_mod.size;
@@ -98,17 +99,6 @@ fn statsFromAttributes(st: attributes.Stats) Stats {
 
 pub const State = enum(u8) { playing, dead, victory };
 
-pub const HeroVitals = struct {
-    hp: f32 = 1,
-    hp_max: f32 = 1,
-};
-
-pub const ResourcePool = struct {
-    current: f32 = 0,
-    max: f32 = 1,
-    per_turn: f32 = 8,
-};
-
 pub const HeroCombat = struct {
     attack: f32 = 10,
     armor: f32 = 0,
@@ -138,8 +128,9 @@ pub const Hero = struct {
     pos: GridPos = .{ .x = 6, .y = 11 },
     last_pos: GridPos = .{ .x = 6, .y = 11 },
     sheet: HeroSheet = .{},
-    vitals: HeroVitals = .{},
-    resource: ResourcePool = .{},
+    vitals: numeric.Health = .{},
+    resource: numeric.Resource = .{},
+    resource_regen: numeric.Regen = .{},
     combat: HeroCombat = .{},
     progression: HeroProgression = .{},
     status: StatusSet = .{},
@@ -149,12 +140,6 @@ pub const Hero = struct {
 pub const EnemyIdentity = struct {
     kind: u8 = 0,
     name: []const u8 = "骷髅兵",
-};
-
-pub const Vitals = struct {
-    hp: f32 = 1,
-    hp_max: f32 = 1,
-    alive: bool = true,
 };
 
 pub const EnemyCombat = struct {
@@ -239,7 +224,8 @@ pub const ActionState = struct {
 pub const Enemy = struct {
     identity: EnemyIdentity = .{},
     pos: GridPos = .{ .x = 0, .y = 0 },
-    vitals: Vitals = .{},
+    vitals: numeric.Health = .{},
+    life: numeric.LifeState = .{},
     combat: EnemyCombat = .{},
     status: StatusSet = .{},
     reward: Reward = .{},
@@ -252,11 +238,8 @@ pub fn enemyFromParts(parts: anytype) Enemy {
     return .{
         .identity = .{ .kind = parts.kind, .name = parts.name },
         .pos = .{ .x = parts.pos.x, .y = parts.pos.y },
-        .vitals = .{
-            .hp = parts.hp,
-            .hp_max = parts.hp_max,
-            .alive = if (@hasField(T, "alive")) parts.alive else true,
-        },
+        .vitals = numeric.gaugeAt(numeric.Health, parts.hp_max, parts.hp),
+        .life = .{ .alive = if (@hasField(T, "alive")) parts.alive else true },
         .combat = .{
             .attack = parts.attack,
             .armor = if (@hasField(T, "armor")) parts.armor else 0,
@@ -342,8 +325,8 @@ pub const Sim = struct {
         self.log_head = 0;
         self.log_total = 0;
         self.recomputeHero();
-        self.hero.vitals.hp = self.hero.vitals.hp_max;
-        self.hero.resource.current = self.hero.resource.max;
+        self.hero.vitals.val = self.hero.vitals.full;
+        self.hero.resource.val = self.hero.resource.full;
         self.generateFloor();
         self.pushLog("进入第 1 层", .{});
     }
@@ -384,15 +367,16 @@ pub const Sim = struct {
         });
         const sheet = attributes.recompute(base, mods, self.class);
         self.hero.sheet.eff_stats = sheet.stats;
-        self.hero.vitals.hp_max = sheet.derived.hp_max;
-        self.hero.resource.max = sheet.derived.resource_max;
+        self.hero.vitals.setFull(sheet.derived.hp_max);
+        self.hero.resource.setFull(sheet.derived.resource_max);
         self.hero.combat.attack = sheet.derived.attack;
         self.hero.combat.armor = sheet.derived.armor;
         self.hero.combat.crit = sheet.derived.crit;
         self.hero.combat.speed = @intFromFloat(sheet.derived.speed);
-        self.hero.resource.per_turn = sheet.derived.resource_per_turn;
-        self.hero.vitals.hp = @min(self.hero.vitals.hp, self.hero.vitals.hp_max);
-        self.hero.resource.current = @min(self.hero.resource.current, self.hero.resource.max);
+        self.hero.resource_regen.val = sheet.derived.resource_per_turn;
+        self.hero.resource_regen.base = sheet.derived.resource_per_turn;
+        self.hero.vitals.set(self.hero.vitals.val);
+        self.hero.resource.set(self.hero.resource.val);
     }
 
     pub fn pushLog(self: *Sim, comptime f: []const u8, args: anytype) void {
@@ -413,7 +397,7 @@ pub const Sim = struct {
         var i: usize = 0;
         while (i < self.enemy_count) : (i += 1) {
             const e = self.enemies[i];
-            if (e.vitals.alive and e.pos.x == x and e.pos.y == y) return i;
+            if (e.life.alive and e.pos.x == x and e.pos.y == y) return i;
         }
         return null;
     }
@@ -423,7 +407,7 @@ pub const Sim = struct {
     pub fn intentFor(self: *const Sim, index: usize) ?intent_mod.EnemyIntent {
         if (index >= self.enemy_count) return null;
         const e = self.enemies[index];
-        if (!e.vitals.alive) return null;
+        if (!e.life.alive) return null;
         var intent = intent_mod.preview(
             .{
                 .width = grid_w,
@@ -437,7 +421,7 @@ pub const Sim = struct {
                 .attack = e.combat.attack,
                 .stun_turns = e.status.stun_turns,
                 .slow_turns = e.status.slow_turns,
-                .alive = e.vitals.alive,
+                .alive = e.life.alive,
             },
             .{ .x = self.hero.pos.x, .y = self.hero.pos.y },
             self.turn +| 1,
@@ -457,7 +441,7 @@ pub const Sim = struct {
         var n: usize = 0;
         var i: usize = 0;
         while (i < self.enemy_count) : (i += 1) {
-            if (!self.enemies[i].vitals.alive) continue;
+            if (!self.enemies[i].life.alive) continue;
             out[n] = self.intentFor(i).?;
             n += 1;
         }
@@ -549,7 +533,7 @@ pub const Sim = struct {
         self.enemies[idx] = .{
             .identity = .{ .kind = def.ai.kind, .name = def.name },
             .pos = pos,
-            .vitals = .{ .hp = def.combat.hp, .hp_max = def.combat.hp },
+            .vitals = numeric.gaugeFull(numeric.Health, def.combat.hp),
             .combat = .{
                 .attack = def.combat.damage,
                 .armor = def.combat.armor,
@@ -570,7 +554,7 @@ pub const Sim = struct {
 
     pub fn hasLivingBoss(self: *const Sim) bool {
         for (self.enemies[0..self.enemy_count]) |e| {
-            if (e.vitals.alive and e.identity.kind == intent_mod.boss_kind) return true;
+            if (e.life.alive and e.identity.kind == intent_mod.boss_kind) return true;
         }
         return false;
     }
@@ -615,11 +599,11 @@ pub const Sim = struct {
         if (self.state != .playing) return false;
         var danger = false;
         for (self.enemies[0..self.enemy_count]) |e| {
-            if (e.vitals.alive and dist(e.pos, self.hero.pos) <= 6) danger = true;
+            if (e.life.alive and dist(e.pos, self.hero.pos) <= 6) danger = true;
         }
         if (!danger) {
-            self.hero.vitals.hp = @min(self.hero.vitals.hp_max, self.hero.vitals.hp + self.hero.vitals.hp_max * 0.08);
-            self.hero.resource.current = @min(self.hero.resource.max, self.hero.resource.current + self.hero.resource.max * 0.15);
+            self.hero.vitals.val = @min(self.hero.vitals.full, self.hero.vitals.val + self.hero.vitals.full * 0.08);
+            self.hero.resource.val = @min(self.hero.resource.full, self.hero.resource.val + self.hero.resource.full * 0.15);
             self.pushLog("休息：恢复生命与资源", .{});
         }
         self.hero.last_pos = self.hero.pos;
@@ -632,8 +616,8 @@ pub const Sim = struct {
             if (!self.chest_alive[i] or c.x != x or c.y != y) continue;
             self.chest_alive[i] = false;
             self.chest_count -= 1;
-            const heal = @min(self.hero.vitals.hp_max - self.hero.vitals.hp, 25);
-            self.hero.vitals.hp += heal;
+            const heal = @min(self.hero.vitals.full - self.hero.vitals.val, 25);
+            self.hero.vitals.val += heal;
             self.chest_loot_events += 1;
             self.pushLog("打开宝箱：恢复 {d:.0} 生命", .{heal});
             return;
@@ -646,9 +630,9 @@ pub const Sim = struct {
             self.trap_alive[i] = false;
             self.trap_count -= 1;
             const dmg: f32 = 8.0 + @as(f32, @floatFromInt(self.floor)) * 4.0;
-            self.hero.vitals.hp = @max(0, self.hero.vitals.hp - dmg);
+            self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
             self.pushLog("触发陷阱 -{d:.0} 生命", .{dmg});
-            if (self.hero.vitals.hp <= 0) self.state = .dead;
+            if (self.hero.vitals.val <= 0) self.state = .dead;
             return;
         }
     }
@@ -660,8 +644,8 @@ pub const Sim = struct {
             self.pushLog("击败深渊守卫，胜利", .{});
             return;
         }
-        self.hero.vitals.hp = @min(self.hero.vitals.hp_max, self.hero.vitals.hp + self.hero.vitals.hp_max * 0.25);
-        self.hero.resource.current = @min(self.hero.resource.max, self.hero.resource.current + self.hero.resource.max * 0.5);
+        self.hero.vitals.val = @min(self.hero.vitals.full, self.hero.vitals.val + self.hero.vitals.full * 0.25);
+        self.hero.resource.val = @min(self.hero.resource.full, self.hero.resource.val + self.hero.resource.full * 0.5);
         self.turn += 1;
         self.generateFloor();
         if (self.stairsSealed()) self.pushLog("深渊守卫封印了楼梯", .{});
@@ -672,7 +656,7 @@ pub const Sim = struct {
         if (self.aoe_armed) return;
         if (!intent_mod.bossAoeDue(self.turn +| 1)) return;
         for (self.enemies[0..self.enemy_count]) |e| {
-            if (e.vitals.alive and e.identity.kind == intent_mod.boss_kind) {
+            if (e.life.alive and e.identity.kind == intent_mod.boss_kind) {
                 self.aoe_target = self.hero.pos;
                 self.aoe_armed = true;
                 return;
@@ -686,9 +670,9 @@ pub const Sim = struct {
         if (self.state != .playing) return;
         const hero_dmg = self.hero.status.tickBurn();
         if (hero_dmg > 0) {
-            self.hero.vitals.hp = @max(0, self.hero.vitals.hp - hero_dmg);
+            self.hero.vitals.val = @max(0, self.hero.vitals.val - hero_dmg);
             self.pushLog("灼烧 -{d:.0}", .{hero_dmg});
-            if (self.hero.vitals.hp <= 0) {
+            if (self.hero.vitals.val <= 0) {
                 self.state = .dead;
                 return;
             }
@@ -696,11 +680,11 @@ pub const Sim = struct {
         var i: usize = 0;
         while (i < self.enemy_count) : (i += 1) {
             const e = &self.enemies[i];
-            if (!e.vitals.alive) continue;
+            if (!e.life.alive) continue;
             const dmg = e.status.tickBurn();
             if (dmg <= 0) continue;
-            e.vitals.hp -= dmg;
-            if (e.vitals.hp <= 0) self.killEnemy(i);
+            e.vitals.val -= dmg;
+            if (e.vitals.val <= 0) self.killEnemy(i);
         }
     }
 
@@ -712,8 +696,8 @@ pub const Sim = struct {
             if (cd.* > 0) cd.* -= 1;
         }
         _ = self.hero.status.tickBuff();
-        self.hero.resource.current = @min(self.hero.resource.max, self.hero.resource.current + self.hero.resource.per_turn);
-        if (self.hero.vitals.hp <= 0) {
+        self.hero.resource.val = @min(self.hero.resource.full, self.hero.resource.val + self.hero.resource_regen.val);
+        if (self.hero.vitals.val <= 0) {
             self.state = .dead;
             return;
         }
@@ -724,7 +708,7 @@ pub const Sim = struct {
         self.enemyPhase();
         self.tickStatusDamage();
         self.armBossAoe();
-        if (self.hero.vitals.hp <= 0) self.state = .dead;
+        if (self.hero.vitals.val <= 0) self.state = .dead;
         if (self.enemy_count == 0 and self.floor >= self.floors) {
             self.state = .victory;
             self.pushLog("深渊守卫倒下，胜利", .{});
@@ -738,7 +722,7 @@ pub const Sim = struct {
         self.enemyPhase();
         self.tickStatusDamage();
         self.armBossAoe();
-        if (self.hero.vitals.hp <= 0) self.state = .dead;
+        if (self.hero.vitals.val <= 0) self.state = .dead;
         if (self.enemy_count == 0 and self.floor >= self.floors and self.state == .playing) {
             self.state = .victory;
             self.pushLog("深渊守卫倒下，胜利", .{});
@@ -750,7 +734,7 @@ pub const Sim = struct {
         var n: usize = 0;
         var i: usize = 0;
         while (i < self.enemy_count) : (i += 1) {
-            if (!self.enemies[i].vitals.alive) continue;
+            if (!self.enemies[i].life.alive) continue;
             order[n] = i;
             n += 1;
         }
@@ -766,15 +750,15 @@ pub const Sim = struct {
         }
         for (order[0..n]) |idx| {
             const e = &self.enemies[idx];
-            if (!e.vitals.alive) continue;
+            if (!e.life.alive) continue;
             // 100 action points = one action. Cap the bank at 200 so a long
             // stun cannot save up more than two actions.
             e.action.energy = @min(@as(i16, 200), e.action.energy + @as(i16, @intCast(e.combat.speed)));
             var acted: u8 = 0;
             while (e.action.energy >= 100 and acted < 2) {
                 e.action.energy -= 100;
-                if (!e.vitals.alive) break;
-                if (self.hero.vitals.hp <= 0) break;
+                if (!e.life.alive) break;
+                if (self.hero.vitals.val <= 0) break;
                 self.enemyAct(idx);
                 acted += 1;
             }
@@ -783,7 +767,7 @@ pub const Sim = struct {
 
     fn enemyAct(self: *Sim, idx: usize) void {
         const e = &self.enemies[idx];
-        if (!e.vitals.alive) return;
+        if (!e.life.alive) return;
         if (e.status.consumeStun()) return;
         e.status.consumeSlow();
         if (e.identity.kind == intent_mod.boss_kind and self.aoe_armed and intent_mod.bossAoeDue(self.turn)) {
@@ -791,7 +775,7 @@ pub const Sim = struct {
             if (@as(f32, @floatFromInt(dist(self.hero.pos, self.aoe_target))) <= intent_mod.boss_aoe_radius) {
                 const raw = e.combat.attack * intent_mod.boss_aoe_damage_scale * e.status.slowDamageScale();
                 const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor }).amount;
-                self.hero.vitals.hp = @max(0, self.hero.vitals.hp - dmg);
+                self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
                 self.hero.status.applyBurn(2, e.combat.attack * 0.20);
                 self.pushLog("深渊守卫 深渊斩 -{d:.0}", .{dmg});
             } else {
@@ -876,27 +860,27 @@ pub const Sim = struct {
         var raw = e.combat.attack * 0.72;
         raw *= e.status.slowDamageScale();
         const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor }).amount;
-        self.hero.vitals.hp = @max(0, self.hero.vitals.hp - dmg);
+        self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
         self.pushLog("{s} 造成 {d:.0} 伤害", .{ e.identity.name, dmg });
     }
 
     pub fn playerAttack(self: *Sim, idx: usize, mult: f32) void {
         const e = &self.enemies[idx];
-        if (!e.vitals.alive) return;
+        if (!e.life.alive) return;
         var raw = self.hero.combat.attack * mult;
         raw *= self.hero.status.attackScale();
         const crit = self.rng.random().float(f32) < self.hero.combat.crit;
         const result = combat.resolve(.{ .raw = raw, .crit = crit }, .{ .armor = e.combat.armor });
-        e.vitals.hp -= result.amount;
+        e.vitals.val -= result.amount;
         self.pushLog("命中 {s} {d:.0}{s}", .{ e.identity.name, result.amount, if (result.crit) " 暴击" else "" });
-        if (e.vitals.hp <= 0) self.killEnemy(idx);
+        if (e.vitals.val <= 0) self.killEnemy(idx);
     }
 
     fn killEnemy(self: *Sim, idx: usize) void {
         const e = &self.enemies[idx];
-        if (!e.vitals.alive) return;
-        e.vitals.alive = false;
-        e.vitals.hp = 0;
+        if (!e.life.alive) return;
+        e.life.alive = false;
+        e.vitals.val = 0;
         if (e.identity.kind == intent_mod.boss_kind) self.aoe_armed = false;
         self.kills += 1;
         self.kill_loot_events += 1;
@@ -914,8 +898,8 @@ pub const Sim = struct {
                 self.hero.progression.pending_points +|= 1;
             }
             self.recomputeHero();
-            self.hero.vitals.hp = self.hero.vitals.hp_max;
-            self.hero.resource.current = self.hero.resource.max;
+            self.hero.vitals.val = self.hero.vitals.full;
+            self.hero.resource.val = self.hero.resource.full;
             if (self.hero.progression.pending_points > 0) {
                 self.pushLog("升级到 {d} 级 +1 属性点", .{self.hero.progression.level});
             } else {
@@ -924,7 +908,7 @@ pub const Sim = struct {
         }
         var any = false;
         for (self.enemies[0..self.enemy_count]) |en| {
-            if (en.vitals.alive) any = true;
+            if (en.life.alive) any = true;
         }
         if (!any and self.isFinalFloor()) self.state = .victory;
     }
@@ -935,7 +919,7 @@ pub const Sim = struct {
         var i: usize = 0;
         while (i < self.enemy_count) : (i += 1) {
             const e = self.enemies[i];
-            if (!e.vitals.alive) continue;
+            if (!e.life.alive) continue;
             const d = dist(e.pos, self.hero.pos);
             if (d > max_range) continue;
             if (d < best_d) {
@@ -980,7 +964,7 @@ pub const Sim = struct {
         if (preferred) |p| {
             if (p < self.enemy_count) {
                 const e = self.enemies[p];
-                if (e.vitals.alive and dist(e.pos, self.hero.pos) <= max_range) return p;
+                if (e.life.alive and dist(e.pos, self.hero.pos) <= max_range) return p;
             }
         }
         return self.nearestEnemy(max_range);
@@ -990,11 +974,11 @@ pub const Sim = struct {
         if (self.state != .playing or i >= 3) return false;
         if (self.hero.talents.cooldowns[i] > 0) return false;
         const cost = self.talentCost(i);
-        if (self.hero.resource.current < @as(f32, @floatFromInt(cost))) return false;
+        if (self.hero.resource.val < @as(f32, @floatFromInt(cost))) return false;
         switch (self.class) {
             .warrior => {
                 if (i == 2) {
-                    self.hero.resource.current -= @floatFromInt(cost);
+                    self.hero.resource.val -= @floatFromInt(cost);
                     self.hero.talents.cooldowns[i] = self.talentCooldown(i);
                     self.hero.status.buff_turns = 3;
                     self.hero.status.buff_pct = 0.30;
@@ -1003,7 +987,7 @@ pub const Sim = struct {
                     return true;
                 }
                 const idx = self.pickTarget(if (i == 0) 1 else 4, target) orelse return false;
-                self.hero.resource.current -= @floatFromInt(cost);
+                self.hero.resource.val -= @floatFromInt(cost);
                 self.hero.talents.cooldowns[i] = self.talentCooldown(i);
                 if (i == 0) {
                     self.playerAttack(idx, 2.2);
@@ -1023,7 +1007,7 @@ pub const Sim = struct {
                         if (self.isFree(x, y) and dist(.{ .x = x, .y = y }, self.hero.pos) >= 3) {
                             self.hero.last_pos = self.hero.pos;
                             self.hero.pos = .{ .x = x, .y = y };
-                            self.hero.resource.current -= @floatFromInt(cost);
+                            self.hero.resource.val -= @floatFromInt(cost);
                             self.hero.talents.cooldowns[i] = self.talentCooldown(i);
                             self.pushLog("闪现", .{});
                             self.endTurn();
@@ -1033,7 +1017,7 @@ pub const Sim = struct {
                     return false;
                 }
                 const idx = self.pickTarget(if (i == 0) 5 else 4, target) orelse return false;
-                self.hero.resource.current -= @floatFromInt(cost);
+                self.hero.resource.val -= @floatFromInt(cost);
                 self.hero.talents.cooldowns[i] = self.talentCooldown(i);
                 if (i == 0) {
                     self.aoeAttack(idx, 2.5, 1.5);
@@ -1047,18 +1031,18 @@ pub const Sim = struct {
             .chronomancer => {
                 if (i == 2) {
                     self.hero.pos = self.hero.last_pos;
-                    self.hero.resource.current -= @floatFromInt(cost);
+                    self.hero.resource.val -= @floatFromInt(cost);
                     self.hero.talents.cooldowns[i] = self.talentCooldown(i);
                     self.pushLog("回溯到上一格", .{});
                     self.endTurn();
                     return true;
                 }
                 const idx = self.pickTarget(if (i == 0) 5 else 4, target) orelse return false;
-                self.hero.resource.current -= @floatFromInt(cost);
+                self.hero.resource.val -= @floatFromInt(cost);
                 self.hero.talents.cooldowns[i] = self.talentCooldown(i);
                 if (i == 0) {
                     self.playerAttack(idx, 2.0);
-                    if (self.enemies[idx].vitals.alive) self.enemies[idx].status.slow_turns = 2;
+                    if (self.enemies[idx].life.alive) self.enemies[idx].status.slow_turns = 2;
                 } else {
                     self.playerAttack(idx, 1.2);
                     self.enemies[idx].status.stun_turns = 2;
@@ -1080,11 +1064,11 @@ pub const Sim = struct {
         var i: usize = 0;
         while (i < self.enemy_count) : (i += 1) {
             const e = &self.enemies[i];
-            if (!e.vitals.alive) continue;
+            if (!e.life.alive) continue;
             const d = dist(e.pos, center);
             if (d > @as(i32, @intFromFloat(radius))) continue;
             self.playerAttack(i, if (d == 0) mult else mult * 0.6);
-            if (!e.vitals.alive) continue;
+            if (!e.life.alive) continue;
             const burn = self.hero.combat.attack * 0.12;
             e.status.applyBurn(2, burn);
         }
@@ -1100,7 +1084,7 @@ pub const Sim = struct {
         }
         if (self.hero.talents.cooldowns[i] > 0) return false;
         const cost = self.talentCost(i);
-        if (self.hero.resource.current < @as(f32, @floatFromInt(cost))) return false;
+        if (self.hero.resource.val < @as(f32, @floatFromInt(cost))) return false;
         if (self.isBlocked(cell.x, cell.y)) return false;
         if (dist(self.hero.pos, cell) > 5) return false;
         if (!self.map.lineOfSightTo(
@@ -1108,7 +1092,7 @@ pub const Sim = struct {
             .{ .x = cell.x, .y = cell.y },
             null,
         )) return false;
-        self.hero.resource.current -= @floatFromInt(cost);
+        self.hero.resource.val -= @floatFromInt(cost);
         self.hero.talents.cooldowns[i] = self.talentCooldown(i);
         self.aoeAttackAt(cell, 2.5, 1.5);
         self.pushLog("火球轰击地面", .{});
@@ -1189,9 +1173,9 @@ test "run sim: adjacent enemy acts on wait" {
         .range = 1,
         .xp = 20,
     });
-    const hp = s.hero.vitals.hp;
+    const hp = s.hero.vitals.val;
     _ = s.wait();
-    try std.testing.expect(s.hero.vitals.hp < hp);
+    try std.testing.expect(s.hero.vitals.val < hp);
     try std.testing.expect(s.turn > 1);
 }
 
@@ -1210,9 +1194,9 @@ test "run sim: warrior talent spends resource and starts cooldown" {
         .range = 1,
         .xp = 20,
     });
-    const res = s.hero.resource.current;
+    const res = s.hero.resource.val;
     try std.testing.expect(s.useTalent(0));
-    try std.testing.expect(s.hero.resource.current < res);
+    try std.testing.expect(s.hero.resource.val < res);
     try std.testing.expect(s.hero.talents.cooldowns[0] > 0);
 }
 
@@ -1243,7 +1227,7 @@ test "run sim: killing the last boss wins" {
     });
     s.hero.combat.attack = 100;
     s.playerAttack(0, 1.0);
-    try std.testing.expect(s.enemies[0].vitals.hp <= 0);
+    try std.testing.expect(s.enemies[0].vitals.val <= 0);
     try std.testing.expectEqual(State.victory, s.state);
 }
 
@@ -1276,8 +1260,8 @@ test "run sim: level-up banks a point and auto allocate spends it" {
     auto.auto_allocate = true;
     auto.enemy_count = 1;
     auto.enemies[0] = s.enemies[0];
-    auto.enemies[0].vitals.hp = 1;
-    auto.enemies[0].vitals.alive = true;
+    auto.enemies[0].vitals.val = 1;
+    auto.enemies[0].life.alive = true;
     auto.enemies[0].reward.xp = 200;
     const base = auto.hero.sheet.stats.strength;
     auto.hero.combat.attack = 100;
@@ -1303,13 +1287,13 @@ test "run sim: deferred enemy phase waits for resolution" {
         .xp = 20,
         .alive = true,
     });
-    const hp = s.hero.vitals.hp;
+    const hp = s.hero.vitals.val;
     try std.testing.expect(s.wait());
     try std.testing.expect(s.enemy_phase_pending);
-    try std.testing.expectEqual(hp, s.hero.vitals.hp);
+    try std.testing.expectEqual(hp, s.hero.vitals.val);
     s.resolvePendingEnemyPhase();
     try std.testing.expect(!s.enemy_phase_pending);
-    try std.testing.expect(s.hero.vitals.hp < hp or s.state == .dead);
+    try std.testing.expect(s.hero.vitals.val < hp or s.state == .dead);
 }
 
 test "run sim: boss AOE resolves on the telegraphed turn" {
@@ -1331,9 +1315,9 @@ test "run sim: boss AOE resolves on the telegraphed turn" {
     });
     s.aoe_armed = true;
     s.aoe_target = s.hero.pos;
-    const hp = s.hero.vitals.hp;
+    const hp = s.hero.vitals.val;
     _ = s.wait();
-    try std.testing.expect(s.hero.vitals.hp < hp);
+    try std.testing.expect(s.hero.vitals.val < hp);
     try std.testing.expect(s.hero.status.burn_turns > 0);
 }
 
@@ -1380,7 +1364,7 @@ test "run sim: mage fireball can be cast on a ground cell" {
     });
     const turn = s.turn;
     try std.testing.expect(s.useTalentAt(0, c));
-    try std.testing.expect(s.enemies[0].vitals.hp < 300);
+    try std.testing.expect(s.enemies[0].vitals.val < 300);
     try std.testing.expect(s.enemies[0].status.burn_turns > 0);
     try std.testing.expectEqual(turn + 1, s.turn);
     try std.testing.expect(s.hero.talents.cooldowns[0] > 0);
@@ -1426,7 +1410,7 @@ test "run sim: boss seals the stairs until defeated" {
     try std.testing.expect(!s.move(dx, dy));
     try std.testing.expectEqual(@as(u8, 3), s.floor);
     try std.testing.expectEqual(@as(u32, 1), s.turn);
-    s.enemies[0].vitals.alive = false;
+    s.enemies[0].life.alive = false;
     try std.testing.expect(s.move(dx, dy));
 }
 
@@ -1448,7 +1432,7 @@ test "run sim: stepping away dodges the telegraphed boss AOE" {
     });
     s.aoe_armed = true;
     s.aoe_target = .{ .x = s.hero.pos.x, .y = s.hero.pos.y };
-    const hp = s.hero.vitals.hp;
+    const hp = s.hero.vitals.val;
     // find a legal open neighbour and step out of the marked cell
     const dirs = [_][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
     for (dirs) |d| {
@@ -1457,7 +1441,7 @@ test "run sim: stepping away dodges the telegraphed boss AOE" {
             break;
         }
     }
-    try std.testing.expect(s.hero.vitals.hp >= hp);
+    try std.testing.expect(s.hero.vitals.val >= hp);
 }
 
 test "run sim: same seed produces the same floor" {
@@ -1484,7 +1468,7 @@ test "run sim: intent preview is read-only" {
         .range = 1,
         .xp = 20,
     });
-    const hp = s.hero.vitals.hp;
+    const hp = s.hero.vitals.val;
     const turn = s.turn;
 
     const intent = s.intentFor(0) orelse return error.MissingIntent;
@@ -1494,13 +1478,13 @@ test "run sim: intent preview is read-only" {
     try std.testing.expectApproxEqAbs(expected, intent.damage_preview, 0.001);
     try std.testing.expect(intent.damage_preview < 8 * 0.72);
     try std.testing.expectEqual(turn, s.turn);
-    try std.testing.expectEqual(hp, s.hero.vitals.hp);
+    try std.testing.expectEqual(hp, s.hero.vitals.val);
     try std.testing.expect(s.intentFor(1) == null);
 
     var intents: [max_enemies]intent_mod.EnemyIntent = undefined;
     try std.testing.expectEqual(@as(usize, 1), s.previewIntents(&intents));
     try std.testing.expectEqual(intent_mod.IntentKind.melee, intents[0].kind);
-    try std.testing.expectEqual(hp, s.hero.vitals.hp);
+    try std.testing.expectEqual(hp, s.hero.vitals.val);
     try std.testing.expectEqual(turn, s.turn);
 }
 
@@ -1575,13 +1559,13 @@ test "hero sheet is the attributes sheet, not a second formula copy" {
             s.hero.sheet.stats.will,
         });
         const sheet = attributes.recompute(base, &.{}, class);
-        try std.testing.expectApproxEqAbs(sheet.derived.hp_max, s.hero.vitals.hp_max, 0.001);
-        try std.testing.expectApproxEqAbs(sheet.derived.resource_max, s.hero.resource.max, 0.001);
+        try std.testing.expectApproxEqAbs(sheet.derived.hp_max, s.hero.vitals.full, 0.001);
+        try std.testing.expectApproxEqAbs(sheet.derived.resource_max, s.hero.resource.full, 0.001);
         try std.testing.expectApproxEqAbs(sheet.derived.attack, s.hero.combat.attack, 0.001);
         try std.testing.expectApproxEqAbs(sheet.derived.armor, s.hero.combat.armor, 0.001);
         try std.testing.expectApproxEqAbs(sheet.derived.crit, s.hero.combat.crit, 0.0001);
         try std.testing.expectApproxEqAbs(sheet.derived.speed, @as(f32, @floatFromInt(s.hero.combat.speed)), 0.001);
-        try std.testing.expectApproxEqAbs(sheet.derived.resource_per_turn, s.hero.resource.per_turn, 0.001);
+        try std.testing.expectApproxEqAbs(sheet.derived.resource_per_turn, s.hero.resource_regen.val, 0.001);
         try std.testing.expectEqual(@as(u16, @intFromFloat(sheet.derived.hp_max)), classHpMax(class));
         try std.testing.expectEqual(@as(u16, @intFromFloat(sheet.derived.resource_max)), classResourceMax(class));
     }

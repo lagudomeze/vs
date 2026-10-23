@@ -53,9 +53,9 @@ fn gearBytes(gpa: std.mem.Allocator, g: *const RunGame) ![]u8 {
 fn resetAimBoard(g: *RunGame) void {
     g.sim.hero.pos = .{ .x = 6, .y = 6 };
     g.sim.hero.last_pos = .{ .x = 6, .y = 6 };
-    g.sim.hero.vitals.hp = g.sim.hero.vitals.hp_max;
-    g.sim.hero.resource.current = g.sim.hero.resource.max;
-    g.sim.hero.resource.per_turn = 0;
+    g.sim.hero.vitals.val = g.sim.hero.vitals.full;
+    g.sim.hero.resource.val = g.sim.hero.resource.full;
+    g.sim.hero.resource_regen.val = 0;
     g.sim.turn = 1;
     g.sim.state = .playing;
     g.sim.enemy_count = 0;
@@ -120,19 +120,19 @@ test "qa3: aim entry and cancel spend nothing" {
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
 
     const turn = g.sim.turn;
-    const res = g.sim.hero.resource.current;
+    const res = g.sim.hero.resource.val;
     g.update(.{ .talent = 0 }, dt);
     try std.testing.expect(g.isAiming());
     try std.testing.expect(g.hud_state.aim.active);
     try std.testing.expect(g.hud_state.aim.valid);
     try std.testing.expectEqual(turn, g.sim.turn);
-    try std.testing.expectEqual(res, g.sim.hero.resource.current);
+    try std.testing.expectEqual(res, g.sim.hero.resource.val);
     try std.testing.expectEqual(@as(u16, 0), g.sim.hero.talents.cooldowns[0]);
 
     try std.testing.expect(g.cancelAim());
     try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(turn, g.sim.turn);
-    try std.testing.expectEqual(res, g.sim.hero.resource.current);
+    try std.testing.expectEqual(res, g.sim.hero.resource.val);
     try std.testing.expect(!g.cancelAim());
     try std.testing.expectEqual(run.State.playing, g.sim.state);
     std.debug.print("[qa3] aim entry/cancel: turn and resource unchanged (t={d}, r={d:.0})\n", .{ turn, res });
@@ -146,16 +146,16 @@ test "qa3: valid aim confirms once, one turn and one resource payment" {
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
 
     const turn = g.sim.turn;
-    const res = g.sim.hero.resource.current;
+    const res = g.sim.hero.resource.val;
     g.update(.{ .talent = 0 }, dt);
     g.update(.{ .confirm = true }, dt);
     try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(turn + 1, g.sim.turn);
-    try std.testing.expectEqual(res - 25.0, g.sim.hero.resource.current);
+    try std.testing.expectEqual(res - 25.0, g.sim.hero.resource.val);
     try std.testing.expectEqual(@as(u16, 3), g.sim.hero.talents.cooldowns[0]); // 4 set, endTurn ticks once
-    try std.testing.expect(g.sim.enemies[0].vitals.hp < 70);
+    try std.testing.expect(g.sim.enemies[0].vitals.val < 70);
     std.debug.print("[qa3] valid confirm: turn {d}->{d}, resource {d:.0}->{d:.0}, cooldown={d}\n", .{
-        turn, g.sim.turn, res, g.sim.hero.resource.current, g.sim.hero.talents.cooldowns[0],
+        turn, g.sim.turn, res, g.sim.hero.resource.val, g.sim.hero.talents.cooldowns[0],
     });
 }
 
@@ -166,12 +166,12 @@ test "qa3: same key currently confirms (spec text says cancel)" {
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
     const turn = g.sim.turn;
-    const res = g.sim.hero.resource.current;
+    const res = g.sim.hero.resource.val;
     g.update(.{ .talent = 0 }, dt);
     g.update(.{ .talent = 0 }, dt);
     try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(turn + 1, g.sim.turn);
-    try std.testing.expectEqual(res - 25.0, g.sim.hero.resource.current);
+    try std.testing.expectEqual(res - 25.0, g.sim.hero.resource.val);
     std.debug.print("[qa3] FINDING P1: same-key aim release = confirm (turn+1, res-25), not cancel; README documents confirm, acceptance text asks cancel\n", .{});
 }
 
@@ -187,11 +187,11 @@ test "qa3: range/LOS confirm stays; missing resource refuses aim" {
     try std.testing.expect(!g.hud_state.aim.valid);
     try std.testing.expectEqualStrings("超出范围", g.hud_state.aim.reason);
     var turn = g.sim.turn;
-    var res = g.sim.hero.resource.current;
+    var res = g.sim.hero.resource.val;
     g.update(.{ .confirm = true }, dt);
     try std.testing.expect(g.isAiming());
     try std.testing.expectEqual(turn, g.sim.turn);
-    try std.testing.expectEqual(res, g.sim.hero.resource.current);
+    try std.testing.expectEqual(res, g.sim.hero.resource.val);
     _ = g.cancelAim();
 
     // No line of sight: wall between hero (6,6) and target (6,4).
@@ -202,25 +202,25 @@ test "qa3: range/LOS confirm stays; missing resource refuses aim" {
     try std.testing.expect(!g.hud_state.aim.valid);
     try std.testing.expectEqualStrings("视线受阻", g.hud_state.aim.reason);
     turn = g.sim.turn;
-    res = g.sim.hero.resource.current;
+    res = g.sim.hero.resource.val;
     g.update(.{ .confirm = true }, dt);
     try std.testing.expect(g.isAiming());
     try std.testing.expectEqual(turn, g.sim.turn);
-    try std.testing.expectEqual(res, g.sim.hero.resource.current);
+    try std.testing.expectEqual(res, g.sim.hero.resource.val);
     _ = g.cancelAim();
 
     // No resource: refuse to enter aim at all.
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
-    g.sim.hero.resource.current = 0;
+    g.sim.hero.resource.val = 0;
     g.update(.{ .talent = 0 }, dt);
     try std.testing.expect(!g.isAiming());
     turn = g.sim.turn;
-    res = g.sim.hero.resource.current;
+    res = g.sim.hero.resource.val;
     g.update(.{ .talent = 0 }, dt);
     try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(turn, g.sim.turn);
-    try std.testing.expectEqual(res, g.sim.hero.resource.current);
+    try std.testing.expectEqual(res, g.sim.hero.resource.val);
     std.debug.print("[qa3] range/LOS confirms stay in aim; missing resource refuses aim, 0 turn/resource\n", .{});
 }
 
@@ -231,12 +231,12 @@ test "qa3: wait key while aiming cancels and waits" {
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
     const turn = g.sim.turn;
-    const res = g.sim.hero.resource.current;
+    const res = g.sim.hero.resource.val;
     g.update(.{ .talent = 0 }, dt);
     g.update(.{ .wait = true }, dt); // 5 / . cancels aim and waits
     try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(turn + 1, g.sim.turn);
-    try std.testing.expect(g.sim.hero.resource.current >= res);
+    try std.testing.expect(g.sim.hero.resource.val >= res);
     std.debug.print("[qa3] 5/. while aiming: aim cancelled, wait consumed one turn, no talent cost\n", .{});
 }
 
@@ -463,7 +463,7 @@ test "qa3: empty gear object is rejected without clearing the bag" {
 fn setupFighter(s: *run.Sim, speed: u16) void {
     s.turn = 1;
     s.hero.combat.armor = 0;
-    s.hero.vitals.hp = s.hero.vitals.hp_max;
+    s.hero.vitals.val = s.hero.vitals.full;
     s.enemy_count = 1;
     s.enemies[0] = run.enemyFromParts(.{
         .kind = 0,
@@ -482,22 +482,22 @@ fn setupFighter(s: *run.Sim, speed: u16) void {
 test "qa3: energy ramps 150 to double actions and 70 starts slow" {
     var fast = run.Sim.init(41, .warrior);
     setupFighter(&fast, 150);
-    const f0 = fast.hero.vitals.hp;
+    const f0 = fast.hero.vitals.val;
     _ = fast.wait();
-    const a1 = f0 - fast.hero.vitals.hp;
-    const f1 = fast.hero.vitals.hp;
+    const a1 = f0 - fast.hero.vitals.val;
+    const f1 = fast.hero.vitals.val;
     _ = fast.wait();
-    const a2 = f1 - fast.hero.vitals.hp;
+    const a2 = f1 - fast.hero.vitals.val;
     try std.testing.expect(a1 > 0);
     try std.testing.expectApproxEqAbs(a1 * 2.0, a2, 0.01);
 
     var slow = run.Sim.init(43, .warrior);
     setupFighter(&slow, 70);
-    const s0 = slow.hero.vitals.hp;
+    const s0 = slow.hero.vitals.val;
     _ = slow.wait();
-    try std.testing.expectEqual(s0, slow.hero.vitals.hp); // 70 < 100: no action
+    try std.testing.expectEqual(s0, slow.hero.vitals.val); // 70 < 100: no action
     _ = slow.wait();
-    try std.testing.expect(slow.hero.vitals.hp < s0); // banked 140: one action
+    try std.testing.expect(slow.hero.vitals.val < s0); // banked 140: one action
     std.debug.print("[qa3] energy: 150 dealt {d:.2}/{d:.2} over two turns, 70 waited then hit\n", .{ a1, a2 });
 }
 
@@ -506,7 +506,7 @@ test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
     s.turn = 2;
     s.hero.pos = .{ .x = 6, .y = 6 };
     s.hero.combat.armor = 0;
-    s.hero.vitals.hp = s.hero.vitals.hp_max;
+    s.hero.vitals.val = s.hero.vitals.full;
     s.aoe_armed = true;
     s.aoe_target = .{ .x = 7, .y = 6 };
     s.enemy_count = 1;
@@ -523,15 +523,15 @@ test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
         .xp = 200,
         .energy = 100,
     });
-    const hp = s.hero.vitals.hp;
+    const hp = s.hero.vitals.val;
     _ = s.wait();
-    try std.testing.expectEqual(hp, s.hero.vitals.hp); // 1 cell away > 0.9
+    try std.testing.expectEqual(hp, s.hero.vitals.val); // 1 cell away > 0.9
 
     var h = run.Sim.init(49, .warrior);
     h.turn = 2;
     h.hero.pos = .{ .x = 6, .y = 6 };
     h.hero.combat.armor = 0;
-    h.hero.vitals.hp = h.hero.vitals.hp_max;
+    h.hero.vitals.val = h.hero.vitals.full;
     h.aoe_armed = true;
     h.aoe_target = h.hero.pos;
     h.enemy_count = 1;
@@ -548,10 +548,10 @@ test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
         .xp = 200,
         .energy = 100,
     });
-    const hp2 = h.hero.vitals.hp;
+    const hp2 = h.hero.vitals.val;
     _ = h.wait();
-    try std.testing.expect(h.hero.vitals.hp < hp2);
-    std.debug.print("[qa3] boss AOE 0.9: adjacent cell safe, marked cell {d:.0} damage\n", .{hp2 - h.hero.vitals.hp});
+    try std.testing.expect(h.hero.vitals.val < hp2);
+    std.debug.print("[qa3] boss AOE 0.9: adjacent cell safe, marked cell {d:.0} damage\n", .{hp2 - h.hero.vitals.val});
 }
 
 test "qa3: boss seals floor-3 stairs without spending a turn" {
@@ -583,12 +583,12 @@ test "qa3: boss seals floor-3 stairs without spending a turn" {
         .xp = 200,
     });
     const turn = s.turn;
-    const res = s.hero.resource.current;
+    const res = s.hero.resource.val;
     try std.testing.expect(!s.move(s.stairs.x - start.x, s.stairs.y - start.y));
     try std.testing.expectEqual(@as(u8, 3), s.floor);
     try std.testing.expectEqual(turn, s.turn);
-    try std.testing.expectEqual(res, s.hero.resource.current);
-    s.enemies[0].vitals.alive = false;
+    try std.testing.expectEqual(res, s.hero.resource.val);
+    s.enemies[0].life.alive = false;
     try std.testing.expect(s.move(s.stairs.x - start.x, s.stairs.y - start.y));
     std.debug.print("[qa3] stairs seal: blocked at floor 3, 0 turn/resource, opens after boss death\n", .{});
 }

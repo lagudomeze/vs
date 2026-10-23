@@ -43,6 +43,7 @@
 const std = @import("std");
 const sim_mod = @import("run_sim.zig");
 const dungeon_mod = @import("dungeon.zig");
+const numeric = @import("numeric.zig");
 
 const Sim = sim_mod.Sim;
 const Enemy = sim_mod.Enemy;
@@ -257,7 +258,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
 
     var enemy_buf: [max_enemies]EnemySave = undefined;
     for (sim.enemies[0..sim.enemy_count], 0..) |e, i| {
-        if (!std.math.isFinite(e.vitals.hp) or !std.math.isFinite(e.vitals.hp_max) or
+        if (!std.math.isFinite(e.vitals.val) or !std.math.isFinite(e.vitals.full) or
             !std.math.isFinite(e.combat.attack) or !std.math.isFinite(e.combat.armor))
         {
             return error.InvalidState;
@@ -266,8 +267,8 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .kind = e.identity.kind,
             .name = e.identity.name,
             .pos = savePos(e.pos),
-            .hp = e.vitals.hp,
-            .hp_max = e.vitals.hp_max,
+            .hp = e.vitals.val,
+            .hp_max = e.vitals.full,
             .attack = e.combat.attack,
             .armor = e.combat.armor,
             .speed = e.combat.speed,
@@ -275,7 +276,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .xp = e.reward.xp,
             .stun_turns = e.status.stun_turns,
             .slow_turns = e.status.slow_turns,
-            .alive = e.vitals.alive,
+            .alive = e.life.alive,
             .energy = e.action.energy,
             .burn_turns = e.status.burn_turns,
             .burn_damage = e.status.burn_damage,
@@ -283,10 +284,10 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
     }
 
     const hero = sim.hero;
-    if (!std.math.isFinite(hero.vitals.hp) or !std.math.isFinite(hero.vitals.hp_max) or
-        !std.math.isFinite(hero.resource.current) or !std.math.isFinite(hero.resource.max) or
+    if (!std.math.isFinite(hero.vitals.val) or !std.math.isFinite(hero.vitals.full) or
+        !std.math.isFinite(hero.resource.val) or !std.math.isFinite(hero.resource.full) or
         !std.math.isFinite(hero.combat.attack) or !std.math.isFinite(hero.combat.armor) or
-        !std.math.isFinite(hero.combat.crit) or !std.math.isFinite(hero.resource.per_turn) or
+        !std.math.isFinite(hero.combat.crit) or !std.math.isFinite(hero.resource_regen.val) or
         !std.math.isFinite(hero.status.buff_pct) or !std.math.isFinite(hero.status.burn_damage) or !allFinite(&hero.sheet.eff_stats) or
         !statsFinite(.{
             .strength = hero.sheet.stats.strength,
@@ -346,15 +347,15 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
                 .magic = hero.sheet.stats.magic,
                 .will = hero.sheet.stats.will,
             },
-            .hp = hero.vitals.hp,
-            .hp_max = hero.vitals.hp_max,
-            .resource = hero.resource.current,
-            .resource_max = hero.resource.max,
+            .hp = hero.vitals.val,
+            .hp_max = hero.vitals.full,
+            .resource = hero.resource.val,
+            .resource_max = hero.resource.full,
             .attack = hero.combat.attack,
             .armor = hero.combat.armor,
             .crit = hero.combat.crit,
             .speed = hero.combat.speed,
-            .res_per_turn = hero.resource.per_turn,
+            .res_per_turn = hero.resource_regen.val,
             .level = hero.progression.level,
             .xp = hero.progression.xp,
             .pending_points = hero.progression.pending_points,
@@ -542,8 +543,9 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
                 },
                 .eff_stats = h.eff_stats,
             },
-            .vitals = .{ .hp = h.hp, .hp_max = h.hp_max },
-            .resource = .{ .current = h.resource, .max = h.resource_max, .per_turn = h.res_per_turn },
+            .vitals = .{ .val = h.hp, .full = h.hp_max, .raw_full = h.hp_max },
+            .resource = .{ .val = h.resource, .full = h.resource_max, .raw_full = h.resource_max },
+            .resource_regen = .{ .val = h.res_per_turn, .base = h.res_per_turn },
             .combat = .{ .attack = h.attack, .armor = h.armor, .crit = h.crit, .speed = h.speed },
             .progression = .{ .level = h.level, .xp = h.xp, .pending_points = h.pending_points },
             .status = .{ .buff_turns = h.buff_turns, .buff_pct = h.buff_pct, .burn_turns = h.burn_turns, .burn_damage = h.burn_damage },
@@ -573,7 +575,8 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
         sim.enemies[i] = .{
             .identity = .{ .kind = e.kind, .name = enemy_names[e.kind] },
             .pos = loadPos(e.pos),
-            .vitals = .{ .hp = e.hp, .hp_max = e.hp_max, .alive = e.alive },
+            .vitals = numeric.gaugeAt(numeric.Health, e.hp_max, e.hp),
+            .life = .{ .alive = e.alive },
             .combat = .{ .attack = e.attack, .armor = e.armor, .speed = e.speed, .range = e.range },
             .status = .{ .stun_turns = e.stun_turns, .slow_turns = e.slow_turns, .burn_turns = e.burn_turns, .burn_damage = e.burn_damage },
             .reward = .{ .xp = e.xp },
@@ -716,8 +719,8 @@ fn expectSameEnemy(expected: Enemy, actual: Enemy) !void {
     try testing.expectEqualStrings(expected.identity.name, actual.identity.name);
     try testing.expectEqual(expected.pos.x, actual.pos.x);
     try testing.expectEqual(expected.pos.y, actual.pos.y);
-    try testing.expectEqual(expected.vitals.hp, actual.vitals.hp);
-    try testing.expectEqual(expected.vitals.hp_max, actual.vitals.hp_max);
+    try testing.expectEqual(expected.vitals.val, actual.vitals.val);
+    try testing.expectEqual(expected.vitals.full, actual.vitals.full);
     try testing.expectEqual(expected.combat.attack, actual.combat.attack);
     try testing.expectEqual(expected.combat.armor, actual.combat.armor);
     try testing.expectEqual(expected.combat.speed, actual.combat.speed);
@@ -727,7 +730,7 @@ fn expectSameEnemy(expected: Enemy, actual: Enemy) !void {
     try testing.expectEqual(expected.status.slow_turns, actual.status.slow_turns);
     try testing.expectEqual(expected.status.burn_turns, actual.status.burn_turns);
     try testing.expectEqual(expected.status.burn_damage, actual.status.burn_damage);
-    try testing.expectEqual(expected.vitals.alive, actual.vitals.alive);
+    try testing.expectEqual(expected.life.alive, actual.life.alive);
     try testing.expectEqual(expected.action.energy, actual.action.energy);
 }
 
@@ -1065,7 +1068,7 @@ test "save: dead run with no enemies round-trips" {
     var sim = Sim.init(8080, .chronomancer);
     sim.enemy_count = 0;
     sim.enemies = @splat(.{});
-    sim.hero.vitals.hp = 0;
+    sim.hero.vitals.val = 0;
     sim.state = .dead;
     sim.aoe_armed = false;
 
