@@ -175,6 +175,7 @@ const MapSave = struct {
     stairs: GridPosSave,
     chests: [chest_slots]GridPosSave,
     chest_alive: [chest_slots]bool,
+    chest_cursed: [chest_slots]bool = .{ false, false, false, false },
     traps: [trap_slots]GridPosSave,
     trap_alive: [trap_slots]bool,
     aoe_target: GridPosSave,
@@ -408,6 +409,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .stairs = savePos(sim.stairs),
             .chests = chests,
             .chest_alive = chest_alive,
+            .chest_cursed = sim.chest_cursed,
             .traps = traps,
             .trap_alive = trap_alive,
             .aoe_target = savePos(sim.aoe_target),
@@ -632,6 +634,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     sim.stairs = loadPos(map.stairs);
     for (map.chests, 0..) |p, i| sim.chests[i] = loadPos(p);
     sim.chest_alive = map.chest_alive;
+    sim.chest_cursed = map.chest_cursed;
     sim.chest_count = chest_alive_count;
     for (map.traps, 0..) |p, i| sim.traps[i] = loadPos(p);
     sim.trap_alive = map.trap_alive;
@@ -854,6 +857,7 @@ fn expectSameRun(expected: *const Sim, actual: *const Sim) !void {
     try testing.expectEqualSlices(bool, &expected.blocked, &actual.blocked);
     try testing.expect(std.meta.eql(expected.chests, actual.chests));
     try testing.expect(std.meta.eql(expected.chest_alive, actual.chest_alive));
+    try testing.expect(std.meta.eql(expected.chest_cursed, actual.chest_cursed));
     try testing.expect(std.meta.eql(expected.traps, actual.traps));
     try testing.expect(std.meta.eql(expected.trap_alive, actual.trap_alive));
 

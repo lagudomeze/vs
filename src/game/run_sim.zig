@@ -405,6 +405,7 @@ pub const Sim = struct {
     stairs: GridPos = .{ .x = 10, .y = 2 },
     chests: [4]GridPos = .{ .{ .x = 2, .y = 2 }, .{ .x = 10, .y = 10 }, .{ .x = 2, .y = 10 }, .{ .x = 10, .y = 2 } },
     chest_alive: [4]bool = .{ false, false, false, false },
+    chest_cursed: [4]bool = .{ false, false, false, false },
     chest_count: usize = 0,
     traps: [4]GridPos = .{ .{ .x = 0, .y = 0 }, .{ .x = 0, .y = 0 }, .{ .x = 0, .y = 0 }, .{ .x = 0, .y = 0 } },
     trap_alive: [4]bool = .{ false, false, false, false },
@@ -763,6 +764,11 @@ pub const Sim = struct {
         return true;
     }
 
+    fn cursedChest(seed: u64, floor: u8, index: usize) bool {
+        var rng = std.Random.DefaultPrng.init(seed ^ (@as(u64, floor) *% 0xa24baed4963ee407) ^ (@as(u64, index) *% 0x9fb21c651e98df25));
+        return rng.random().float(f32) < 0.22;
+    }
+
     pub fn generateFloor(self: *Sim) void {
         self.enemy_count = 0;
         self.aoe_armed = false;
@@ -783,6 +789,7 @@ pub const Sim = struct {
         self.stairs = .{ .x = self.map.stairs.x, .y = self.map.stairs.y };
 
         self.chest_alive = .{ false, false, false, false };
+        self.chest_cursed = .{ false, false, false, false };
         self.chest_count = 0;
         const cs = self.map.chestSlice();
         for (cs, 0..) |p, i| {
@@ -790,6 +797,9 @@ pub const Sim = struct {
             self.chests[i] = .{ .x = p.x, .y = p.y };
             self.chest_alive[i] = true;
             self.chest_count += 1;
+        }
+        for (self.chests, 0..) |_, i| {
+            self.chest_cursed[i] = cursedChest(self.seed, self.floor, i);
         }
         self.trap_alive = .{ false, false, false, false };
         self.trap_count = 0;
@@ -945,6 +955,15 @@ pub const Sim = struct {
             if (!self.chest_alive[i] or c.x != x or c.y != y) continue;
             self.chest_alive[i] = false;
             self.chest_count -= 1;
+            if (self.chest_cursed[i]) {
+                const dmg = self.hero.vitals.full * 0.10;
+                self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
+                _ = self.hero.status.applyVulnerable(1);
+                self.gold +|= 25;
+                self.chest_loot_events += 1;
+                self.pushLog("诅咒宝箱 -{d:.0}", .{dmg});
+                return;
+            }
             const heal = @min(self.hero.vitals.full - self.hero.vitals.val, 25);
             self.hero.vitals.val += heal;
             self.chest_loot_events += 1;
@@ -1824,6 +1843,20 @@ test "run sim: warrior charge applies vulnerable" {
     s.hero.resource.val = 100;
     try std.testing.expect(s.useTalent(1));
     try std.testing.expect(s.enemies[0].status.vulnerable_turns > 0);
+}
+
+test "run sim: cursed chest damages and pays more gold" {
+    var s = Sim.init(95, .warrior);
+    s.chest_count = 1;
+    s.chest_alive[0] = true;
+    s.chest_cursed[0] = true;
+    s.chests[0] = s.hero.pos;
+    s.hero.pos = s.chests[0];
+    const hp = s.hero.vitals.val;
+    s.pickupAt(s.hero.pos.x, s.hero.pos.y);
+    try std.testing.expect(s.hero.vitals.val < hp);
+    try std.testing.expect(s.hero.status.vulnerable_turns > 0);
+    try std.testing.expectEqual(@as(u32, 25), s.gold);
 }
 
 test "run sim: shop buys healing and permanent power" {
