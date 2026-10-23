@@ -96,6 +96,8 @@ pub const Input = struct {
     zoom_delta: f32 = 0,
 };
 
+var seed_state: u64 = 0;
+
 pub const RunGame = struct {
     gpa: std.mem.Allocator,
     arena_alloc: std.heap.ArenaAllocator,
@@ -124,6 +126,9 @@ pub const RunGame = struct {
     /// for every repeat event (critic P0).
     step_cooldown: f32 = 0,
     seed: u64,
+    /// True when --seed pinned the run; restart keeps it. Otherwise R rolls
+    /// a fresh seed so a new run gets a new dungeon and loot sequence.
+    seed_locked: bool = false,
     class: sim_mod.Class,
     slot_menu: SlotMenu = .none,
     slot_labels: [3][]const u8 = .{ "空", "空", "空" },
@@ -177,6 +182,7 @@ pub const RunGame = struct {
     pub fn create(gpa: std.mem.Allocator, width: u32, height: u32, class: sim_mod.Class, seed: u64) !*RunGame {
         const self = try gpa.create(RunGame);
         errdefer gpa.destroy(self);
+        const resolved = if (seed == 0) freshSeed() else seed;
         self.* = .{
             .gpa = gpa,
             .arena_alloc = std.heap.ArenaAllocator.init(gpa),
@@ -184,7 +190,8 @@ pub const RunGame = struct {
             .mesh = .{ .verts = &.{}, .tris = &.{} },
             .renderer = undefined,
             .sim = undefined,
-            .seed = seed,
+            .seed = resolved,
+            .seed_locked = seed != 0,
             .class = class,
         };
         try self.setup(width, height);
@@ -306,7 +313,16 @@ pub const RunGame = struct {
         self.fillHudState();
     }
 
+    fn freshSeed() u64 {
+        // No std.crypto.random in Zig 0.17; mix the process address (ASLR)
+        // with a counter so each run gets a different, non-zero seed.
+        if (seed_state == 0) seed_state = @intFromPtr(&seed_state) ^ 0x9e3779b97f4a7c15;
+        seed_state = seed_state *% 6364136223846793005 +% 1442695040888963407;
+        return if (seed_state == 0) 1 else seed_state;
+    }
+
     pub fn restart(self: *RunGame) void {
+        if (!self.seed_locked) self.seed = freshSeed();
         self.started = true;
         self.resetRun();
     }
@@ -1801,6 +1817,19 @@ pub const RunGame = struct {
         try png.writePng(io, self.gpa, path, self.renderer.width, self.renderer.height, self.renderer.color_buf);
     }
 };
+
+test "run game: unlocked run rolls a new seed on restart" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 0);
+    defer g.destroy();
+    const first = g.seed;
+    try std.testing.expect(first != 0);
+    try std.testing.expect(!g.seed_locked);
+    g.restart();
+    try std.testing.expect(g.seed != first);
+    try std.testing.expectEqual(sim_mod.Class.warrior, g.class);
+    try std.testing.expectEqual(g.seed, g.sim.seed);
+}
 
 test "run game: class menu selects and keeps the class on restart" {
     const gpa = std.testing.allocator;
