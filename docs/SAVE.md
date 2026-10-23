@@ -15,7 +15,7 @@
 | --- | --- |
 | 顶层 | format、version、seed、class、floor、floors、turn、state、kills、chest_loot、kill_loot、rng |
 | hero | pos、last_pos、stats(6)、hp、hp_max、resource、resource_max、attack、armor、crit、speed、res_per_turn、level、xp、pending_points、cooldowns(3)、buff_turns、buff_pct、eff_stats(6) |
-| enemies | kind、name、pos、hp、hp_max、attack、armor、speed、range、xp、stun_turns、slow_turns、alive |
+| enemies | kind、name、pos、hp、hp_max、attack、armor、speed、range、xp、stun_turns、slow_turns、alive、energy |
 | map | blocked(961)、entrance、stairs、chests(4)/chest_alive(4)、traps(4)/trap_alive(4)、aoe_target、aoe_armed |
 | 日志 | 最近 6 条，按从旧到新保存 |
 

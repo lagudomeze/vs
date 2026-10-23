@@ -148,6 +148,8 @@ const EnemySave = struct {
     stun_turns: u16,
     slow_turns: u16,
     alive: bool,
+    /// Action points; absent in older v2 files means 0.
+    energy: i16 = 0,
 };
 
 const MapSave = struct {
@@ -270,6 +272,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .stun_turns = e.status.stun_turns,
             .slow_turns = e.status.slow_turns,
             .alive = e.vitals.alive,
+            .energy = e.action.energy,
         };
     }
 
@@ -497,6 +500,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
         if (e.attack < 0 or e.armor < 0) return error.InvalidValue;
         if (e.speed == 0 or e.speed > 1000) return error.InvalidValue;
         if (e.range > grid_w) return error.InvalidValue;
+        if (e.energy < -100 or e.energy > 200) return error.InvalidValue;
         if (e.alive) {
             if (samePos(e.pos, h.pos)) return error.InconsistentMap;
             for (root.enemies[0..i]) |other| {
@@ -564,6 +568,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
             .combat = .{ .attack = e.attack, .armor = e.armor, .speed = e.speed, .range = e.range },
             .status = .{ .stun_turns = e.stun_turns, .slow_turns = e.slow_turns },
             .reward = .{ .xp = e.xp },
+            .action = .{ .energy = e.energy },
         };
     }
     sim.enemy_count = root.enemies.len;
@@ -712,6 +717,7 @@ fn expectSameEnemy(expected: Enemy, actual: Enemy) !void {
     try testing.expectEqual(expected.status.stun_turns, actual.status.stun_turns);
     try testing.expectEqual(expected.status.slow_turns, actual.status.slow_turns);
     try testing.expectEqual(expected.vitals.alive, actual.vitals.alive);
+    try testing.expectEqual(expected.action.energy, actual.action.energy);
 }
 
 /// Compare every field the save format promises to restore, plus the rebuilt

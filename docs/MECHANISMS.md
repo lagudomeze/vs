@@ -90,7 +90,7 @@ cells(shape, origin, dir) []Cell
 拥有：
 
 - TurnClock；
-- 每个 Actor 的能量/速度；
+- Enemy.action.energy（100 点行动一次，上限 200）；玩家仍是一行动/回合；
 - 行动预算；
 - 冷却与持续时间的时钟推进；
 - 时间事件：TurnStarted、ActorTurnStarted、ActorTurnEnded、RoundEnded。
@@ -112,8 +112,8 @@ cells(shape, origin, dir) []Cell
 
 当前债：
 
-- 敌我速度规则不一致：敌人 speed>=150 偶数回合双动、<=75 偶数回合跳过；玩家速度不参与行动数。
-- turn % 2 是机制泄漏，应改成能量规则或显式的 SpeedRule 组件。
+- 敌人 energy 已替换 turn%2 特判；玩家速度仍不参与行动数。
+- 能量/冷却/状态持续时间仍在 endTurn/enemyAct 各自推进，没有统一 TurnClock 事件。
 - 冷却/状态持续时间在 endTurn/enemyAct 各自减，时钟不统一。
 
 ### M3 角色
@@ -400,7 +400,7 @@ M5 ActionResolved
 
 | reference roguelike | 抽象 | 我们的差异 |
 | --- | --- | --- |
-| Actor energy 1000 | M2 能量 | 现在 100 + 偶数回合特判 |
+| Actor energy 1000 | M2 能量 | 敌人已有 ActionState.energy；玩家仍单行动 |
 | DamageType + projector | M6 类型/管线 | 只有物理，公式三处重复 |
 | Talents 数据 + function | M5 + M12 | 玩家天赋硬编码，skills.json 未生效 |
 | Effects 表 | M7 | StatusSet 已统一；仍无 StatusDef/叠层 |
@@ -419,7 +419,7 @@ M5 ActionResolved
 
 ### P1：行为重构
 
-4. M2 能量调度替代 turn%2（会改变 QA 胜率，需要单独平衡）。
+4. ✅ M2 敌人能量调度替代 turn%2；玩家行动数仍固定 1。
 5. ✅ M7 StatusSet 替代 stun/slow/buff 字段。
 6. ✅ M9 楼梯封印/最终层谓词集中；胜负写入仍待事件化。
 7. M8 XP/掉落/装备事件化。
