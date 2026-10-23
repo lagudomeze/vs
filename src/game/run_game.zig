@@ -198,6 +198,8 @@ pub const RunGame = struct {
         self.content = try content_mod.load(self.gpa);
         self.loot_rng = std.Random.DefaultPrng.init(self.seed ^ 0x9e3779b97f4a7c15);
         self.sim = sim_mod.Sim.init(self.seed, self.class);
+        self.sim.setEnemyDefs(self.content.enemies);
+        self.sim.reset(self.seed, self.class);
         self.camera = .{
             .target = math.Vec3.init(0, 0.55, 0),
             .yaw = -0.35,
@@ -543,6 +545,7 @@ pub const RunGame = struct {
             return;
         };
         self.sim = loaded;
+        self.sim.setEnemyDefs(self.content.enemies);
         self.seed = loaded.seed;
         self.class = loaded.class;
         self.inventory = loaded_inv;
