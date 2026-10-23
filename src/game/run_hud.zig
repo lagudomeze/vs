@@ -227,7 +227,7 @@ fn drawHelp(r: *renderer.Renderer, w: i32, h: i32) void {
     r.fillRect(0, 0, w, h, palette.deep);
     const px: i32 = 32;
     const pw: i32 = w - 64;
-    const ph: i32 = @min(h - 32, 242);
+    const ph: i32 = @min(h - 32, 256);
     const py: i32 = @divTrunc(h - ph, 2);
     backPanel(r, px, py, pw, ph);
     const tw = renderer.Renderer.textWidth(help_title, 2);
@@ -247,6 +247,7 @@ fn drawHelp(r: *renderer.Renderer, w: i32, h: i32) void {
         "目标  击杀第 3 层深渊守卫",
         "楼梯在 Boss 存活时被封印",
         "战利品自动装备，背包内 1/2/3 换装",
+        "状态 STUN/SLOW/BURN/VULN/GUARD  BURN 3层",
     };
     var y = py + 38;
     for (lines) |line| {

@@ -43,6 +43,7 @@
 const std = @import("std");
 const sim_mod = @import("run_sim.zig");
 const intent_mod = @import("intent.zig");
+const status_def = @import("status_def.zig");
 const dungeon_mod = @import("dungeon.zig");
 const numeric = @import("numeric.zig");
 
@@ -558,7 +559,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
         if (e.range > grid_w) return error.InvalidValue;
         if (e.energy < -100 or e.energy > 200) return error.InvalidValue;
         if (e.burn_turns > 100 or !std.math.isFinite(e.burn_damage) or e.burn_damage < 0 or e.burn_damage > 10000) return error.InvalidValue;
-        if (e.burn_stacks > 3) return error.InvalidValue;
+        if (e.burn_stacks > status_def.max_burn_stacks) return error.InvalidValue;
         if (e.vulnerable_turns > 100 or !std.math.isFinite(e.vulnerable_pct) or e.vulnerable_pct < 0 or e.vulnerable_pct > 10) return error.InvalidValue;
         if (e.guard_turns > 100) return error.InvalidValue;
         if (e.alive) {
