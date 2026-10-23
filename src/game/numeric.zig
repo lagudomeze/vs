@@ -74,6 +74,20 @@ pub const PrimarySheet = struct {
     }
 };
 
+pub const AttackTag = struct {};
+pub const ArmorTag = struct {};
+pub const CritTag = struct {};
+pub const SpeedTag = struct {};
+
+pub const Attack = mech.Value(AttackTag, 0);
+pub const Armor = mech.Value(ArmorTag, 0);
+pub const Crit = mech.Value(CritTag, 0);
+pub const Speed = mech.Value(SpeedTag, 100);
+
+pub fn valueOf(comptime V: type, x: f32) V {
+    return .{ .base = x, .val = x };
+}
+
 pub const LifeState = struct {
     alive: bool = true,
 };

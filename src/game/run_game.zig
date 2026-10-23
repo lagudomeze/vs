@@ -1425,7 +1425,7 @@ pub const RunGame = struct {
             if (target != null and target.? == i) {
                 const aiming = self.aim_talent != null;
                 var tbuf: [64]u8 = undefined;
-                const speed_mark = if (e.combat.speed >= 150) " x2" else if (e.combat.speed <= 75) " 慢" else "";
+                const speed_mark = if (e.combat.speed.val >= 150) " x2" else if (e.combat.speed.val <= 75) " 慢" else "";
                 const tname = std.fmt.bufPrint(&tbuf, "{s} {d:.0}/{d:.0}{s}", .{ e.identity.name, e.vitals.val, e.vitals.full, speed_mark }) catch e.identity.name;
                 const tw = renderer.Renderer.textWidth(tname, 1);
                 const lx = std.math.clamp(x - @divTrunc(tw, 2), 2, w - tw - 2);
@@ -1612,10 +1612,10 @@ pub const RunGame = struct {
         while (i < self.sim.enemy_count) : (i += 1) {
             const e = self.sim.enemies[i];
             if (!e.life.alive) continue;
-            if (first == null or e.combat.speed > self.sim.enemies[first.?].combat.speed) {
+            if (first == null or e.combat.speed.val > self.sim.enemies[first.?].combat.speed.val) {
                 second = first;
                 first = i;
-            } else if (second == null or e.combat.speed > self.sim.enemies[second.?].combat.speed) {
+            } else if (second == null or e.combat.speed.val > self.sim.enemies[second.?].combat.speed.val) {
                 second = i;
             }
         }
@@ -1760,10 +1760,10 @@ pub const RunGame = struct {
         };
         self.hud_state.attrs = attrs;
         self.hud_state.pending_points = self.sim.hero.progression.pending_points;
-        self.hud_state.attack = self.sim.hero.combat.attack;
-        self.hud_state.armor = self.sim.hero.combat.armor;
-        self.hud_state.crit = self.sim.hero.combat.crit;
-        self.hud_state.speed = @floatFromInt(self.sim.hero.combat.speed);
+        self.hud_state.attack = self.sim.hero.combat.attack.val;
+        self.hud_state.armor = self.sim.hero.combat.armor.val;
+        self.hud_state.crit = self.sim.hero.combat.crit.val;
+        self.hud_state.speed = self.sim.hero.combat.speed.val;
         self.hud_state.res_per_turn = self.sim.hero.resource_regen.val;
         const slots = [_]items_mod.Slot{ .main_hand, .body, .trinket };
         for (slots, 0..) |slot, si| {

@@ -146,7 +146,7 @@ pub fn distance(a: run.GridPos, b: run.GridPos) i32 {
 /// the 战吼 buff when it is active.
 pub fn estimateDamage(sim: *const run.Sim, spec: TalentSpec, armor: f32) f32 {
     if (spec.damage_mult <= 0) return 0;
-    var raw = sim.hero.combat.attack * spec.damage_mult;
+    var raw = sim.hero.combat.attack.val * spec.damage_mult;
     if (sim.hero.status.buff_turns > 0) raw *= 1.0 + sim.hero.status.buff_pct;
     return combat.preview(.{ .raw = raw }, .{ .armor = armor });
 }
@@ -200,7 +200,7 @@ pub fn preview(sim: *const run.Sim, talent: usize, target: ?usize) Preview {
         return p;
     }
 
-    p.damage = estimateDamage(sim, spec, enemy.combat.armor);
+    p.damage = estimateDamage(sim, spec, enemy.combat.armor.val);
     if (spec.kind == .aoe and spec.aoe_radius > 0) fillAoe(&p, enemy.pos, spec.aoe_radius);
     p.verdict = .ok;
     return p;

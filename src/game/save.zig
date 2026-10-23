@@ -259,7 +259,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
     var enemy_buf: [max_enemies]EnemySave = undefined;
     for (sim.enemies[0..sim.enemy_count], 0..) |e, i| {
         if (!std.math.isFinite(e.vitals.val) or !std.math.isFinite(e.vitals.full) or
-            !std.math.isFinite(e.combat.attack) or !std.math.isFinite(e.combat.armor))
+            !std.math.isFinite(e.combat.attack.val) or !std.math.isFinite(e.combat.armor.val))
         {
             return error.InvalidState;
         }
@@ -269,9 +269,9 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .pos = savePos(e.pos),
             .hp = e.vitals.val,
             .hp_max = e.vitals.full,
-            .attack = e.combat.attack,
-            .armor = e.combat.armor,
-            .speed = e.combat.speed,
+            .attack = e.combat.attack.val,
+            .armor = e.combat.armor.val,
+            .speed = @intFromFloat(e.combat.speed.val),
             .range = e.combat.range,
             .xp = e.reward.xp,
             .stun_turns = e.status.stun_turns,
@@ -286,8 +286,8 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
     const hero = sim.hero;
     if (!std.math.isFinite(hero.vitals.val) or !std.math.isFinite(hero.vitals.full) or
         !std.math.isFinite(hero.resource.val) or !std.math.isFinite(hero.resource.full) or
-        !std.math.isFinite(hero.combat.attack) or !std.math.isFinite(hero.combat.armor) or
-        !std.math.isFinite(hero.combat.crit) or !std.math.isFinite(hero.resource_regen.val) or
+        !std.math.isFinite(hero.combat.attack.val) or !std.math.isFinite(hero.combat.armor.val) or
+        !std.math.isFinite(hero.combat.crit.val) or !std.math.isFinite(hero.resource_regen.val) or
         !std.math.isFinite(hero.status.buff_pct) or !std.math.isFinite(hero.status.burn_damage) or !allFinite(&hero.sheet.eff_stats) or
         !statsFinite(.{
             .strength = hero.sheet.stats.strength.val,
@@ -351,10 +351,10 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .hp_max = hero.vitals.full,
             .resource = hero.resource.val,
             .resource_max = hero.resource.full,
-            .attack = hero.combat.attack,
-            .armor = hero.combat.armor,
-            .crit = hero.combat.crit,
-            .speed = hero.combat.speed,
+            .attack = hero.combat.attack.val,
+            .armor = hero.combat.armor.val,
+            .crit = hero.combat.crit.val,
+            .speed = @intFromFloat(hero.combat.speed.val),
             .res_per_turn = hero.resource_regen.val,
             .level = hero.progression.level,
             .xp = hero.progression.xp,
@@ -546,7 +546,12 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
             .vitals = .{ .val = h.hp, .full = h.hp_max, .raw_full = h.hp_max },
             .resource = .{ .val = h.resource, .full = h.resource_max, .raw_full = h.resource_max },
             .resource_regen = .{ .val = h.res_per_turn, .base = h.res_per_turn },
-            .combat = .{ .attack = h.attack, .armor = h.armor, .crit = h.crit, .speed = h.speed },
+            .combat = .{
+                .attack = numeric.valueOf(numeric.Attack, h.attack),
+                .armor = numeric.valueOf(numeric.Armor, h.armor),
+                .crit = numeric.valueOf(numeric.Crit, h.crit),
+                .speed = numeric.valueOf(numeric.Speed, @floatFromInt(h.speed)),
+            },
             .progression = .{ .level = h.level, .xp = h.xp, .pending_points = h.pending_points },
             .status = .{ .buff_turns = h.buff_turns, .buff_pct = h.buff_pct, .burn_turns = h.burn_turns, .burn_damage = h.burn_damage },
             .talents = .{ .cooldowns = h.cooldowns },
@@ -577,7 +582,12 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
             .pos = loadPos(e.pos),
             .vitals = numeric.gaugeAt(numeric.Health, e.hp_max, e.hp),
             .life = .{ .alive = e.alive },
-            .combat = .{ .attack = e.attack, .armor = e.armor, .speed = e.speed, .range = e.range },
+            .combat = .{
+                .attack = numeric.valueOf(numeric.Attack, e.attack),
+                .armor = numeric.valueOf(numeric.Armor, e.armor),
+                .speed = numeric.valueOf(numeric.Speed, @floatFromInt(e.speed)),
+                .range = e.range,
+            },
             .status = .{ .stun_turns = e.stun_turns, .slow_turns = e.slow_turns, .burn_turns = e.burn_turns, .burn_damage = e.burn_damage },
             .reward = .{ .xp = e.xp },
             .action = .{ .energy = e.energy },
@@ -721,9 +731,9 @@ fn expectSameEnemy(expected: Enemy, actual: Enemy) !void {
     try testing.expectEqual(expected.pos.y, actual.pos.y);
     try testing.expectEqual(expected.vitals.val, actual.vitals.val);
     try testing.expectEqual(expected.vitals.full, actual.vitals.full);
-    try testing.expectEqual(expected.combat.attack, actual.combat.attack);
-    try testing.expectEqual(expected.combat.armor, actual.combat.armor);
-    try testing.expectEqual(expected.combat.speed, actual.combat.speed);
+    try testing.expectEqual(expected.combat.attack.val, actual.combat.attack.val);
+    try testing.expectEqual(expected.combat.armor.val, actual.combat.armor.val);
+    try testing.expectEqual(expected.combat.speed.val, actual.combat.speed.val);
     try testing.expectEqual(expected.combat.range, actual.combat.range);
     try testing.expectEqual(expected.reward.xp, actual.reward.xp);
     try testing.expectEqual(expected.status.stun_turns, actual.status.stun_turns);
