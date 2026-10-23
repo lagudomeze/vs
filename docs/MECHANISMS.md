@@ -18,6 +18,8 @@
 - 把所有公式放进 JSON 解释器。
 - 为每个机制建一个独立 ECS world。
 
+数据结构层面的逐项审计（ItemDef/SkillDef/EnemyDef/Hero/Enemy）见 [DATA_MODEL.md](DATA_MODEL.md)。
+
 ## 2. 机制总表
 
 | ID | 机制 | 拥有的状态 | 主要输出 | 不能拥有 |
