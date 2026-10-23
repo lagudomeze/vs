@@ -20,6 +20,7 @@ const attributes = @import("attributes.zig");
 const save_mod = @import("save.zig");
 const gear_save = @import("gear_save.zig");
 const slot_bundle = @import("slot_bundle.zig");
+const records_mod = @import("records.zig");
 
 fn detailAppend(buf: []u8, off: *usize, comptime f: []const u8, args: anytype) void {
     const written = std.fmt.bufPrint(buf[off.*..], f, args) catch return;
@@ -135,6 +136,9 @@ pub const RunGame = struct {
     seed_locked: bool = false,
     class: sim_mod.Class,
     difficulty: sim_mod.Difficulty = .normal,
+    records: records_mod.Records = .{},
+    records_dirty: bool = false,
+    last_state: sim_mod.State = .playing,
     slot_menu: SlotMenu = .none,
     slot_labels: [3][]const u8 = .{ "空", "空", "空" },
     slot_bufs: [3][96]u8 = undefined,
@@ -213,6 +217,7 @@ pub const RunGame = struct {
         self.sim = sim_mod.Sim.initWithDifficulty(self.seed, self.class, self.difficulty);
         self.sim.setEnemyDefs(self.content.enemies);
         self.sim.reset(self.seed, self.class);
+        self.last_state = .playing;
         self.camera = .{
             .target = math.Vec3.init(0, 0.55, 0),
             .yaw = -0.35,
@@ -346,6 +351,36 @@ pub const RunGame = struct {
         self.restart();
         self.sim.pushLog("开始：{s}", .{sim_mod.class_names[@backingInt(self.class)]});
         self.fillHudState();
+    }
+
+    pub fn setRecords(self: *RunGame, records: records_mod.Records) void {
+        self.records = records;
+        self.records_dirty = false;
+    }
+
+    pub fn saveRecords(self: *RunGame, io: std.Io) bool {
+        records_mod.save(io, self.gpa, records_mod.default_path, self.records) catch return false;
+        self.records_dirty = false;
+        return true;
+    }
+
+    fn trackRunEnd(self: *RunGame) void {
+        if (!self.started) {
+            self.last_state = self.sim.state;
+            return;
+        }
+        if (self.last_state == .playing and self.sim.state != .playing) {
+            if (self.sim.state == .victory) {
+                self.records.wins +|= 1;
+                if (self.records.best_turn == 0 or self.sim.turn < self.records.best_turn) self.records.best_turn = self.sim.turn;
+            } else {
+                self.records.deaths +|= 1;
+            }
+            self.records.best_floor = @max(self.records.best_floor, self.sim.floor);
+            self.records.best_kills = @max(self.records.best_kills, self.sim.kills);
+            self.records_dirty = true;
+        }
+        self.last_state = self.sim.state;
     }
 
     pub fn debugShrine(self: *RunGame) void {
@@ -625,6 +660,7 @@ pub const RunGame = struct {
         self.seed = loaded.seed;
         self.class = loaded.class;
         self.difficulty = loaded.difficulty;
+        self.last_state = loaded.state;
         self.inventory = loaded_inv;
         self.mods.clear();
         self.rebuildMods();
@@ -1772,6 +1808,7 @@ pub const RunGame = struct {
     }
 
     fn fillHudState(self: *RunGame) void {
+        self.trackRunEnd();
         const initiative = self.initiativeNames();
         var potion_count: u8 = 0;
         for (self.inventory.slice()) |id| {
@@ -1785,6 +1822,9 @@ pub const RunGame = struct {
             .difficulty = @backingInt(self.difficulty),
             .shrine_open = self.shrine_open,
             .shrine_main_label = self.sim.shrineMainLabel(),
+            .record_wins = self.records.wins,
+            .record_best_floor = self.records.best_floor,
+            .record_best_turn = self.records.best_turn,
             .potions = potion_count,
             .floor_mod_label = self.sim.floor_mod.label(),
             .seed = self.sim.seed,
@@ -2052,6 +2092,19 @@ test "run game: inventory P consumes a resource potion" {
     g.update(.{ .use_item = true }, 1.0 / 60.0);
     try std.testing.expect(g.sim.hero.resource.val > 5);
     try std.testing.expectEqual(before - 1, g.inventory.count());
+}
+
+test "run game: death updates lifetime records once" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+
+    g.sim.state = .dead;
+    g.fillHudState();
+    try std.testing.expectEqual(@as(u32, 1), g.records.deaths);
+    try std.testing.expect(g.records_dirty);
+    g.fillHudState();
+    try std.testing.expectEqual(@as(u32, 1), g.records.deaths);
 }
 
 test "run game: shrine panel consumes a choice once" {

@@ -291,6 +291,7 @@ fn runRunHeadless(game: *vx.RunGame, io: std.Io, options: Options) !void {
             if (frame + 1 == frames) input.talent = @intCast(aim_talent);
         }
         game.update(input, 1.0 / 60.0);
+        if (game.records_dirty) _ = game.saveRecords(io);
         if (game.autosave_pending) game.flushAutosave(io);
     }
     game.render();
@@ -402,6 +403,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         }
 
         game.update(input, dt);
+        if (game.records_dirty) _ = game.saveRecords(io);
         if (game.autosave_pending) game.flushAutosave(io);
         game.render();
         platform.present(game.renderer.color_buf);
@@ -482,6 +484,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
     const game = try vx.RunGame.create(gpa, options.width, options.height, class, options.seed);
     defer game.destroy();
 
+    game.setRecords(vx.records.load(io, gpa, vx.records.default_path) catch .{});
     game.setDifficulty(options.difficulty);
     if (options.shrine_screen) game.debugShrine();
     game.debug = options.debug;

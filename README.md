@@ -27,6 +27,7 @@
 - **破绽 VULN**：战士冲锋给敌人 2 回合破绽（受伤 +20%）；石魔像命中给英雄 1 回合、Boss 深渊斩给 2 回合，双方都可能进入破绽。
 - **楼层词条**：第 2/3 层随机 EMBER（灼烧 ×1.5）/ FROST（敌人速度 ×0.9）/ MIASMA（资源回复 ×0.5），HUD 敌人行显示词条，随存档保存。
 - **精英词缀**：第 2 层起，非 Boss 敌人有约 16% 概率带迅捷（速度 +15）、重甲（护甲 +3）或吸血（命中回复 20% 伤害）；头顶显示 SWIFT / ARM / VAMP，并用青色/灰色/红色调区分模型。
+- **持久战绩**：saves/records.json 记录胜场/败场、最佳楼层、最佳回合、最高击杀；开局菜单显示 BEST Fx Ty Wz，死亡/胜利后自动更新。
 - **祭坛**：每层一处；踩上去四选一：主属性 / 体质 / 意志 +2，或 RISK 主属性 +4、体质 -2；Esc 可离开，使用后消失；HUD 显示 SHRINE 面板。
 - **无窗口验证**：headless 截图；自动跑局用于 QA。
 
@@ -171,7 +172,7 @@ docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 
 ## 验证
 
-- zig build / zig build test：13/13 steps、177/177 tests。
+- zig build / zig build test：13/13 steps、179/179 tests。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/run_select.png`。
 - 职业菜单显示的 SEED 就是本局真实 seed；选择职业只按同一 seed 重开；R 保留职业，未锁定时换新 seed。
 - 大图 QA（100 seed × 3 职业，纯逻辑 bot）：普通 65.0%（195/300）：狂战士 45%、元素法师 86%、时空法师 64%；困难 34.3%（103/300）；简单 88.0%（264/300）：79%/96%/87%，0 超时/不变量违规；test-qa 102/102。

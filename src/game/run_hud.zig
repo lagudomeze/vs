@@ -51,6 +51,9 @@ pub const State = struct {
     shrine_main_label: []const u8 = "力量",
     potions: u8 = 0,
     floor_mod_label: []const u8 = "",
+    record_wins: u32 = 0,
+    record_best_floor: u8 = 1,
+    record_best_turn: u32 = 0,
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -198,6 +201,16 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
             r.drawText(x + 8, ty, label, palette.cream, 1, false);
             r.drawText(x + 22, ty + 13, card.descs[t], palette.muted, 1, false);
         }
+    }
+
+    if (h >= 300) {
+        var rbuf: [48]u8 = undefined;
+        const rec = if (state.record_wins > 0)
+            fmt(&rbuf, "BEST F{d} T{d} W{d}", .{ state.record_best_floor, state.record_best_turn, state.record_wins })
+        else
+            fmt(&rbuf, "BEST --", .{});
+        const rw = renderer.Renderer.textWidth(rec, 1);
+        r.drawText(@divTrunc(w, 2) - @divTrunc(rw, 2), h - 32, rec, palette.gold_light, 1, false);
     }
 
     const fw = renderer.Renderer.textWidth(menu_footer, 1);
