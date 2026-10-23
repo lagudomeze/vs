@@ -129,6 +129,8 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 - 击杀获得 XP；升级 +1 主属性并回满；第 3 层击败深渊守卫、解除楼梯封印后胜利。
 - 死亡即结束，R 从同一 seed 重开并保留当前职业（ToME4 式 roguelike）。
 
+数值/组件设计见 [docs/NUMERIC_ARCHITECTURE.md](docs/NUMERIC_ARCHITECTURE.md)；机制边界与 ECS 映射见 [docs/MECHANISMS.md](docs/MECHANISMS.md)。
+
 ## 代码结构
 
 ~~~text
