@@ -460,7 +460,7 @@ pub const builtin_items = [_]items.ItemDef{
         .quality = .common,
         .drop = .{ .weight = 0.8 },
         .kind = .{ .consumable = .{ .use = .{ .heal = 40 } } },
-        .description = "恢复 40 生命；v1 暂不做使用 UI。",
+        .description = "恢复 40 生命；背包面板按 P 使用。",
     },
     .{
         .id = "gear_sigil",

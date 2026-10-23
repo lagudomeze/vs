@@ -462,7 +462,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                     }
                 }
             }
-            r.drawText(ix + 16, iy + ih - 18, "数字键 1/2/3 装备；I 关闭", palette.muted, 1, false);
+            r.drawText(ix + 16, iy + ih - 18, "1/2/3 装备  P POTION  I 关闭", palette.muted, 1, false);
         }
     }
 

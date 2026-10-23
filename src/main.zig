@@ -386,6 +386,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             input.restart = pin.reset;
             input.help = pin.help;
             input.difficulty = pin.difficulty;
+            input.use_item = pin.use_item;
             input.mouse_x = pin.mouse_x;
             input.mouse_y = pin.mouse_y;
             input.click = pin.click;
