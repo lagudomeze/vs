@@ -9,6 +9,7 @@ const Options = struct {
     hero_set: bool = false,
     start_menu: bool = false,
     seed: u64 = 0, // 0 = pick a fresh seed for this run
+    difficulty: vx.run_sim.Difficulty = .normal,
     arena: bool = false,
     yaw: f32 = -0.35,
     pitch: f32 = 0.70,
@@ -46,6 +47,7 @@ fn usage() void {
         \\  --hero N          start as hero 0=Berserker 1=Archmage 2=Chronomancer (skips the class menu)
         \\  --seed N          fixed dungeon seed (default 0 = fresh seed each run)
         \\  --start-menu      force the class-selection cards (headless screenshots/QA)
+        \\  --difficulty M    normal | hard (default normal)
         \\  --yaw DEG         camera yaw (default -20)
         \\  --pitch DEG       camera pitch (default 40)
         \\  --dist U          camera orbit distance (default 8.2)
@@ -104,6 +106,9 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.start_menu = true;
         } else if (std.mem.eql(u8, a, "--seed")) {
             o.seed = try std.fmt.parseInt(u64, try argAt(argv, &i), 10);
+        } else if (std.mem.eql(u8, a, "--difficulty")) {
+            const value = try argAt(argv, &i);
+            if (std.mem.eql(u8, value, "hard")) o.difficulty = .hard else if (std.mem.eql(u8, value, "normal")) o.difficulty = .normal else return error.BadDifficulty;
         } else if (std.mem.eql(u8, a, "--arena")) {
             o.arena = true;
         } else if (std.mem.eql(u8, a, "--yaw")) {
@@ -380,6 +385,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             input.character = pin.character;
             input.restart = pin.reset;
             input.help = pin.help;
+            input.difficulty = pin.difficulty;
             input.mouse_x = pin.mouse_x;
             input.mouse_y = pin.mouse_y;
             input.click = pin.click;
@@ -469,6 +475,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
     const game = try vx.RunGame.create(gpa, options.width, options.height, class, options.seed);
     defer game.destroy();
 
+    game.setDifficulty(options.difficulty);
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
     game.presentation = !options.auto_demo and !options.headless;

@@ -30,6 +30,7 @@ pub const FrameInput = struct {
     load_slot: bool = false,
     load_auto: bool = false,
     help: bool = false,
+    difficulty: bool = false,
     mouse_x: f32 = 0,
     mouse_y: f32 = 0,
     click: bool = false,
@@ -153,6 +154,7 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F9))) input.load_slot = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F10))) input.load_auto = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_H))) input.help = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_D))) input.difficulty = true;
                 }
             } else if (t == @as(u32, @intCast(c.SDL_EVENT_MOUSE_WHEEL))) {
                 input.zoom_delta += ev.wheel.y * 0.55;

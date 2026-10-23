@@ -60,6 +60,7 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | --- | --- |
 | WASD / 方向键 / 小键盘 | 走一格；撞敌人 = 普攻；撞墙不消耗回合；按住连续走 |
 | 1 / 2 / 3 | 开局菜单：选择职业并开始；游戏中：进入天赋瞄准（战吼/闪现/回溯立即释放） |
+| D | 开局菜单：切换普通/困难（游戏中 D 仍是向右走） |
 | 空格 / 同键 | 瞄准中确认释放；非瞄准时等待一回合 |
 | Esc | 取消瞄准 → 关闭面板 → 退出 |
 | 5 / . | 等待一回合；附近无敌人时休息回复 |
@@ -95,6 +96,7 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | --hero N | 0 狂战士 / 1 元素法师 / 2 时空法师；直接开局并跳过职业菜单 |
 | --start-menu | 强制显示职业菜单（headless 截图/QA 用；headless 默认跳过） |
 | --seed N | 固定地牢种子（默认 0 = 每局随机） |
+| --difficulty normal\|hard | 难度；困难敌人 HP ×1.20、伤害 ×1.10 |
 | --auto | headless 自动向楼梯推进、打怪、放天赋 |
 | --inventory / --character | 启动时打开对应面板（截图/审查用） |
 | --loot N | 调试：直接获得 N 件掉落（截图/QA 用） |
@@ -160,10 +162,10 @@ docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 
 ## 验证
 
-- zig build / zig build test：13/13 steps、161/161 tests。
+- zig build / zig build test：13/13 steps、164/164 tests。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/run_select.png`。
 - 职业菜单显示的 SEED 就是本局真实 seed；选择职业只按同一 seed 重开；R 保留职业，未锁定时换新 seed。
-- 大图 QA（100 seed × 3 职业，纯逻辑 bot）：通关率 64.3%（193/300）；狂战士 43%、元素法师 84%、时空法师 66%，0 超时/不变量违规；test-qa 91/91。
+- 大图 QA（100 seed × 3 职业，纯逻辑 bot）：普通 64.3%（193/300）：狂战士 43%、元素法师 84%、时空法师 66%；困难 39.0%（117/300），0 超时/不变量违规；test-qa 93/93。
 - auto 是演示/巡检 bot，不保证通关；31×31 + 楼层 Boss 下可能停在 Boss 层，实际 QA 以 test-qa 为准。
 - Boss 深渊斩每 3 个敌方回合预警一次，半径 0.9 格；走出标记格即可躲开；Boss 存活时第 3 层楼梯封印。
 - 速度机制已改为 energy 银行：精英幽魂 150 积累双动，石魔像 70 隔回合少动。
