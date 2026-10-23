@@ -211,6 +211,12 @@ pub const Reward = struct {
     xp: u32 = 20,
 };
 
+pub const ActionState = struct {
+    /// Action points; 100 points buys one turn. Accumulates speed each enemy
+    /// phase and is never negative after subtraction.
+    energy: i16 = 0,
+};
+
 /// Enemy actor as a composition of small components. Systems should take the
 /// component they need rather than the whole aggregate.
 pub const Enemy = struct {
@@ -220,6 +226,7 @@ pub const Enemy = struct {
     combat: EnemyCombat = .{},
     status: StatusSet = .{},
     reward: Reward = .{},
+    action: ActionState = .{},
 };
 
 /// Test/authoring helper: one flat literal -> component aggregate.
@@ -244,6 +251,7 @@ pub fn enemyFromParts(parts: anytype) Enemy {
             .slow_turns = if (@hasField(T, "slow_turns")) parts.slow_turns else 0,
         },
         .reward = .{ .xp = if (@hasField(T, "xp")) parts.xp else 0 },
+        .action = .{ .energy = if (@hasField(T, "energy")) parts.energy else 0 },
     };
 }
 
@@ -714,15 +722,18 @@ pub const Sim = struct {
             order[b] = key;
         }
         for (order[0..n]) |idx| {
-            var actions: u8 = 1;
-            const sp = self.enemies[idx].combat.speed;
-            if (sp >= 150 and self.turn % 2 == 0) actions = 2;
-            if (sp <= 75 and self.turn % 2 == 0) actions = 0;
-            var act: u8 = 0;
-            while (act < actions) : (act += 1) {
-                if (!self.enemies[idx].vitals.alive) break;
+            const e = &self.enemies[idx];
+            if (!e.vitals.alive) continue;
+            // 100 action points = one action. Cap the bank at 200 so a long
+            // stun cannot save up more than two actions.
+            e.action.energy = @min(@as(i16, 200), e.action.energy + @as(i16, @intCast(e.combat.speed)));
+            var acted: u8 = 0;
+            while (e.action.energy >= 100 and acted < 2) {
+                e.action.energy -= 100;
+                if (!e.vitals.alive) break;
                 if (self.hero.vitals.hp <= 0) break;
                 self.enemyAct(idx);
+                acted += 1;
             }
         }
     }
@@ -1265,6 +1276,7 @@ test "run sim: boss AOE resolves on the telegraphed turn" {
         .speed = 90,
         .range = 1,
         .xp = 200,
+        .energy = 100,
     });
     s.aoe_armed = true;
     s.aoe_target = s.hero.pos;
@@ -1273,7 +1285,7 @@ test "run sim: boss AOE resolves on the telegraphed turn" {
     try std.testing.expect(s.hero.vitals.hp < hp);
 }
 
-test "run sim: enemy speeds cover the extra/skip bands" {
+test "run sim: content keeps a fast and a slow speed band" {
     var fast = false;
     var slow = false;
     for (content_mod.builtin_enemies) |def| {

@@ -479,7 +479,7 @@ fn setupFighter(s: *run.Sim, speed: u16) void {
     });
 }
 
-test "qa3: speed 150 acts twice, speed 70 skips on even turns" {
+test "qa3: energy ramps 150 to double actions and 70 starts slow" {
     var fast = run.Sim.init(41, .warrior);
     setupFighter(&fast, 150);
     const f0 = fast.hero.vitals.hp;
@@ -489,16 +489,16 @@ test "qa3: speed 150 acts twice, speed 70 skips on even turns" {
     _ = fast.wait();
     const a2 = f1 - fast.hero.vitals.hp;
     try std.testing.expect(a1 > 0);
-    try std.testing.expectApproxEqAbs(a1, a2 * 2.0, 0.01);
+    try std.testing.expectApproxEqAbs(a1 * 2.0, a2, 0.01);
 
     var slow = run.Sim.init(43, .warrior);
     setupFighter(&slow, 70);
     const s0 = slow.hero.vitals.hp;
     _ = slow.wait();
-    try std.testing.expectEqual(s0, slow.hero.vitals.hp); // even turn: skipped
+    try std.testing.expectEqual(s0, slow.hero.vitals.hp); // 70 < 100: no action
     _ = slow.wait();
-    try std.testing.expect(slow.hero.vitals.hp < s0); // odd turn: acts
-    std.debug.print("[qa3] speed: 150 dealt {d:.2}/{d:.2} damage on consecutive turns (2x), 70 skipped then hit\n", .{ a1, a2 });
+    try std.testing.expect(slow.hero.vitals.hp < s0); // banked 140: one action
+    std.debug.print("[qa3] energy: 150 dealt {d:.2}/{d:.2} over two turns, 70 waited then hit\n", .{ a1, a2 });
 }
 
 test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
@@ -521,6 +521,7 @@ test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
         .speed = 90,
         .range = 1,
         .xp = 200,
+        .energy = 100,
     });
     const hp = s.hero.vitals.hp;
     _ = s.wait();
@@ -545,6 +546,7 @@ test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
         .speed = 90,
         .range = 1,
         .xp = 200,
+        .energy = 100,
     });
     const hp2 = h.hero.vitals.hp;
     _ = h.wait();
