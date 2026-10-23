@@ -503,6 +503,14 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                     }
                 }
             }
+            r.fillRect(ix + 16, iy + ih - 104, iw - 32, 1, palette.border);
+            r.drawText(ix + 16, iy + ih - 96, "装备", palette.gold, 1, false);
+            const slot_labels = [_][]const u8{ "主手", "身体", "饰品" };
+            var ebuf: [40]u8 = undefined;
+            for (slot_labels, 0..) |label, i| {
+                const name = if (state.equip[i].len > 0) state.equip[i] else "-";
+                r.drawText(ix + 16, iy + ih - 78 + @as(i32, @intCast(i)) * 16, fmt(&ebuf, "{s}  {s}", .{ label, name }), palette.muted, 1, false);
+            }
             var pbuf: [48]u8 = undefined;
             r.drawText(ix + 16, iy + ih - 18, fmt(&pbuf, "1/2/3 装备  P POTION x{d}  I 关闭", .{state.potions}), palette.muted, 1, false);
         }
@@ -511,7 +519,11 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     // death / victory overlay; keep the last log line as the cause
     if (state.dead or state.victory) {
         const title = if (state.victory) "胜利" else "死亡";
-        const sub = "按 R 重开 同职业";
+        var best_buf: [48]u8 = undefined;
+        const sub = if (state.record_wins > 0)
+            fmt(&best_buf, "BEST F{d} T{d}   R 重开", .{ state.record_best_floor, state.record_best_turn })
+        else
+            "按 R 重开 同职业";
         const cause = if (state.log_count > 0) state.log_lines[state.log_count - 1] else "";
         var sbuf: [96]u8 = undefined;
         const summary = fmt(&sbuf, "第 {d}/{d} 层 · 回合 {d} · 击杀 {d} · 种子 {d}", .{
