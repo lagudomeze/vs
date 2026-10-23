@@ -46,6 +46,9 @@ pub const State = struct {
     menu: bool = false,
     help: bool = false,
     menu_seed: u64 = 0,
+    seed: u64 = 0,
+    buff_turns: u16 = 0,
+    buff_pct: f32 = 0,
     menu_cards: [3]ClassCard = .{ .{}, .{}, .{} },
     class_name: []const u8 = "",
     level: u16 = 1,
@@ -244,6 +247,13 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     bar(r, 10, 43, 150, 5, if (state.resource_max > 0) state.resource / state.resource_max else 0, palette.cyan);
     const res = fmt(&buf, "{s} {d:.0}/{d:.0}", .{ state.resource_label, state.resource, state.resource_max });
     r.drawText(14, 49, res, palette.muted, 1, false);
+
+    if (state.buff_turns > 0 and !state.dead and !state.victory) {
+        backPanel(r, 6, 66, 160, 14);
+        var bbuf: [48]u8 = undefined;
+        const buff = fmt(&bbuf, "战吼 +{d:.0}%攻  {d}回合", .{ state.buff_pct * 100.0, state.buff_turns });
+        r.drawText(10, 69, buff, palette.gold_light, 1, false);
+    }
 
     // top-right: floor / enemies / stairs / turn / initiative
     backPanel(r, w - 154, 5, 154, 60);
@@ -450,17 +460,23 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         const title = if (state.victory) "胜利" else "死亡";
         const sub = "按 R 重开 同职业";
         const cause = if (state.log_count > 0) state.log_lines[state.log_count - 1] else "";
+        var sbuf: [96]u8 = undefined;
+        const summary = fmt(&sbuf, "第 {d}/{d} 层 · 回合 {d} · 击杀 {d} · 种子 {d}", .{
+            state.floor, state.floors, state.turn, state.kills, state.seed,
+        });
         r.fillRect(0, @divTrunc(h, 2) - 28, w, 70, palette.panel);
         r.fillRect(0, @divTrunc(h, 2) - 29, w, 1, palette.gold);
         r.fillRect(0, @divTrunc(h, 2) + 41, w, 1, palette.gold);
         const tw = renderer.Renderer.textWidth(title, 2);
         r.drawText(@divTrunc(w, 2) - @divTrunc(tw, 2), @divTrunc(h, 2) - 22, title, if (state.victory) palette.gold_light else palette.red, 2, true);
+        const mw = renderer.Renderer.textWidth(summary, 1);
+        r.drawText(@divTrunc(w, 2) - @divTrunc(mw, 2), @divTrunc(h, 2) - 4, summary, palette.gold_light, 1, true);
         if (cause.len > 0) {
             const cw = renderer.Renderer.textWidth(cause, 1);
-            r.drawText(@divTrunc(w, 2) - @divTrunc(cw, 2), @divTrunc(h, 2) + 8, cause, palette.cream, 1, true);
+            r.drawText(@divTrunc(w, 2) - @divTrunc(cw, 2), @divTrunc(h, 2) + 11, cause, palette.cream, 1, true);
         }
         const sw = renderer.Renderer.textWidth(sub, 1);
-        r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), @divTrunc(h, 2) + 23, sub, palette.muted, 1, true);
+        r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), @divTrunc(h, 2) + 26, sub, palette.muted, 1, true);
     }
 
     // save / load slot modal, on top of everything

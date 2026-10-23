@@ -9,9 +9,9 @@
 //! -----------
 //! * x grows east, y grows south (towards +Z in world space).
 //! * the board is 31x31; cell (15, 15) is the board origin.
-//! * a cell centre maps to ((x - 6) * 1.0, (y - 6) * 1.0) on the world
-//!   (X, Z) plane, matching engine/arena_mesh.zig (tile_half = 6,
-//!   tile_size = 1.0).
+//! * a cell centre maps to ((x - 15) * 1.0, (y - 15) * 1.0) on the world
+//!   (X, Z) plane, matching world_center and engine/arena_mesh.zig
+//!   (tile_size = 1.0).
 //!
 //! Tile conventions
 //! ----------------

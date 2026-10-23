@@ -114,7 +114,7 @@ fn makeTmpPath(alloc: std.mem.Allocator, tmp: *std.testing.TmpDir, name: []const
 
 test "qa3: aim entry and cancel spend nothing" {
     const gpa = std.testing.allocator;
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
@@ -140,7 +140,7 @@ test "qa3: aim entry and cancel spend nothing" {
 
 test "qa3: valid aim confirms once, one turn and one resource payment" {
     const gpa = std.testing.allocator;
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
@@ -161,7 +161,7 @@ test "qa3: valid aim confirms once, one turn and one resource payment" {
 
 test "qa3: same key currently confirms (spec text says cancel)" {
     const gpa = std.testing.allocator;
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
@@ -177,7 +177,7 @@ test "qa3: same key currently confirms (spec text says cancel)" {
 
 test "qa3: range/LOS confirm stays; missing resource refuses aim" {
     const gpa = std.testing.allocator;
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
 
     // Out of range.
@@ -226,7 +226,7 @@ test "qa3: range/LOS confirm stays; missing resource refuses aim" {
 
 test "qa3: wait key while aiming cancels and waits" {
     const gpa = std.testing.allocator;
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
@@ -242,7 +242,7 @@ test "qa3: wait key while aiming cancels and waits" {
 
 test "qa3: tab cycles aim target without a turn" {
     const gpa = std.testing.allocator;
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     _ = setEnemy(g, 5, 6, "骷髅兵", 70, 70);
@@ -260,7 +260,7 @@ test "qa3: tab cycles aim target without a turn" {
 test "qa3: self talents fire immediately without entering aim" {
     const gpa = std.testing.allocator;
 
-    const w = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const w = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer w.destroy();
     resetAimBoard(w);
     const wt = w.sim.turn;
@@ -269,7 +269,7 @@ test "qa3: self talents fire immediately without entering aim" {
     try std.testing.expectEqual(wt + 1, w.sim.turn);
     try std.testing.expect(w.sim.hero.buff_turns > 0);
 
-    const m = try RunGame.create(gpa, 480, 270, .mage, 12345);
+    const m = try RunGame.create(gpa, 640, 360, .mage, 12345);
     defer m.destroy();
     resetAimBoard(m);
     const mt = m.sim.turn;
@@ -279,7 +279,7 @@ test "qa3: self talents fire immediately without entering aim" {
     try std.testing.expect(!m.isAiming());
     try std.testing.expect(m.sim.turn == mt or m.sim.turn == mt + 1);
 
-    const c = try RunGame.create(gpa, 480, 270, .chronomancer, 12345);
+    const c = try RunGame.create(gpa, 640, 360, .chronomancer, 12345);
     defer c.destroy();
     resetAimBoard(c);
     c.sim.hero.last_pos = .{ .x = 6, .y = 5 };
@@ -294,7 +294,7 @@ test "qa3: self talents fire immediately without entering aim" {
 
 test "qa3: autoPlayStep never leaves the bot aiming" {
     const gpa = std.testing.allocator;
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
@@ -320,13 +320,13 @@ test "qa3: save/load preserves state and gear" {
     const gear_path = try makeTmpPath(alloc, &tmp, "round-gear.json");
     defer alloc.free(gear_path);
 
-    const g1 = try RunGame.create(alloc, 480, 270, .warrior, 12345);
+    const g1 = try RunGame.create(alloc, 640, 360, .warrior, 12345);
     defer g1.destroy();
     var steps: usize = 0;
     while (steps < 80 and g1.sim.turn < 25 and g1.sim.state == .playing) : (steps += 1) g1.autoPlayStep();
     g1.saveRun(io, sim_path, gear_path);
 
-    const g2 = try RunGame.create(alloc, 480, 270, .warrior, 12345);
+    const g2 = try RunGame.create(alloc, 640, 360, .warrior, 12345);
     defer g2.destroy();
     g2.loadRun(io, sim_path, gear_path);
 
@@ -358,13 +358,13 @@ test "qa3: loot rng survives save/load" {
     const gear_path = try makeTmpPath(alloc, &tmp, "loot-gear.json");
     defer alloc.free(gear_path);
 
-    const g1 = try RunGame.create(alloc, 480, 270, .warrior, 12345);
+    const g1 = try RunGame.create(alloc, 640, 360, .warrior, 12345);
     defer g1.destroy();
     try std.testing.expect(openChestScenario(g1));
     const a = chestApproach(g1).?;
     g1.saveRun(io, sim_path, gear_path);
 
-    const g2 = try RunGame.create(alloc, 480, 270, .warrior, 12345);
+    const g2 = try RunGame.create(alloc, 640, 360, .warrior, 12345);
     defer g2.destroy();
     g2.loadRun(io, sim_path, gear_path);
 
@@ -390,7 +390,7 @@ test "qa3: corrupt save and missing gear leave the current run alone" {
     const gear_path = try makeTmpPath(alloc, &tmp, "bad-gear.json");
     defer alloc.free(gear_path);
 
-    const g = try RunGame.create(alloc, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(alloc, 640, 360, .warrior, 12345);
     defer g.destroy();
     _ = g.sim.wait();
     try std.testing.expect(g.inventory.pickup(0));
@@ -443,7 +443,7 @@ test "qa3: empty gear object is rejected without clearing the bag" {
     const gear_path = try makeTmpPath(alloc, &tmp, "empty-gear.json");
     defer alloc.free(gear_path);
 
-    const g = try RunGame.create(alloc, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(alloc, 640, 360, .warrior, 12345);
     defer g.destroy();
     try std.testing.expect(g.inventory.pickup(0));
     g.saveRun(io, sim_path, gear_path);
@@ -595,7 +595,7 @@ test "qa3: boss seals floor-3 stairs without spending a turn" {
 
 test "qa3: H toggles help and freezes turns" {
     const gpa = std.testing.allocator;
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     const turn = g.sim.turn;
