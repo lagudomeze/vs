@@ -143,6 +143,8 @@ pub const TomeGame = struct {
         "saves/slot2.save",
         "saves/slot3.save",
     },
+    autosave_file: []const u8 = "saves/autosave.save",
+    autosave_pending: bool = false,
     save_ok: bool = true,
     /// Window play presents a short "敌人行动" phase; tests/bots leave this
     /// false so their turns resolve synchronously.
@@ -286,6 +288,7 @@ pub const TomeGame = struct {
         self.aim_talent = null;
         self.aim_cell = null;
         self.enemy_phase_timer = 0;
+        self.autosave_pending = false;
         self.reset_armed = 0;
         self.step_cooldown = 0;
         self.show_help = false;
@@ -409,6 +412,36 @@ pub const TomeGame = struct {
         self.fillHudState();
     }
 
+    pub fn flushAutosave(self: *TomeGame, io: std.Io) void {
+        if (!self.autosave_pending) return;
+        self.autosave_pending = false;
+        if (self.sim.enemy_phase_pending) {
+            self.sim.resolvePendingEnemyPhase();
+            self.syncVisuals(false);
+        }
+        if (std.fs.path.dirname(self.autosave_file)) |dir| {
+            std.Io.Dir.cwd().createDirPath(io, dir) catch {};
+        }
+        slot_bundle.saveFileAtomic(io, self.gpa, self.autosave_file, &self.sim, &self.inventory, &self.loot_rng) catch |err| {
+            self.sim.pushLog("自动存档失败 {s}", .{@errorName(err)});
+            self.fillHudState();
+            return;
+        };
+        self.sim.pushLog("自动存档：第 {d} 层", .{self.sim.floor});
+        self.fillHudState();
+    }
+
+    pub fn loadAutoSlot(self: *TomeGame, io: std.Io) void {
+        const loaded = slot_bundle.loadFile(io, self.gpa, self.autosave_file) catch |err| {
+            const msg = if (err == error.FileNotFound) "没有自动存档" else @errorName(err);
+            self.sim.pushLog("读档失败：{s}", .{msg});
+            return;
+        };
+        self.applyLoaded(loaded.sim, loaded.gear);
+        self.autosave_pending = false;
+        self.fillHudState();
+    }
+
     pub fn saveRun(self: *TomeGame, io: std.Io, sim_path: []const u8, gear_path: []const u8) void {
         if (self.sim.enemy_phase_pending) {
             self.sim.resolvePendingEnemyPhase();
@@ -487,6 +520,7 @@ pub const TomeGame = struct {
         self.aim_talent = null;
         self.aim_cell = null;
         self.enemy_phase_timer = 0;
+        self.autosave_pending = false;
         self.reset_armed = 0;
         self.step_cooldown = 0;
         self.show_help = false;
@@ -829,6 +863,7 @@ pub const TomeGame = struct {
             self.clearAim();
             self.rebuildMesh();
             self.syncVisuals(true);
+            self.autosave_pending = true;
         }
 
         self.syncVisuals(false);
@@ -1941,6 +1976,26 @@ test "tome game: held repeat is throttled to one step per 0.3s" {
     try std.testing.expectEqual(turn, g.sim.turn);
     g.update(.{ .step_x = dx, .step_y = dy }, 0.31);
     try std.testing.expect(g.sim.turn >= turn);
+}
+
+test "tome game: autosave flushes and loads" {
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    defer g.destroy();
+    g.started = true;
+    const auto_path = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "autosave.save" });
+    defer gpa.free(auto_path);
+    g.autosave_file = auto_path;
+    const hp = g.sim.hero.hp;
+    g.autosave_pending = true;
+    g.flushAutosave(io);
+    try std.testing.expect(!g.autosave_pending);
+    g.sim.hero.hp = 1;
+    g.loadAutoSlot(io);
+    try std.testing.expectApproxEqAbs(hp, g.sim.hero.hp, 0.01);
 }
 
 test "tome game: slots fall back to legacy run+gear pair" {
