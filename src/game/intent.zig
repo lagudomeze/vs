@@ -22,6 +22,7 @@ const std = @import("std");
 pub const boss_kind: u8 = 5;
 /// The boss uses its AOE on turn 3, 6, 9, ...
 pub const boss_aoe_period: u32 = 3;
+pub const boss_aoe_period_enraged: u32 = 2;
 pub const boss_aoe_radius: f32 = 0.9;
 pub const boss_aoe_telegraph: u8 = 1;
 /// 2.8x attack matches the 45 damage of the v1 abyss cleave at 16 attack.
@@ -139,10 +140,16 @@ pub fn bossAoeDue(turn: u32) bool {
 /// the player is deciding should pass the upcoming phase (for RunSim, that is
 /// `sim.turn + 1`).
 pub fn preview(map: MapView, enemy: EnemyView, hero: GridPos, turn: u32) EnemyIntent {
+    return previewWithAoePeriod(map, enemy, hero, turn, boss_aoe_period);
+}
+
+/// Same as preview, but lets the caller shorten the boss AOE period when the
+/// boss is enraged. Non-boss intents are unaffected.
+pub fn previewWithAoePeriod(map: MapView, enemy: EnemyView, hero: GridPos, turn: u32, aoe_period: u32) EnemyIntent {
     if (!enemy.alive) return waitIntent(enemy.pos);
     if (enemy.stun_turns > 0) return waitIntent(enemy.pos);
 
-    if (isBoss(enemy.kind) and bossAoeDue(turn)) {
+    if (isBoss(enemy.kind) and turn != 0 and aoe_period != 0 and turn % aoe_period == 0) {
         return .{
             .kind = .aoe,
             .target = hero,

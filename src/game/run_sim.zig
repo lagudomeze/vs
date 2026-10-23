@@ -316,6 +316,7 @@ pub const Sim = struct {
     kill_loot_events: u32 = 0,
     aoe_target: GridPos = .{ .x = 0, .y = 0 },
     aoe_armed: bool = false,
+    boss_enraged: bool = false,
     log_buf: [6]LogLine = .{ .{}, .{}, .{}, .{}, .{}, .{} },
     log_head: usize = 0,
     log_total: usize = 0,
@@ -347,6 +348,7 @@ pub const Sim = struct {
         self.chest_loot_events = 0;
         self.kill_loot_events = 0;
         self.aoe_armed = false;
+        self.boss_enraged = false;
         self.state = .playing;
         self.enemy_phase_pending = false;
         self.defer_enemies = false;
@@ -423,7 +425,7 @@ pub const Sim = struct {
         if (index >= self.enemy_count) return null;
         const e = self.enemies[index];
         if (!e.life.alive) return null;
-        var intent = intent_mod.preview(
+        var intent = intent_mod.previewWithAoePeriod(
             .{
                 .width = grid_w,
                 .height = grid_h,
@@ -440,6 +442,7 @@ pub const Sim = struct {
             },
             .{ .x = self.hero.pos.x, .y = self.hero.pos.y },
             self.turn +| 1,
+            self.bossAoePeriod(),
         );
         if (intent.kind == .aoe and self.aoe_armed) {
             intent.target = .{ .x = self.aoe_target.x, .y = self.aoe_target.y };
@@ -670,9 +673,18 @@ pub const Sim = struct {
         self.armBossAoe();
     }
 
+    fn bossAoePeriod(_: *const Sim) u32 {
+        return intent_mod.boss_aoe_period;
+    }
+
+    fn bossAoeDue(self: *const Sim, turn: u32) bool {
+        const period = self.bossAoePeriod();
+        return turn != 0 and period != 0 and turn % period == 0;
+    }
+
     fn armBossAoe(self: *Sim) void {
         if (self.aoe_armed) return;
-        if (!intent_mod.bossAoeDue(self.turn +| 1)) return;
+        if (!self.bossAoeDue(self.turn +| 1)) return;
         for (self.enemies[0..self.enemy_count]) |e| {
             if (e.life.alive and e.identity.kind == intent_mod.boss_kind) {
                 self.aoe_target = self.hero.pos;
@@ -702,6 +714,7 @@ pub const Sim = struct {
             const dmg = e.status.tickBurn();
             if (dmg <= 0) continue;
             e.vitals.val -= dmg;
+            self.checkBossEnrage(i);
             if (e.vitals.val <= 0) self.killEnemy(i);
         }
     }
@@ -788,7 +801,7 @@ pub const Sim = struct {
         if (!e.life.alive) return;
         if (e.status.consumeStun()) return;
         e.status.consumeSlow();
-        if (e.identity.kind == intent_mod.boss_kind and self.aoe_armed and intent_mod.bossAoeDue(self.turn)) {
+        if (e.identity.kind == intent_mod.boss_kind and self.aoe_armed and self.bossAoeDue(self.turn)) {
             self.aoe_armed = false;
             if (@as(f32, @floatFromInt(dist(self.hero.pos, self.aoe_target))) <= intent_mod.boss_aoe_radius) {
                 const raw = e.combat.attack.val * intent_mod.boss_aoe_damage_scale * e.status.slowDamageScale();
@@ -891,7 +904,21 @@ pub const Sim = struct {
         const result = combat.resolve(.{ .raw = raw, .crit = crit }, .{ .armor = e.combat.armor.val });
         e.vitals.val -= result.amount;
         self.pushLog("命中 {s} {d:.0}{s}", .{ e.identity.name, result.amount, if (result.crit) " 暴击" else "" });
+        self.checkBossEnrage(idx);
         if (e.vitals.val <= 0) self.killEnemy(idx);
+    }
+
+    /// Boss phase 2: once below 35% HP it gains 15% attack and 10 speed.
+    /// The AOE cadence stays unchanged so the phase is a damage check, not a wipe.
+    fn checkBossEnrage(self: *Sim, idx: usize) void {
+        if (self.boss_enraged) return;
+        const e = &self.enemies[idx];
+        if (!e.life.alive or e.identity.kind != intent_mod.boss_kind) return;
+        if (e.vitals.val <= 0 or e.vitals.val > e.vitals.full * 0.35) return;
+        self.boss_enraged = true;
+        e.combat.attack = numeric.valueOf(numeric.Attack, e.combat.attack.val * 1.15);
+        e.combat.speed = numeric.valueOf(numeric.Speed, e.combat.speed.val + 10);
+        self.pushLog("深渊守卫 狂暴", .{});
     }
 
     fn killEnemy(self: *Sim, idx: usize) void {
@@ -1233,6 +1260,35 @@ test "run sim: stepping on stairs advances the floor" {
         _ = s.move(0, 1);
         try std.testing.expect(s.floor >= 2);
     }
+}
+
+test "run sim: boss enrages below half hp and speeds up its cleave" {
+    var s = Sim.init(21, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{
+        .kind = 5,
+        .name = "深渊守卫",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 100,
+        .hp_max = 420,
+        .attack = 16,
+        .armor = 15,
+        .speed = 90,
+        .range = 1,
+        .xp = 200,
+        .energy = 100,
+    });
+    s.hero.combat.attack.val = 50;
+    s.playerAttack(0, 1.0);
+    try std.testing.expect(s.enemies[0].life.alive);
+    try std.testing.expect(s.boss_enraged);
+    try std.testing.expect(s.enemies[0].combat.attack.val > 16);
+    try std.testing.expect(s.enemies[0].combat.speed.val >= 100);
+
+    // The enraged phase keeps the normal every-third-phase cleave cadence.
+    s.turn = 1;
+    const enraged_intent = s.intentFor(0) orelse return error.MissingIntent;
+    try std.testing.expect(enraged_intent.kind != intent_mod.IntentKind.aoe);
 }
 
 test "run sim: boss is immune to stun and slow" {

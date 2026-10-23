@@ -168,6 +168,7 @@ const MapSave = struct {
     trap_alive: [trap_slots]bool,
     aoe_target: GridPosSave,
     aoe_armed: bool,
+    boss_enraged: bool = false,
 };
 
 const SaveRoot = struct {
@@ -380,6 +381,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .trap_alive = trap_alive,
             .aoe_target = savePos(sim.aoe_target),
             .aoe_armed = sim.aoe_armed,
+            .boss_enraged = sim.boss_enraged,
         },
         .log = log_buf[0..sim.log_total],
     };
@@ -571,6 +573,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     sim.kill_loot_events = root.kill_loot;
     sim.aoe_target = loadPos(map.aoe_target);
     sim.aoe_armed = map.aoe_armed;
+    sim.boss_enraged = map.boss_enraged;
     sim.blocked = map.blocked;
     sim.stairs = loadPos(map.stairs);
     for (map.chests, 0..) |p, i| sim.chests[i] = loadPos(p);
@@ -767,6 +770,7 @@ fn expectSameRun(expected: *const Sim, actual: *const Sim) !void {
     try testing.expectEqual(expected.trap_count, actual.trap_count);
     try testing.expectEqual(expected.enemy_count, actual.enemy_count);
     try testing.expectEqual(expected.aoe_armed, actual.aoe_armed);
+    try testing.expectEqual(expected.boss_enraged, actual.boss_enraged);
     try testing.expectEqual(expected.aoe_target.x, actual.aoe_target.x);
     try testing.expectEqual(expected.aoe_target.y, actual.aoe_target.y);
     try testing.expectEqual(expected.stairs.x, actual.stairs.x);
@@ -840,6 +844,7 @@ test "save: fresh run round-trips (short log, no events)" {
     const alloc = testing.allocator;
     var sim = Sim.initWithDifficulty(4242, .warrior, .hard);
     sim.hero.progression.pending_points = 2;
+    sim.boss_enraged = true;
     try testing.expect(sim.log_total < log_lines_max);
 
     const bytes = try saveAlloc(alloc, &sim);

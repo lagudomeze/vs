@@ -1442,6 +1442,9 @@ pub const RunGame = struct {
                 if (self.sim.enemies[i].status.stun_immune) {
                     const bx = std.math.clamp(x - renderer.Renderer.textWidth("BOSS", 1), 2, w - 2);
                     self.renderer.drawText(bx, y + 15, "BOSS", palette.red, 1, true);
+                    if (self.sim.boss_enraged) {
+                        self.renderer.drawText(bx, y + 24, "RAGE", palette.gold, 1, true);
+                    }
                 }
             }
             if (target != null and target.? == i) {
