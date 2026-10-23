@@ -18,6 +18,34 @@ pub const ShrineChoice = enum(u8) { main_stat, constitution, will, risk };
 
 pub const Affix = enum(u8) { none, swift, armored, vampiric };
 
+pub const FloorMod = enum(u8) {
+    none,
+    ember,
+    frost,
+    miasma,
+
+    pub fn label(self: FloorMod) []const u8 {
+        return switch (self) {
+            .none => "",
+            .ember => "EMBER",
+            .frost => "FROST",
+            .miasma => "MIASMA",
+        };
+    }
+
+    pub fn burnScale(self: FloorMod) f32 {
+        return if (self == .ember) 1.5 else 1.0;
+    }
+
+    pub fn enemySpeedScale(self: FloorMod) f32 {
+        return if (self == .frost) 0.90 else 1.0;
+    }
+
+    pub fn resourceScale(self: FloorMod) f32 {
+        return if (self == .miasma) 0.5 else 1.0;
+    }
+};
+
 pub const Difficulty = enum(u8) {
     normal,
     hard,
@@ -309,6 +337,7 @@ pub const Sim = struct {
     rng: std.Random.DefaultPrng,
     class: Class,
     difficulty: Difficulty = .normal,
+    floor_mod: FloorMod = .none,
     hero: Hero,
     enemies: [max_enemies]Enemy = undefined,
     enemy_count: usize = 0,
@@ -509,6 +538,16 @@ pub const Sim = struct {
         return @intCast(@abs(a.x - b.x) + @abs(a.y - b.y));
     }
 
+    fn rollFloorMod(seed: u64, floor: u8) FloorMod {
+        if (floor < 2) return .none;
+        const h = seed ^ (@as(u64, floor) *% 0x94d049bb133111eb) ^ 0x9e3779b97f4a7c15;
+        var rng = std.Random.DefaultPrng.init(h);
+        const roll = rng.random().float(f32);
+        if (roll < 0.34) return .ember;
+        if (roll < 0.67) return .frost;
+        return .miasma;
+    }
+
     fn chooseShrine(self: *Sim) void {
         self.shrine_active = false;
         self.shrine_used = false;
@@ -621,6 +660,7 @@ pub const Sim = struct {
             self.trap_count += 1;
         }
 
+        self.floor_mod = rollFloorMod(self.seed, self.floor);
         const kinds: []const u8 = switch (self.floor) {
             1 => &.{ 0, 1, 0, 0, 1, 0, 0, 1 },
             2 => &.{ 3, 0, 6, 2, 4, 1, 6, 3 },
@@ -633,6 +673,7 @@ pub const Sim = struct {
         }
         self.chooseShrine();
         self.pushLog("第 {d} 层：{d} 个敌人", .{ self.floor, self.enemy_count });
+        if (self.floor_mod != .none) self.pushLog("MOD {s}", .{self.floor_mod.label()});
     }
 
     pub fn setEnemyDefs(self: *Sim, defs: []const content_mod.EnemyDef) void {
@@ -672,7 +713,7 @@ pub const Sim = struct {
         const hp = def.combat.hp * self.difficulty.hpScale();
         const dmg = def.combat.damage * self.difficulty.damageScale();
         const affix: Affix = if (def.ai.kind == intent_mod.boss_kind or self.floor < 2) .none else rollAffix(self.seed, self.floor, def.ai.kind, pos);
-        const speed = @as(f32, @floatFromInt(def.combat.speed)) + (if (affix == .swift) @as(f32, 15) else 0);
+        const speed = (@as(f32, @floatFromInt(def.combat.speed)) + (if (affix == .swift) @as(f32, 15) else 0)) * self.floor_mod.enemySpeedScale();
         const armor = def.combat.armor + (if (affix == .armored) @as(f32, 3) else 0);
         self.enemies[idx] = .{
             .identity = .{ .kind = def.ai.kind, .name = def.name },
@@ -852,7 +893,7 @@ pub const Sim = struct {
             if (cd.* > 0) cd.* -= 1;
         }
         _ = self.hero.status.tickBuff();
-        self.hero.resource.val = @min(self.hero.resource.full, self.hero.resource.val + self.hero.resource_regen.val);
+        self.hero.resource.val = @min(self.hero.resource.full, self.hero.resource.val + self.hero.resource_regen.val * self.floor_mod.resourceScale());
         if (self.hero.vitals.val <= 0) {
             self.state = .dead;
             return;
@@ -932,7 +973,7 @@ pub const Sim = struct {
                 const raw = e.combat.attack.val * intent_mod.boss_aoe_damage_scale * e.status.slowDamageScale();
                 const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount;
                 self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
-                self.hero.status.applyBurn(2, e.combat.attack.val * 0.20);
+                self.hero.status.applyBurn(2, e.combat.attack.val * 0.20 * self.floor_mod.burnScale());
                 self.pushLog("深渊守卫 深渊斩 -{d:.0}", .{dmg});
             } else {
                 self.pushLog("躲开深渊斩", .{});
@@ -1019,7 +1060,7 @@ pub const Sim = struct {
         self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
         if (e.affix == .vampiric and dmg > 0) e.vitals.set(e.vitals.val + dmg * 0.20);
         if (e.identity.kind == 6 and dmg > 0) {
-            self.hero.status.applyBurn(2, e.combat.attack.val * 0.10);
+            self.hero.status.applyBurn(2, e.combat.attack.val * 0.10 * self.floor_mod.burnScale());
         }
         self.pushLog("{s} 造成 {d:.0} 伤害", .{ e.identity.name, dmg });
     }
@@ -1249,7 +1290,7 @@ pub const Sim = struct {
             if (d > @as(i32, @intFromFloat(radius))) continue;
             self.playerAttack(i, if (d == 0) mult else mult * 0.6);
             if (!e.life.alive) continue;
-            const burn = self.hero.combat.attack.val * 0.12;
+            const burn = self.hero.combat.attack.val * 0.12 * self.floor_mod.burnScale();
             e.status.applyBurn(2, burn);
         }
     }
@@ -1395,6 +1436,21 @@ test "run sim: stepping on stairs advances the floor" {
         _ = s.move(0, 1);
         try std.testing.expect(s.floor >= 2);
     }
+}
+
+test "run sim: floor modifiers are deterministic and scale the right knobs" {
+    var a = Sim.init(88, .warrior);
+    a.floor = 2;
+    a.generateFloor();
+    var b = Sim.init(88, .warrior);
+    b.floor = 2;
+    b.generateFloor();
+    try std.testing.expectEqual(a.floor_mod, b.floor_mod);
+    try std.testing.expect(a.floor_mod != .none);
+
+    try std.testing.expectApproxEqAbs(@as(f32, 1.5), FloorMod.ember.burnScale(), 0.001);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.90), FloorMod.frost.enemySpeedScale(), 0.001);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.5), FloorMod.miasma.resourceScale(), 0.001);
 }
 
 test "run sim: abyss wraith ranged hit applies burn" {

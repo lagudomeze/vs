@@ -255,7 +255,7 @@ raw
 
 拥有：
 
-- RunState：seed/floor/floors/state；
+- RunState：seed/floor/floors/state/floor_mod；
 - FloorPlan：生成参数、Boss、楼梯、宝箱/陷阱预算；
 - 胜负条件：Boss 死亡、楼梯封印、全灭；
 - 存档边界。

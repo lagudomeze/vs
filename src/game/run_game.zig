@@ -1782,6 +1782,7 @@ pub const RunGame = struct {
             .shrine_open = self.shrine_open,
             .shrine_main_label = self.sim.shrineMainLabel(),
             .potions = potion_count,
+            .floor_mod_label = self.sim.floor_mod.label(),
             .seed = self.sim.seed,
             .buff_turns = self.sim.hero.status.buff_turns,
             .buff_pct = self.sim.hero.status.buff_pct,

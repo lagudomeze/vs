@@ -50,6 +50,7 @@ pub const State = struct {
     shrine_open: bool = false,
     shrine_main_label: []const u8 = "力量",
     potions: u8 = 0,
+    floor_mod_label: []const u8 = "",
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -287,7 +288,10 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     else
         fmt(&floor_buf, "第 {d}/{d} 层", .{ state.floor, state.floors });
     r.drawText(w - 154, 9, floor, palette.gold_light, 1, false);
-    const enemies = fmt(&buf, "敌人 {d}", .{state.enemies_left});
+    const enemies = if (state.floor_mod_label.len > 0)
+        fmt(&buf, "敌人 {d}  {s}", .{ state.enemies_left, state.floor_mod_label })
+    else
+        fmt(&buf, "敌人 {d}", .{state.enemies_left});
     r.drawText(w - 154, 23, enemies, palette.cream, 1, false);
     const turn = if (state.enemy_phase) "敌人行动" else fmt(&buf, "玩家回合 {d}", .{state.turn});
     r.drawText(w - 154, 37, turn, if (state.enemy_phase) palette.red else palette.gold_light, 1, false);
