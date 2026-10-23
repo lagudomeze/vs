@@ -32,7 +32,7 @@ fn writeItemDetail(buf: []u8, def: *const items_mod.ItemDef) []const u8 {
     var off: usize = 0;
     detailAppend(buf, &off, "{s}", .{items_mod.qualityLabel(def.quality)});
     var shown: usize = 0;
-    for (def.mods) |m| {
+    for (def.mods()) |m| {
         if (shown >= 2) break;
         if (m.flat != 0) {
             const sign: []const u8 = if (m.flat > 0) "+" else "";
@@ -49,7 +49,7 @@ fn writeItemDetail(buf: []u8, def: *const items_mod.ItemDef) []const u8 {
             shown += 1;
         }
     }
-    if (def.use) |u| {
+    if (def.use()) |u| {
         if (u.heal > 0) detailAppend(buf, &off, " 回复{d:.0}", .{u.heal});
         if (u.resource > 0) detailAppend(buf, &off, " 资源{d:.0}", .{u.resource});
     }
@@ -705,7 +705,7 @@ pub const RunGame = struct {
         const item = self.inventory.at(index);
         if (item >= self.content.items.len) return;
         const def = &self.content.items[item];
-        if (def.slot == null) {
+        if (def.slot() == null) {
             self.sim.pushLog("{s} 不能装备", .{def.name});
             return;
         }
@@ -719,7 +719,7 @@ pub const RunGame = struct {
 
     fn itemScore(def: *const items_mod.ItemDef) f32 {
         var score: f32 = 0;
-        for (def.mods) |m| {
+        for (def.mods()) |m| {
             score += m.flat;
             score += m.pct * 20.0;
         }
@@ -730,7 +730,7 @@ pub const RunGame = struct {
         for (self.inventory.slice()) |id| {
             if (id >= self.content.items.len) continue;
             const def = &self.content.items[id];
-            const use = def.use orelse continue;
+            const use = def.use() orelse continue;
             if (use.heal <= 0) continue;
             if (!self.inventory.remove(id)) continue;
             self.sim.hero.hp = @min(self.sim.hero.hp_max, self.sim.hero.hp + use.heal);
@@ -758,7 +758,7 @@ pub const RunGame = struct {
         }
         const def = &self.content.items[item];
         self.sim.pushLog("获得 {s}", .{def.name});
-        if (def.slot) |slot| {
+        if (def.slot()) |slot| {
             if (def.allowsClass(self.classOf())) {
                 var better = self.inventory.equipped.get(slot) == null;
                 if (self.inventory.equipped.get(slot)) |current| {

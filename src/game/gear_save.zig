@@ -134,7 +134,7 @@ test "gear save: JSON roundtrip and bad inputs" {
 }
 
 const test_defs = [_]items.ItemDef{
-    .{ .id = "test_sword", .name = "测试剑", .slot = .main_hand, .quality = .common, .description = "" },
-    .{ .id = "test_body", .name = "测试甲", .slot = .body, .quality = .common, .description = "" },
-    .{ .id = "test_trinket", .name = "测试饰品", .slot = .trinket, .quality = .common, .description = "" },
+    .{ .id = "test_sword", .name = "测试剑", .kind = .{ .equipment = .{ .slot = .main_hand } } },
+    .{ .id = "test_body", .name = "测试甲", .kind = .{ .equipment = .{ .slot = .body } } },
+    .{ .id = "test_trinket", .name = "测试饰品", .kind = .{ .equipment = .{ .slot = .trinket } } },
 };
