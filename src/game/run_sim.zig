@@ -3,6 +3,7 @@
 const std = @import("std");
 const dungeon_mod = @import("dungeon.zig");
 const attributes = @import("attributes.zig");
+const status_def = @import("status_def.zig");
 const combat = @import("combat.zig");
 const content_mod = @import("content.zig");
 const numeric = @import("numeric.zig");
@@ -297,7 +298,17 @@ pub const StatusSet = struct {
         if (turns == 0 or damage <= 0) return;
         self.burn_turns = @max(self.burn_turns, turns);
         self.burn_damage = @max(self.burn_damage, damage);
-        self.burn_stacks = @min(3, if (self.burn_stacks == 0) 1 else self.burn_stacks + 1);
+        self.burn_stacks = @min(status_def.max_burn_stacks, if (self.burn_stacks == 0) 1 else self.burn_stacks + 1);
+    }
+
+    /// Clear all debuffs. Guard/buff are positive and survive a cleanse.
+    pub fn cleanseDebuffs(self: *StatusSet) void {
+        self.stun_turns = 0;
+        self.slow_turns = 0;
+        self.burn_turns = 0;
+        self.burn_damage = 0;
+        self.burn_stacks = 0;
+        self.vulnerable_turns = 0;
     }
 
     /// Refresh duration without adding a stack. Used for enemy-applied burn on
@@ -734,10 +745,7 @@ pub const Sim = struct {
                 self.pushLog("SHOP 体质 +2", .{});
             },
             .cleanse => {
-                self.hero.status.burn_turns = 0;
-                self.hero.status.burn_damage = 0;
-                self.hero.status.slow_turns = 0;
-                self.hero.status.vulnerable_turns = 0;
+                self.hero.status.cleanseDebuffs();
                 self.pushLog("SHOP 净化", .{});
             },
         }

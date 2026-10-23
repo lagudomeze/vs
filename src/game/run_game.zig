@@ -18,6 +18,7 @@ const content_mod = @import("content.zig");
 const items_mod = @import("items.zig");
 const attributes = @import("attributes.zig");
 const save_mod = @import("save.zig");
+const status_def = @import("status_def.zig");
 const gear_save = @import("gear_save.zig");
 const slot_bundle = @import("slot_bundle.zig");
 const records_mod = @import("records.zig");
@@ -1623,22 +1624,24 @@ pub const RunGame = struct {
                     self.renderer.drawText(bx, y + 24, burn_label, palette.red, 1, true);
                 }
                 const cc_label: []const u8 = if (self.sim.enemies[i].status.stun_turns > 0)
-                    "STUN"
+                    status_def.tag(.stun)
                 else if (self.sim.enemies[i].status.slow_turns > 0)
-                    "SLOW"
+                    status_def.tag(.slow)
                 else
                     "";
                 if (cc_label.len > 0) {
                     const cx = std.math.clamp(x - renderer.Renderer.textWidth(cc_label, 1), 2, w - 2);
-                    self.renderer.drawText(cx, y + 33, cc_label, if (std.mem.eql(u8, cc_label, "STUN")) palette.red else palette.cyan_light, 1, true);
+                    self.renderer.drawText(cx, y + 33, cc_label, if (std.mem.eql(u8, cc_label, status_def.tag(.stun))) status_def.get(.stun).color else status_def.get(.slow).color, 1, true);
                 }
                 if (self.sim.enemies[i].status.vulnerable_turns > 0) {
-                    const vx = std.math.clamp(x - renderer.Renderer.textWidth("VULN", 1), 2, w - 2);
-                    self.renderer.drawText(vx, y + 42, "VULN", color.pack(220, 120, 255), 1, true);
+                    const vtag = status_def.tag(.vulnerable);
+                    const vx = std.math.clamp(x - renderer.Renderer.textWidth(vtag, 1), 2, w - 2);
+                    self.renderer.drawText(vx, y + 42, vtag, status_def.get(.vulnerable).color, 1, true);
                 }
                 if (self.sim.enemies[i].status.guard_turns > 0) {
-                    const gx = std.math.clamp(x - renderer.Renderer.textWidth("GUARD", 1), 2, w - 2);
-                    self.renderer.drawText(gx, y + 51, "GUARD", color.pack(180, 200, 230), 1, true);
+                    const gtag = status_def.tag(.guard);
+                    const gx = std.math.clamp(x - renderer.Renderer.textWidth(gtag, 1), 2, w - 2);
+                    self.renderer.drawText(gx, y + 51, gtag, status_def.get(.guard).color, 1, true);
                 }
                 if (self.sim.enemies[i].status.stun_immune) {
                     const bx = std.math.clamp(x - renderer.Renderer.textWidth("BOSS", 1), 2, w - 2);
