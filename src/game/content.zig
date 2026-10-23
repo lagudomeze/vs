@@ -477,6 +477,14 @@ pub const builtin_items = [_]items.ItemDef{
         } },
         .description = "时空法师的齿轮印记：+3 感知，+2 魔力，+5% 暴击。",
     },
+    .{
+        .id = "mana_tonic",
+        .name = "魔力瓶",
+        .quality = .common,
+        .drop = .{ .weight = 0.10 },
+        .kind = .{ .consumable = .{ .use = .{ .resource = 30 } } },
+        .description = "恢复 30 资源；背包面板按 P 使用。",
+    },
 };
 
 /// assets/data/enemies.json 的镜像。
@@ -1187,7 +1195,7 @@ test "embedded tables match the RUN v1 content plan" {
     var content = try load(std.testing.allocator);
     defer content.deinit();
 
-    try std.testing.expectEqual(@as(usize, 12), content.items.len);
+    try std.testing.expectEqual(@as(usize, 13), content.items.len);
     try std.testing.expectEqual(@as(usize, 7), content.enemies.len);
     try std.testing.expectEqual(@as(usize, 10), content.skills.len);
 

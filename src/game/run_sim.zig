@@ -1185,7 +1185,7 @@ pub const Sim = struct {
                 self.hero.resource.val -= @floatFromInt(cost);
                 self.hero.talents.cooldowns[i] = self.talentCooldown(i);
                 if (i == 0) {
-                    self.aoeAttack(idx, 2.5, 1.5);
+                    self.aoeAttack(idx, 2.35, 1.5);
                 } else {
                     self.playerAttack(idx, 1.8);
                     if (!self.enemies[idx].status.applySlow(2)) self.pushLog("Boss 免疫减速", .{});

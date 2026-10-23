@@ -245,6 +245,16 @@
         }
       ],
       "description": "时空法师的齿轮印记：+3 感知，+2 魔力，+5% 暴击。"
+    },
+    {
+      "id": "mana_tonic",
+      "name": "魔力瓶",
+      "quality": "common",
+      "weight": 0.10,
+      "use": {
+        "resource": 30
+      },
+      "description": "恢复 30 资源；背包面板按 P 使用。"
     }
   ]
 }
