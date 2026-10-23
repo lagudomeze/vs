@@ -228,6 +228,7 @@ pub const StatusSet = struct {
     burn_damage: f32 = 0,
     vulnerable_turns: u16 = 0,
     vulnerable_pct: f32 = 0.20,
+    guard_turns: u16 = 0,
 
     pub fn canAct(self: StatusSet) bool {
         return self.stun_turns == 0;
@@ -269,11 +270,14 @@ pub const StatusSet = struct {
     }
 
     pub fn damageTakenScale(self: StatusSet) f32 {
-        return if (self.vulnerable_turns > 0) 1.0 + self.vulnerable_pct else 1.0;
+        var scale: f32 = if (self.vulnerable_turns > 0) 1.0 + self.vulnerable_pct else 1.0;
+        if (self.guard_turns > 0) scale *= 0.5;
+        return scale;
     }
 
     pub fn tickVulnerable(self: *StatusSet) void {
         if (self.vulnerable_turns > 0) self.vulnerable_turns -= 1;
+        if (self.guard_turns > 0) self.guard_turns -= 1;
     }
 
     pub fn applyStun(self: *StatusSet, turns: u16) bool {
@@ -1115,6 +1119,12 @@ pub const Sim = struct {
             self.pushLog("石魔像 震地 -{d:.0}", .{dmg});
             return;
         }
+        if ((e.identity.kind == 0 or e.identity.kind == 3) and e.vitals.val < e.vitals.full * 0.5 and e.action.special_cd == 0) {
+            e.status.guard_turns = 1;
+            e.action.special_cd = 4;
+            self.pushLog("{s} 举盾", .{e.identity.name});
+            return;
+        }
         if ((e.identity.kind == 1 or e.identity.kind == 4) and d <= e.combat.range and los and e.action.special_cd == 0) {
             const raw = e.combat.attack.val * 0.7;
             const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount;
@@ -1679,6 +1689,27 @@ test "run sim: affixes are deterministic and vampiric heals on hit" {
     });
     _ = s.wait();
     try std.testing.expect(s.enemies[0].vitals.val > 40);
+}
+
+test "run sim: low-hp skeleton guards and takes half damage" {
+    var s = Sim.init(85, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{
+        .kind = 0,
+        .name = "骷髅兵",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 20,
+        .hp_max = 56,
+        .attack = 8,
+        .armor = 4,
+        .speed = 100,
+        .range = 1,
+        .xp = 20,
+        .energy = 100,
+    });
+    s.enemyAct(0);
+    try std.testing.expect(s.enemies[0].status.guard_turns > 0);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.5), s.enemies[0].status.damageTakenScale(), 0.001);
 }
 
 test "run sim: wraith drain damages and heals itself" {
