@@ -173,6 +173,7 @@ pub const RunGame = struct {
     /// generated so the menu can preview the 3D dungeon behind the cards.
     started: bool = true,
     shrine_open: bool = false,
+    shop_open: bool = false,
     hero_vis: Visual = .{},
     enemy_vis: [sim_mod.max_enemies]Visual = undefined,
     floats: [24]FloatText = .{ .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{} },
@@ -383,12 +384,35 @@ pub const RunGame = struct {
         self.last_state = self.sim.state;
     }
 
+    pub fn debugShop(self: *RunGame) void {
+        self.started = true;
+        self.shop_open = true;
+        self.sim.shop_active = true;
+        self.sim.shop_used = false;
+        self.sim.gold = 120;
+        self.fillHudState();
+    }
+
     pub fn debugShrine(self: *RunGame) void {
         self.started = true;
         self.shrine_open = true;
         self.sim.shrine_active = true;
         self.sim.shrine_used = false;
         self.fillHudState();
+    }
+
+    pub fn closeShop(self: *RunGame) void {
+        self.shop_open = false;
+        self.fillHudState();
+    }
+
+    fn buyShop(self: *RunGame, index: usize) void {
+        if (index >= 3) return;
+        const choice: sim_mod.ShopChoice = @fromBackingInt(@intCast(index));
+        if (self.sim.useShop(choice)) {
+            self.shop_open = false;
+            self.fillHudState();
+        }
     }
 
     pub fn closeShrine(self: *RunGame) void {
@@ -683,6 +707,7 @@ pub const RunGame = struct {
         self.panel = .none;
         self.started = true;
         self.shrine_open = self.sim.atShrine();
+        self.shop_open = self.sim.atShop();
         self.rebuildMesh();
         self.resetVisuals();
         self.fillHudState();
@@ -947,6 +972,15 @@ pub const RunGame = struct {
             return;
         }
 
+        if (self.shop_open) {
+            if (input.talent >= 0) self.buyShop(@intCast(input.talent));
+            self.syncVisuals(false);
+            self.updateVisuals(dt);
+            self.followCamera();
+            self.fillHudState();
+            return;
+        }
+
         if (self.slot_menu != .none) {
             self.fillHudState();
             return;
@@ -1062,6 +1096,9 @@ pub const RunGame = struct {
                     self.sim.pushLog("前方被挡住", .{});
                 } else if (self.sim.state == .playing and self.sim.atShrine()) {
                     self.shrine_open = true;
+                    self.clearAim();
+                } else if (self.sim.state == .playing and self.sim.atShop()) {
+                    self.shop_open = true;
                     self.clearAim();
                 }
                 self.flashAfter(before_hero, before[0..self.sim.enemy_count]);
@@ -1772,6 +1809,14 @@ pub const RunGame = struct {
                 self.renderer.drawModel(self.models.at(ri), null, math.Mat4.compose(shrine_pos.add(math.Vec3.init(0, 0.04, 0)), self.time * 0.6, 0, 0, 0.7), .{ .tint = palette.cyan_light, .id = 91 });
             }
         }
+
+        if (self.sim.shop_active and !self.sim.shop_used) {
+            const shop_pos = tilePos(self.sim.shop.x, self.sim.shop.y);
+            self.renderer.drawGlow(shop_pos.add(math.Vec3.init(0, 0.45, 0)), 0.55, palette.gold_light, 0.65);
+            if (self.models.indexOf("dungeon_chest")) |ci| {
+                self.renderer.drawModel(self.models.at(ci), null, math.Mat4.compose(shop_pos, 0, 0, 0, 0.78), .{ .tint = palette.gold_light, .id = 92 });
+            }
+        }
     }
 
     fn shortEnemyName(name: []const u8) []const u8 {
@@ -1823,6 +1868,8 @@ pub const RunGame = struct {
             .shrine_open = self.shrine_open,
             .shrine_main_label = self.sim.shrineMainLabel(),
             .record_wins = self.records.wins,
+            .gold = self.sim.gold,
+            .shop_open = self.shop_open,
             .record_best_floor = self.records.best_floor,
             .record_best_turn = self.records.best_turn,
             .potions = potion_count,
@@ -2105,6 +2152,23 @@ test "run game: death updates lifetime records once" {
     try std.testing.expect(g.records_dirty);
     g.fillHudState();
     try std.testing.expectEqual(@as(u32, 1), g.records.deaths);
+}
+
+test "run game: shop panel buys a heal once" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+
+    g.sim.shop = g.sim.hero.pos;
+    g.sim.shop_active = true;
+    g.debugShop();
+    g.sim.gold = 100;
+    g.sim.hero.vitals.val = 20;
+    try std.testing.expect(g.hud_state.shop_open);
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expect(g.sim.hero.vitals.val > 20);
+    try std.testing.expect(!g.shop_open);
+    try std.testing.expectEqual(@as(u32, 75), g.sim.gold);
 }
 
 test "run game: shrine panel consumes a choice once" {

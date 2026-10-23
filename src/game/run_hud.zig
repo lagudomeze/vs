@@ -54,6 +54,8 @@ pub const State = struct {
     record_wins: u32 = 0,
     record_best_floor: u8 = 1,
     record_best_turn: u32 = 0,
+    gold: u32 = 0,
+    shop_open: bool = false,
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -310,9 +312,9 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         fmt(&floor_buf, "第 {d}/{d} 层", .{ state.floor, state.floors });
     r.drawText(w - 154, 9, floor, palette.gold_light, 1, false);
     const enemies = if (state.floor_mod_label.len > 0)
-        fmt(&buf, "敌人 {d}  {s}", .{ state.enemies_left, state.floor_mod_label })
+        fmt(&buf, "敌人 {d}  {s}  G{d}", .{ state.enemies_left, state.floor_mod_label, state.gold })
     else
-        fmt(&buf, "敌人 {d}", .{state.enemies_left});
+        fmt(&buf, "敌人 {d}  G{d}", .{ state.enemies_left, state.gold });
     r.drawText(w - 154, 23, enemies, palette.cream, 1, false);
     const turn = if (state.enemy_phase) "敌人行动" else fmt(&buf, "玩家回合 {d}", .{state.turn});
     r.drawText(w - 154, 37, turn, if (state.enemy_phase) palette.red else palette.gold_light, 1, false);
@@ -530,6 +532,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     }
 
     if (state.shrine_open) drawShrine(r, state, w, h);
+    if (state.shop_open) drawShop(r, state, w, h);
 
     // save / load slot modal, on top of everything
     if (state.slot_mode != 0) {
@@ -557,6 +560,31 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         }
         r.drawText(px + 16, py + ph - 24, "1/2/3 选择   Esc 取消", palette.muted, 1, true);
     }
+}
+
+fn drawShop(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
+    const pw: i32 = 300;
+    const ph: i32 = 160;
+    const px = @divTrunc(w - pw, 2);
+    const py = @divTrunc(h - ph, 2);
+    r.fillRect(0, 0, w, h, palette.deep);
+    r.fillRect(px, py, pw, ph, palette.panel);
+    r.strokeRect(px, py, pw, ph, palette.gold);
+    r.fillRect(px + 2, py + 2, pw - 4, 2, palette.gold_light);
+
+    const title = "SHOP";
+    const tw = renderer.Renderer.textWidth(title, 2);
+    r.drawText(px + @divTrunc(pw - tw, 2), py + 10, title, palette.gold_light, 2, true);
+    var gold_buf: [32]u8 = undefined;
+    const gold = fmt(&gold_buf, "GOLD {d}", .{state.gold});
+    const gw = renderer.Renderer.textWidth(gold, 1);
+    r.drawText(px + @divTrunc(pw - gw, 2), py + 38, gold, palette.gold, 1, false);
+
+    const lines = [_][]const u8{ "1 治疗 25G", "2 主属性 +2 60G", "3 体质 +2 60G" };
+    for (lines, 0..) |line, i| {
+        r.drawText(px + 40, py + 64 + @as(i32, @intCast(i)) * 22, line, palette.cream, 1, false);
+    }
+    r.drawText(px + 16, py + ph - 22, "1/2/3 选择   Esc 关闭", palette.muted, 1, false);
 }
 
 fn drawShrine(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
