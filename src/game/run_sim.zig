@@ -614,8 +614,8 @@ pub const Sim = struct {
 
         const kinds: []const u8 = switch (self.floor) {
             1 => &.{ 0, 1, 0, 0, 1, 0, 0, 1 },
-            2 => &.{ 3, 0, 1, 2, 4, 1, 0, 3 },
-            else => &.{ 5, 3, 4, 0, 1, 2, 3, 4 },
+            2 => &.{ 3, 0, 6, 2, 4, 1, 6, 3 },
+            else => &.{ 5, 3, 6, 0, 1, 2, 6, 4 },
         };
         const max_spawns: usize = dungeon_mod.spawnsForFloor(self.floor);
         for (self.map.spawnSlice(), 0..) |p, i| {
@@ -1009,6 +1009,9 @@ pub const Sim = struct {
         const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount;
         self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
         if (e.affix == .vampiric and dmg > 0) e.vitals.set(e.vitals.val + dmg * 0.20);
+        if (e.identity.kind == 6 and dmg > 0) {
+            self.hero.status.applyBurn(2, e.combat.attack.val * 0.10);
+        }
         self.pushLog("{s} 造成 {d:.0} 伤害", .{ e.identity.name, dmg });
     }
 
@@ -1383,6 +1386,26 @@ test "run sim: stepping on stairs advances the floor" {
         _ = s.move(0, 1);
         try std.testing.expect(s.floor >= 2);
     }
+}
+
+test "run sim: abyss wraith ranged hit applies burn" {
+    var s = Sim.init(79, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{
+        .kind = 6,
+        .name = "深渊幽魂",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 65,
+        .hp_max = 65,
+        .attack = 9,
+        .armor = 2,
+        .speed = 100,
+        .range = 4,
+        .xp = 45,
+        .energy = 100,
+    });
+    _ = s.wait();
+    try std.testing.expect(s.hero.status.burn_turns > 0);
 }
 
 test "run sim: affixes are deterministic and vampiric heals on hit" {

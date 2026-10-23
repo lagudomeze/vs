@@ -85,6 +85,6 @@ content.zig
 ## 与最初任务的差异
 
 - 按 turn-based_V1 改为回合制：skills.json 由 3 技能扩为 9 个玩家天赋（每职业 3 个）+ 1 个 Boss AOE；移除 cast_time/potency/反制强度/实时移速。
-- enemies.json 收录 6 种敌人（3 基础 + 2 精英 + 1 Boss，与 turn-based_V1 第 7 节一致），并带 min_layer/max_layer 供关卡生成筛选。
+- enemies.json 收录 7 种敌人（3 基础 + 2 精英 + 1 Boss + 深渊幽魂），并带 min_layer/max_layer 供关卡生成筛选。
 - 敌人 kind：0 骷髅 / 1 幽魂 / 2 石魔像 / 3 深渊守卫 / 4 精英骷髅 / 5 精英幽魂。
 - Zig 0.17 不允许 @embedFile 引用包外文件，所以 JSON 由 assets/data/data.zig 内嵌、build.zig 注册为 data 模块。
