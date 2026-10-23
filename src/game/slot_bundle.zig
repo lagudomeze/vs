@@ -4,9 +4,9 @@ const std = @import("std");
 const save_mod = @import("save.zig");
 const gear_save = @import("gear_save.zig");
 const items = @import("items.zig");
-const sim_mod = @import("tome_sim.zig");
+const sim_mod = @import("run_sim.zig");
 
-pub const format_name = "vx-tome-slot";
+pub const format_name = "vx-run-slot";
 pub const version: u32 = 1;
 pub const max_bytes: usize = 512 * 1024;
 

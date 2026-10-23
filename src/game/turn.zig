@@ -1,4 +1,4 @@
-//! Turn order and speed cadence for the ToME-style 3D pixel roguelike.
+//! Turn order and speed cadence for the turn-based 3D pixel roguelike.
 //!
 //! This module is pure data: no ECS, Game, renderer, input or realtime clock.
 //! The caller maps `Actor.id` to an entity and owns all action legality and
@@ -48,7 +48,7 @@ pub const Side = enum {
     enemy,
 };
 
-/// Plain actor descriptor. `speed` uses the ToME convention: 100 = normal,
+/// Plain actor descriptor. `speed` uses the turn-based convention: 100 = normal,
 /// 150 = fast, 75 or below = slow. The player is always first regardless of
 /// this value.
 pub const Actor = struct {

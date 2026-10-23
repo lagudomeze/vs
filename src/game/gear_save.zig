@@ -1,10 +1,10 @@
-//! Pocket-sized save for the parts of a run that live outside TomeSim:
-//! bag contents and equipped slots. TomeGame writes this next to save.zig's
+//! Pocket-sized save for the parts of a run that live outside RunSim:
+//! bag contents and equipped slots. RunGame writes this next to save.zig's
 //! Sim snapshot so a loaded run keeps its loot as well as its combat state.
 const std = @import("std");
 const items = @import("items.zig");
 
-pub const format_name = "vx-tome-gear";
+pub const format_name = "vx-run-gear";
 pub const gear_version: u8 = 1;
 pub const max_bytes: usize = 16 * 1024;
 
@@ -15,7 +15,7 @@ pub const GearSave = struct {
     len: u8 = 0,
     items: [items.max_inventory]items.ItemId = @splat(0),
     equipped: [items.slot_count]?items.ItemId = @splat(null),
-    /// TomeGame.loot_rng state; zero for an old save that predates it.
+    /// RunGame.loot_rng state; zero for an old save that predates it.
     loot_rng: [4]u64 = @splat(0),
 };
 
@@ -130,7 +130,7 @@ test "gear save: JSON roundtrip and bad inputs" {
     try std.testing.expectError(error.Empty, fromSlice(std.testing.allocator, ""));
     try std.testing.expectError(error.NotGearFormat, fromSlice(std.testing.allocator, "{}"));
     try std.testing.expectError(error.NotGearFormat, fromSlice(std.testing.allocator, "{\"format\":\"x\",\"version\":1}"));
-    try std.testing.expectError(error.UnsupportedVersion, fromSlice(std.testing.allocator, "{\"format\":\"vx-tome-gear\",\"version\":9}"));
+    try std.testing.expectError(error.UnsupportedVersion, fromSlice(std.testing.allocator, "{\"format\":\"vx-run-gear\",\"version\":9}"));
 }
 
 const test_defs = [_]items.ItemDef{

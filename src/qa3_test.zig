@@ -1,3 +1,3 @@
 test {
-    _ = @import("qa3/tome_qa3.zig");
+    _ = @import("qa3/run_qa3.zig");
 }

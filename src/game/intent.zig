@@ -1,11 +1,11 @@
-//! Pure enemy-intent preview for the turn-based ToME simulation.
+//! Pure enemy-intent preview for the turn-based simulation.
 //!
 //! The module only depends on std. It takes a plain blocked-cell map plus an
 //! `EnemyView` snapshot and returns what the enemy would attempt on the next
 //! enemy phase. It never mutates the simulation or rolls damage, so a HUD can
 //! show "melee 8 / ranged 7 / AOE 45 in 1 turn" without changing play.
 //!
-//! The rules mirror `tome_sim.enemyAct`:
+//! The rules mirror `run_sim.enemyAct`:
 //! * adjacent -> melee
 //! * within range and with line of sight -> ranged
 //! * otherwise -> chase
@@ -18,7 +18,7 @@
 //! 2.8x attack for the boss AOE (the v1 深渊斩 budget: 16 attack -> ~45).
 const std = @import("std");
 
-/// Enemy kind used by `tome_sim.Enemy` for 深渊守卫.
+/// Enemy kind used by `run_sim.Enemy` for 深渊守卫.
 pub const boss_kind: u8 = 5;
 /// The boss uses its AOE on turn 3, 6, 9, ...
 pub const boss_aoe_period: u32 = 3;
@@ -26,9 +26,9 @@ pub const boss_aoe_radius: f32 = 0.9;
 pub const boss_aoe_telegraph: u8 = 1;
 /// 2.8x attack matches the 45 damage of the v1 abyss cleave at 16 attack.
 pub const boss_aoe_damage_scale: f32 = 2.8;
-/// Matches `tome_sim.enemyAttack` raw damage before armor mitigation.
+/// Matches `run_sim.enemyAttack` raw damage before armor mitigation.
 pub const melee_damage_scale: f32 = 0.72;
-/// Matches `tome_sim.enemyAttack`'s slowed damage multiplier.
+/// Matches `run_sim.enemyAttack`'s slowed damage multiplier.
 pub const slow_damage_scale: f32 = 0.55;
 
 /// Integer grid cell. Kept local so the intent module stays independent of
@@ -59,7 +59,7 @@ pub const EnemyIntent = struct {
 };
 
 /// Read-only snapshot of the fields intent prediction needs. Keeping it
-/// separate from `tome_sim.Enemy` avoids a module cycle and lets tests build
+/// separate from `run_sim.Enemy` avoids a module cycle and lets tests build
 /// enemies without a whole simulation.
 pub const EnemyView = struct {
     kind: u8 = 0,
@@ -136,7 +136,7 @@ pub fn bossAoeDue(turn: u32) bool {
 /// always produce an identical intent.
 ///
 /// `turn` is the enemy-phase number being previewed. A HUD that previews while
-/// the player is deciding should pass the upcoming phase (for TomeSim, that is
+/// the player is deciding should pass the upcoming phase (for RunSim, that is
 /// `sim.turn + 1`).
 pub fn preview(map: MapView, enemy: EnemyView, hero: GridPos, turn: u32) EnemyIntent {
     if (!enemy.alive) return waitIntent(enemy.pos);

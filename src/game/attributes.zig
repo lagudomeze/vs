@@ -1,6 +1,6 @@
 //! Six-stat attributes, modifiers and derived-stat recomputation.
 //!
-//! Turn-based (ToME4 style) numbers, see docs/TOME_V1.md + docs/BALANCE_V1.md:
+//! Turn-based roguelike numbers, see docs/RUN_V1.md + docs/BALANCE_V1.md:
 //!
 //!     HP       = 40 + 体质*8 + flat HP
 //!     RESOURCE = 60 + 意志*4 + flat          (精力 / 法力 / 悖论)
@@ -142,7 +142,7 @@ pub fn classFromIndex(index: u8) Class {
     return @fromBackingInt(@intCast(@min(index, class_count - 1)));
 }
 
-/// 职业资源（docs/TOME_V1.md 第 6 节）。
+/// 职业资源（docs/RUN_V1.md 第 6 节）。
 pub const ResourceKind = enum(u8) {
     stamina,
     mana,
@@ -346,7 +346,7 @@ pub fn resolveDamage(raw: f32, armor: f32, crit: bool) f32 {
     return if (crit) hit * formulas.crit_multiplier else hit;
 }
 
-/// v1 growth (docs/TOME_V1.md 第 8 节): +1 attribute point per level, auto
+/// v1 growth (docs/RUN_V1.md 第 8 节): +1 attribute point per level, auto
 /// allocated to the class main stat. The game refills HP/resource on level up.
 pub fn applyLevels(stats: *Stats, class: Class, levels: u32) void {
     const main = profile(class).main_stat;

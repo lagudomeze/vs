@@ -8,17 +8,17 @@
 不是 ECS 不够，而是同一个规则存在多个实现：
 
 - `attributes.recompute()` 里有一套 HP/资源/攻击/护甲/暴击/速度公式。
-- `tome_sim.Sim.recomputeHero()` 里又抄了一套，职业基础属性/攻击也复制了一份。
+- `run_sim.Sim.recomputeHero()` 里又抄了一套，职业基础属性/攻击也复制了一份。
 - `class_profiles`、`class_base_stats`、`sim.base_stats`、`sim.class_base_attack` 四张表描述同一批职业。
 - HUD、存档、QA 各自有 enum/字符串映射。
 
 结果：改一个数值要同步 3-4 处，测试只覆盖其中一条路径，漂移后 QA 才发现。这不是“代码量变大”本身，是**变更放大**。
 
-## 2. ToME4 的数值结构（抽象后）
+## 2. reference roguelike 的数值结构（抽象后）
 
-ToME4 的 Lua 数据本质上也是表 + 处理器，不是把公式塞进 ECS：
+reference roguelike 的 Lua 数据本质上也是表 + 处理器，不是把公式塞进 ECS：
 
-| 层 | ToME4 对应 | 本项目对应 |
+| 层 | reference roguelike 对应 | 本项目对应 |
 | --- | --- | --- |
 | 主属性 | str/dex/con/mag/wil/cun | `StatKind` |
 | 派生战斗值 | combat attack/defense/armor/crit/speed | `Derived` + `derived_defs` |
@@ -124,7 +124,7 @@ ECS 擅长：**大量实体 × 少量独立系统**（渲染、粒子、AI 查�
 当前项目：
 
 - `game.zig` 的竞技场已经是 zflecs：Transform/Renderable/Shadow/Light 等组件，系统查询合理。
-- `tome_sim.zig` 是单英雄 + ≤12 敌人的确定性回合模拟，存档逐字段序列化；强行 zflecs 会增加：
+- `run_sim.zig` 是单英雄 + ≤12 敌人的确定性回合模拟，存档逐字段序列化；强行 zflecs 会增加：
   - 实体 id 与存档映射；
   - 系统调度顺序；
   - 测试/QA 的确定性成本；

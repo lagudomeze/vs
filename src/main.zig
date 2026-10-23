@@ -263,11 +263,11 @@ fn runWindow(game: *vx.Game, io: std.Io, options: Options) !void {
     }
 }
 
-fn runTomeHeadless(game: *vx.TomeGame, io: std.Io, options: Options) !void {
+fn runRunHeadless(game: *vx.RunGame, io: std.Io, options: Options) !void {
     const frames: u32 = if (options.frames == 0) 1 else options.frames;
     var frame: u32 = 0;
     while (frame < frames) : (frame += 1) {
-        var input = vx.tome_game.Input{};
+        var input = vx.run_game.Input{};
         if (options.enemy_phase_shot and frame == 0) input.wait = true;
         if (options.walk and frame % 12 == 0) input.step_y = -1;
         if (options.auto_demo and frame % 10 == 0) {
@@ -284,16 +284,16 @@ fn runTomeHeadless(game: *vx.TomeGame, io: std.Io, options: Options) !void {
         if (game.autosave_pending) game.flushAutosave(io);
     }
     game.render();
-    const path = options.out orelse "shots/tome.png";
+    const path = options.out orelse "shots/run.png";
     ensureParent(io, path);
     try game.saveScreenshot(io, path);
     std.debug.print(
-        "tome headless: {d}x{d} tris={d} drawn={d} floor={d} turn={d} hp={d:.0} -> {s}\n",
+        "run headless: {d}x{d} tris={d} drawn={d} floor={d} turn={d} hp={d:.0} -> {s}\n",
         .{ game.renderer.width, game.renderer.height, game.renderer.stats.tris, game.renderer.stats.drawn, game.sim.floor, game.sim.turn, game.sim.hero.hp, path },
     );
 }
 
-fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
+fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     var platform = vx.platform.Platform.init("VX - Aether Keep: Depths", options.width, options.height, options.scale) catch |err| {
         std.debug.print("vx: could not open a window ({s}); use --headless for an off-screen capture.\n", .{@errorName(err)});
         return err;
@@ -306,7 +306,7 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
     var quit = false;
     var captured = false;
     var slot_frame = false;
-    std.debug.print("tome: {d}x{d} logical, {d}x scale - class menu 1/2/3, WASD step, 1/2/3 aim, SPACE confirm, ESC cancel, I/C panels, Q/E orbit, R restart\n", .{
+    std.debug.print("run: {d}x{d} logical, {d}x scale - class menu 1/2/3, WASD step, 1/2/3 aim, SPACE confirm, ESC cancel, I/C panels, Q/E orbit, R restart\n", .{
         options.width, options.height, options.scale,
     });
 
@@ -365,7 +365,7 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
             }
         }
 
-        var input = vx.tome_game.Input{};
+        var input = vx.run_game.Input{};
         if (!slot_frame) {
             input.step_x = @as(i32, @intFromBool(pin.step_e)) - @as(i32, @intFromBool(pin.step_w));
             input.step_y = @as(i32, @intFromBool(pin.step_s)) - @as(i32, @intFromBool(pin.step_n));
@@ -393,7 +393,7 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
         platform.present(game.renderer.color_buf);
 
         if (pin.screenshot) {
-            const path = std.fmt.allocPrint(std.heap.page_allocator, "shots/tome-{d}.png", .{game.frame}) catch "shots/tome.png";
+            const path = std.fmt.allocPrint(std.heap.page_allocator, "shots/run-{d}.png", .{game.frame}) catch "shots/run.png";
             ensureParent(io, path);
             game.saveScreenshot(io, path) catch |err| {
                 std.debug.print("vx: screenshot failed: {s}\n", .{@errorName(err)});
@@ -411,11 +411,11 @@ fn runTomeWindow(game: *vx.TomeGame, io: std.Io, options: Options) !void {
     }
 
     if (captured) {
-        const path = options.out orelse "shots/tome-window.png";
+        const path = options.out orelse "shots/run-window.png";
         ensureParent(io, path);
         game.render();
         try game.saveScreenshot(io, path);
-        std.debug.print("tome window capture -> {s}\n", .{path});
+        std.debug.print("run window capture -> {s}\n", .{path});
     }
 }
 
@@ -464,8 +464,8 @@ pub fn main(init: std.process.Init.Minimal) !void {
         return;
     }
 
-    const class = vx.tome_sim.classFromIndex(@intCast(options.hero));
-    const game = try vx.TomeGame.create(gpa, options.width, options.height, class, options.seed);
+    const class = vx.run_sim.classFromIndex(@intCast(options.hero));
+    const game = try vx.RunGame.create(gpa, options.width, options.height, class, options.seed);
     defer game.destroy();
 
     game.debug = options.debug;
@@ -492,8 +492,8 @@ pub fn main(init: std.process.Init.Minimal) !void {
     if (options.loot > 0) game.debugGrantLoot(options.loot);
 
     if (options.headless) {
-        try runTomeHeadless(game, io, options);
+        try runRunHeadless(game, io, options);
     } else {
-        try runTomeWindow(game, io, options);
+        try runRunWindow(game, io, options);
     }
 }

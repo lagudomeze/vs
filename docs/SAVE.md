@@ -1,13 +1,13 @@
 # 存档模块（RunState v2）
 
-纯逻辑的 ToME 存档/读档，位于 `src/game/save.zig`；窗口已接入 **F5 存档 / F9 读档槽位**（`TomeGame.saveSlot/loadSlot`），装备侧车在 `src/game/gear_save.zig`。
+纯逻辑的 turn-based 存档/读档，位于 `src/game/save.zig`；窗口已接入 **F5 存档 / F9 读档槽位**（`RunGame.saveSlot/loadSlot`），装备侧车在 `src/game/gear_save.zig`。
 
 ## 范围
 
 保存分两部分：
 
-- `saves/tome-run.json`：`tome_sim.Sim` 的整局运行状态（RunState，含 xoshiro RNG）。
-- `saves/tome-gear.json`：`TomeGame.inventory` 的背包与装备槽（`gear_save.zig`，format `vx-tome-gear`）。
+- `saves/run.json`：`run_sim.Sim` 的整局运行状态（RunState，含 xoshiro RNG）。
+- `saves/gear.json`：`RunGame.inventory` 的背包与装备槽（`gear_save.zig`，format `vx-run-gear`）。
 
 渲染/相机/当前镜头不保存；掉落 RNG 存在 gear 侧车（loot_rng），读档后从同一位置继续。
 
@@ -31,8 +31,8 @@ const bytes = try save.saveAlloc(alloc, &sim);   // 调用方负责 alloc.free
 var loaded = try save.loadAlloc(alloc, bytes);   // 严格校验，坏档返回 error
 
 // 文件：Zig 0.17 的 std.Io 风格（和 png.writePng 一致）
-try save.saveFile(io, alloc, "saves/tome.json", &sim);
-var from_disk = try save.loadFile(io, alloc, "saves/tome.json");
+try save.saveFile(io, alloc, "saves/run.json", &sim);
+var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 ```
 
 - `saveAlloc` / `loadAlloc` 不碰文件、不依赖 SDL，可在任意测试里用。
@@ -72,10 +72,10 @@ var from_disk = try save.loadFile(io, alloc, "saves/tome.json");
 - **F5**：打开存档槽位面板；按 1/2/3 保存到对应槽，Esc 取消。
 - **F10**：打开自动档面板，1/2/3 读取最近 3 个楼层备份；下到新楼层时写入 saves/autosave1.save 并轮换 1→2→3，失败只写日志。
 - **F9**：打开读档槽位面板；按 1/2/3 读取；Esc 取消。坏档/未知物品/版本不符/空 gear 对象只写日志并保留当前局。读档后重建 mesh、视觉、HUD，清空瞄准。
-- 三个槽位：1=saves/tome-slot1.json，2=saves/slot2.save，3=saves/slot3.save；每个文件是 vx-tome-slot 容器，内含 run JSON + gear JSON，一次原子 replace。旧 tome-run/tome-gear 双文件仍可回退读取，但 v1（13×13）run 会被版本校验拒绝。
+- 三个槽位：1=saves/slot1.save，2=saves/slot2.save，3=saves/slot3.save；每个文件是 vx-run-slot 容器，内含 run JSON + gear JSON，一次原子 replace。旧 run/gear 双文件仍可回退读取，但 v1（13×13）run 会被版本校验拒绝。
 - 职业菜单底部提示 **F9 读档槽**；没有 gear 文件时按空背包读取，装备 sidecar 缺失不会阻断 Sim。
 
-实现入口：TomeGame.saveSlot/loadSlot 选槽，内部仍调用 saveRun/loadRun；src/game/gear_save.zig 有 saveFile/loadFile。
+实现入口：RunGame.saveSlot/loadSlot 选槽，内部仍调用 saveRun/loadRun；src/game/gear_save.zig 有 saveFile/loadFile。
 
 要点：
 

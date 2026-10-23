@@ -77,7 +77,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
 
-    // QA2: focused run of the pure TomeSim regression matrix. It also runs as
+    // QA2: focused run of the pure RunSim regression matrix. It also runs as
     // part of the default `test` step through src/root.zig; this step exists
     // so a full test log does not bury the QA metrics.
     const qa_mod = b.createModule(.{
@@ -92,7 +92,7 @@ pub fn build(b: *std.Build) void {
     });
     const qa_tests = b.addTest(.{ .root_module = qa_mod });
     const run_qa_tests = b.addRunArtifact(qa_tests);
-    const qa_step = b.step("test-qa", "Run the TOME QA2 regression matrix");
+    const qa_step = b.step("test-qa", "Run the RUN QA2 regression matrix");
     qa_step.dependOn(&run_qa_tests.step);
 
     // QA3: game-level probes (aim state machine, save/load continuation,
@@ -110,6 +110,6 @@ pub fn build(b: *std.Build) void {
     });
     const qa3_tests = b.addTest(.{ .root_module = qa3_mod });
     const run_qa3_tests = b.addRunArtifact(qa3_tests);
-    const qa3_step = b.step("test-qa3", "Run the TOME QA3 game-level probes");
+    const qa3_step = b.step("test-qa3", "Run the RUN QA3 game-level probes");
     qa3_step.dependOn(&run_qa3_tests.step);
 }

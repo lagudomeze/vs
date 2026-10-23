@@ -1,4 +1,4 @@
-//! ToME4-style turn-based HUD: one hero, hotbar, floor info, log and modal panels.
+//! turn-based HUD: one hero, hotbar, floor info, log and modal panels.
 const std = @import("std");
 const color = @import("../core/color.zig");
 const palette = @import("../core/palette.zig");
@@ -18,7 +18,7 @@ pub const HotbarSlot = struct {
 };
 
 /// Live aim preview: which talent is pending, which enemy is highlighted
-/// and why confirmation would fail. Filled by TomeGame each frame.
+/// and why confirmation would fail. Filled by RunGame each frame.
 pub const AimInfo = struct {
     active: bool = false,
     valid: bool = false,
@@ -500,8 +500,8 @@ fn expectGlyphs(text: []const u8) !void {
     }
 }
 
-test "tome hud: hint strings have embedded CJK glyphs" {
-    const sim = @import("tome_sim.zig");
+test "run hud: hint strings have embedded CJK glyphs" {
+    const sim = @import("run_sim.zig");
     const fixed = [_][]const u8{
         menu_title,
         menu_hint,
@@ -537,7 +537,7 @@ test "tome hud: hint strings have embedded CJK glyphs" {
         "自动档备份",
     };
     for (fixed) |text| try expectGlyphs(text);
-    const targeting = @import("tome_target.zig");
+    const targeting = @import("run_target.zig");
     inline for (std.meta.tags(targeting.Verdict)) |verdict| {
         try expectGlyphs(targeting.verdictText(verdict));
     }
@@ -555,7 +555,7 @@ test "tome hud: hint strings have embedded CJK glyphs" {
     }
 }
 
-test "tome hud: default panels stay under 30 percent at 640x360" {
+test "run hud: default panels stay under 30 percent at 640x360" {
     const area = 160 * 58 + 154 * 60 + 150 * 40 + 265 * 54;
     const screen = 640 * 360;
     try std.testing.expect(area * 100 <= screen * 30);

@@ -1,4 +1,4 @@
-# ART PASS — 战术精英 / 威胁环 / ToME 地牢套件
+# ART PASS — 战术精英 / 威胁环 / turn-based 地牢套件
 
 > 分支：`feat/art-pass`（基于 `feat/tactical-v1`，未 push）
 > 约束：480×270、64 色像素风、真 3D 网格；所有颜色为逐三角形平面色，无贴图/外部素材。
@@ -10,7 +10,7 @@
 | --- | --- | ---: | --- |
 | 战术精英 | `elite_skeleton` | 1664 | 已烘焙，待 Lead 接敌人生成 |
 | 战术精英 | `elite_wraith` | 2228 | 已烘焙，待 Lead 接敌人生成 |
-| 威胁预警 | `threat_ring` | 490 | 已烘焙（additive）；ToME v1 主线暂不集成，保留备用 |
+| 威胁预警 | `threat_ring` | 490 | 已烘焙（additive）；turn-based v1 主线暂不集成，保留备用 |
 | 地牢地砖 | `dungeon_floor` | 84 | 已烘焙 |
 | 地牢地砖 | `dungeon_floor_cracked` | 96 | 已烘焙 |
 | 地牢墙体 | `wall_segment` | 360 | 已烘焙 |
@@ -162,9 +162,9 @@ if (self.models.indexOf("threat_ring")) |idx| {
 - 环在石地面上是橙红；在红毯上会偏白（additive 加色），所以建议把重击敌人尽量站在石地面，或把 tint 压暗。
 - `Renderable` 没有 alpha 字段；透明淡出只能走 `RenderOpts.alpha`（`drawModel` 直接调用）。如果想走实体管线，用 `boost` 调亮度即可。
 - 环是纯地面件，不写深度；敌人腿脚处会被深度遮挡，这是预期效果。
-- 如果 ToME 主线最终不用，它只在二进制里占 13 KB；从 `bake_assets.py` 的生成列表移除即可。
+- 如果 turn-based 主线最终不用，它只在二进制里占 13 KB；从 `bake_assets.py` 的生成列表移除即可。
 
-## 4. ToME v1 地牢套件
+## 4. turn-based v1 地牢套件
 
 ### 4.1 模型表
 

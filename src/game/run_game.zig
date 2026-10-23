@@ -1,5 +1,5 @@
-//! ToME4-style single-hero turn-based 3D pixel roguelike.
-//! Owns the pure simulation (tome_sim), renders the 13x13 dungeon and HUD.
+//! Turn-based single-hero 3D pixel roguelike.
+//! Owns the pure simulation (run_sim), renders the 31x31 dungeon and HUD.
 const std = @import("std");
 const math = @import("../core/math.zig");
 const color = @import("../core/color.zig");
@@ -10,10 +10,10 @@ const rig = @import("../engine/rig.zig");
 const arena_mesh = @import("../engine/arena_mesh.zig");
 const renderer = @import("../engine/renderer.zig");
 const assets = @import("assets");
-const sim_mod = @import("tome_sim.zig");
-const target_mod = @import("tome_target.zig");
+const sim_mod = @import("run_sim.zig");
+const target_mod = @import("run_target.zig");
 const intent_mod = @import("intent.zig");
-const hud = @import("tome_hud.zig");
+const hud = @import("run_hud.zig");
 const content_mod = @import("content.zig");
 const items_mod = @import("items.zig");
 const attributes = @import("attributes.zig");
@@ -96,7 +96,7 @@ pub const Input = struct {
     zoom_delta: f32 = 0,
 };
 
-pub const TomeGame = struct {
+pub const RunGame = struct {
     gpa: std.mem.Allocator,
     arena_alloc: std.heap.ArenaAllocator,
     models: model_mod.ModelDb,
@@ -129,17 +129,17 @@ pub const TomeGame = struct {
     slot_labels: [3][]const u8 = .{ "空", "空", "空" },
     slot_bufs: [3][96]u8 = undefined,
     slot_runs: [3][]const u8 = .{
-        "saves/tome-run.json",
+        "saves/run.json",
         "saves/slot2-run.json",
         "saves/slot3-run.json",
     },
     slot_gears: [3][]const u8 = .{
-        "saves/tome-gear.json",
+        "saves/gear.json",
         "saves/slot2-gear.json",
         "saves/slot3-gear.json",
     },
     slot_files: [3][]const u8 = .{
-        "saves/tome-slot1.json",
+        "saves/slot1.save",
         "saves/slot2.save",
         "saves/slot3.save",
     },
@@ -174,8 +174,8 @@ pub const TomeGame = struct {
     show_help: bool = false,
     debug: bool = false,
 
-    pub fn create(gpa: std.mem.Allocator, width: u32, height: u32, class: sim_mod.Class, seed: u64) !*TomeGame {
-        const self = try gpa.create(TomeGame);
+    pub fn create(gpa: std.mem.Allocator, width: u32, height: u32, class: sim_mod.Class, seed: u64) !*RunGame {
+        const self = try gpa.create(RunGame);
         errdefer gpa.destroy(self);
         self.* = .{
             .gpa = gpa,
@@ -191,7 +191,7 @@ pub const TomeGame = struct {
         return self;
     }
 
-    fn setup(self: *TomeGame, width: u32, height: u32) !void {
+    fn setup(self: *RunGame, width: u32, height: u32) !void {
         const alloc = self.arena_alloc.allocator();
         self.models = try model_mod.ModelDb.init(alloc, assets.all);
         self.renderer = try renderer.Renderer.init(self.gpa, width, height);
@@ -211,7 +211,7 @@ pub const TomeGame = struct {
         self.fillHudState();
     }
 
-    pub fn destroy(self: *TomeGame) void {
+    pub fn destroy(self: *RunGame) void {
         if (self.mesh.verts.len > 0) self.gpa.free(self.mesh.verts);
         if (self.mesh.tris.len > 0) self.gpa.free(self.mesh.tris);
         self.content.deinit();
@@ -221,7 +221,7 @@ pub const TomeGame = struct {
         gpa.destroy(self);
     }
 
-    fn rebuildMesh(self: *TomeGame) void {
+    fn rebuildMesh(self: *RunGame) void {
         if (self.mesh.verts.len > 0) self.gpa.free(self.mesh.verts);
         if (self.mesh.tris.len > 0) self.gpa.free(self.mesh.tris);
         self.mesh = arena_mesh.buildDungeon(self.gpa, &self.sim.blocked, sim_mod.grid_w, sim_mod.grid_h, .{ self.sim.stairs.x, self.sim.stairs.y }) catch .{ .verts = &.{}, .tris = &.{} };
@@ -233,7 +233,7 @@ pub const TomeGame = struct {
         return math.Vec3.init(@as(f32, @floatFromInt(x)) - center, 0, @as(f32, @floatFromInt(y)) - center);
     }
 
-    fn resetVisuals(self: *TomeGame) void {
+    fn resetVisuals(self: *RunGame) void {
         const hp = tilePos(self.sim.hero.pos.x, self.sim.hero.pos.y);
         self.hero_vis = .{ .pos = hp, .target = hp, .yaw = 0, .target_yaw = 0, .anim = .{ .kind = @intCast(@backingInt(self.class)) } };
         var i: usize = 0;
@@ -276,13 +276,13 @@ pub const TomeGame = struct {
         };
     }
 
-    fn heroScale(_: *const TomeGame) f32 {
+    fn heroScale(_: *const RunGame) f32 {
         return 1.55;
     }
 
     /// Rebuild every run-scoped system from (seed, class). Shared by restart,
     /// class selection and the menu, so R never loses the chosen class.
-    fn resetRun(self: *TomeGame) void {
+    fn resetRun(self: *RunGame) void {
         self.sim.reset(self.seed, self.class);
         self.inventory = items_mod.Inventory.init();
         self.mods.clear();
@@ -304,26 +304,26 @@ pub const TomeGame = struct {
         self.fillHudState();
     }
 
-    pub fn restart(self: *TomeGame) void {
+    pub fn restart(self: *RunGame) void {
         self.started = true;
         self.resetRun();
     }
 
     /// Show the pre-run class cards. The same seed is used for the preview;
     /// picking a class keeps it and regenerates the dungeon for that class.
-    pub fn openMenu(self: *TomeGame) void {
+    pub fn openMenu(self: *RunGame) void {
         self.started = false;
         self.resetRun();
     }
 
-    pub fn selectClass(self: *TomeGame, class: sim_mod.Class) void {
+    pub fn selectClass(self: *RunGame, class: sim_mod.Class) void {
         self.class = class;
         self.restart();
         self.sim.pushLog("开始：{s}", .{sim_mod.class_names[@backingInt(self.class)]});
         self.fillHudState();
     }
 
-    fn classOf(self: *const TomeGame) attributes.Class {
+    fn classOf(self: *const RunGame) attributes.Class {
         return switch (self.class) {
             .warrior => .warrior,
             .mage => .mage,
@@ -334,7 +334,7 @@ pub const TomeGame = struct {
     /// F5: write the pure run snapshot and the bag/equipment sidecar.
     /// The parent directory is created on demand; a failure leaves the
     /// currently running game untouched and is reported in the log.
-    pub fn openSlotMenu(self: *TomeGame, io: std.Io, mode: SlotMenu) void {
+    pub fn openSlotMenu(self: *RunGame, io: std.Io, mode: SlotMenu) void {
         self.slot_menu = mode;
         self.clearAim();
         self.show_help = false;
@@ -343,12 +343,12 @@ pub const TomeGame = struct {
         self.fillHudState();
     }
 
-    pub fn closeSlotMenu(self: *TomeGame) void {
+    pub fn closeSlotMenu(self: *RunGame) void {
         self.slot_menu = .none;
         self.fillHudState();
     }
 
-    fn refreshSlotLabels(self: *TomeGame, io: std.Io) void {
+    fn refreshSlotLabels(self: *RunGame, io: std.Io) void {
         var i: usize = 0;
         while (i < self.slot_files.len) : (i += 1) {
             self.slot_labels[i] = "空";
@@ -368,7 +368,7 @@ pub const TomeGame = struct {
         }
     }
 
-    fn formatSlotLabel(self: *TomeGame, i: usize, loaded: *const sim_mod.Sim) []const u8 {
+    fn formatSlotLabel(self: *RunGame, i: usize, loaded: *const sim_mod.Sim) []const u8 {
         return std.fmt.bufPrint(
             &self.slot_bufs[i],
             "{s} 第{d}层 {d}级 回合{d}",
@@ -376,7 +376,7 @@ pub const TomeGame = struct {
         ) catch "有效存档";
     }
 
-    pub fn saveSlot(self: *TomeGame, io: std.Io, slot: usize) void {
+    pub fn saveSlot(self: *RunGame, io: std.Io, slot: usize) void {
         if (slot >= self.slot_files.len) return;
         if (self.sim.enemy_phase_pending) {
             self.sim.resolvePendingEnemyPhase();
@@ -399,7 +399,7 @@ pub const TomeGame = struct {
         self.fillHudState();
     }
 
-    pub fn loadSlot(self: *TomeGame, io: std.Io, slot: usize) void {
+    pub fn loadSlot(self: *RunGame, io: std.Io, slot: usize) void {
         if (slot >= self.slot_files.len) return;
         const loaded = slot_bundle.loadFile(io, self.gpa, self.slot_files[slot]) catch |err| {
             if (err == error.FileNotFound) {
@@ -418,7 +418,7 @@ pub const TomeGame = struct {
         self.fillHudState();
     }
 
-    pub fn flushAutosave(self: *TomeGame, io: std.Io) void {
+    pub fn flushAutosave(self: *RunGame, io: std.Io) void {
         if (!self.autosave_pending) return;
         self.autosave_pending = false;
         if (self.sim.enemy_phase_pending) {
@@ -446,7 +446,7 @@ pub const TomeGame = struct {
         self.fillHudState();
     }
 
-    pub fn openAutoMenu(self: *TomeGame, io: std.Io) void {
+    pub fn openAutoMenu(self: *RunGame, io: std.Io) void {
         self.slot_menu = .auto_load;
         self.clearAim();
         self.show_help = false;
@@ -455,7 +455,7 @@ pub const TomeGame = struct {
         self.fillHudState();
     }
 
-    fn refreshAutoLabels(self: *TomeGame, io: std.Io) void {
+    fn refreshAutoLabels(self: *RunGame, io: std.Io) void {
         var i: usize = 0;
         while (i < self.auto_files.len) : (i += 1) {
             self.slot_labels[i] = "空";
@@ -467,7 +467,7 @@ pub const TomeGame = struct {
         }
     }
 
-    pub fn loadAutoSlot(self: *TomeGame, io: std.Io, slot: usize) void {
+    pub fn loadAutoSlot(self: *RunGame, io: std.Io, slot: usize) void {
         if (slot >= self.auto_files.len) return;
         const loaded = slot_bundle.loadFile(io, self.gpa, self.auto_files[slot]) catch |err| {
             const msg = if (err == error.FileNotFound) "没有自动存档" else @errorName(err);
@@ -482,7 +482,7 @@ pub const TomeGame = struct {
         self.fillHudState();
     }
 
-    pub fn saveRun(self: *TomeGame, io: std.Io, sim_path: []const u8, gear_path: []const u8) void {
+    pub fn saveRun(self: *RunGame, io: std.Io, sim_path: []const u8, gear_path: []const u8) void {
         if (self.sim.enemy_phase_pending) {
             self.sim.resolvePendingEnemyPhase();
             self.syncVisuals(false);
@@ -507,7 +507,7 @@ pub const TomeGame = struct {
 
     /// F9: load both halves. A missing/corrupt gear file leaves the current
     /// run alone; a fresh save still loads with an empty bag.
-    pub fn loadRun(self: *TomeGame, io: std.Io, sim_path: []const u8, gear_path: []const u8) void {
+    pub fn loadRun(self: *RunGame, io: std.Io, sim_path: []const u8, gear_path: []const u8) void {
         const loaded = save_mod.loadFile(io, self.gpa, sim_path) catch |err| {
             const msg = if (err == error.FileNotFound) "没有存档" else @errorName(err);
             self.sim.pushLog("读档失败：{s}", .{msg});
@@ -521,7 +521,7 @@ pub const TomeGame = struct {
         self.applyLoaded(loaded, gear);
     }
 
-    fn applyLoaded(self: *TomeGame, loaded: sim_mod.Sim, gear: gear_save.GearSave) void {
+    fn applyLoaded(self: *RunGame, loaded: sim_mod.Sim, gear: gear_save.GearSave) void {
         for (gear.items[0..@as(usize, gear.len)]) |id| {
             if (id >= self.content.items.len) {
                 self.sim.pushLog("读档失败：未知物品", .{});
@@ -572,12 +572,12 @@ pub const TomeGame = struct {
         self.sim.pushLog("读档", .{});
     }
 
-    fn rebuildMods(self: *TomeGame) void {
+    fn rebuildMods(self: *RunGame) void {
         self.mods.rebuild(self.content.items, &self.inventory.equipped);
         self.sim.applyModifiers(self.mods.slice());
     }
 
-    fn processLoot(self: *TomeGame) void {
+    fn processLoot(self: *RunGame) void {
         while (self.chest_loot_seen < self.sim.chest_loot_events) {
             self.chest_loot_seen += 1;
             self.grantDrop(true);
@@ -588,14 +588,14 @@ pub const TomeGame = struct {
         }
     }
 
-    fn spendPendingPoint(self: *TomeGame, stat: usize) void {
+    fn spendPendingPoint(self: *RunGame, stat: usize) void {
         if (!self.sim.spendPoint(stat)) return;
         self.rebuildMods();
         self.sim.pushLog("属性点已分配", .{});
         self.fillHudState();
     }
 
-    pub fn autoPlayStep(self: *TomeGame) void {
+    pub fn autoPlayStep(self: *RunGame) void {
         if (!self.started or self.sim.state != .playing or self.panel != .none) return;
         self.sim.defer_enemies = false;
         self.sim.resolvePendingEnemyPhase();
@@ -700,7 +700,7 @@ pub const TomeGame = struct {
         _ = self.sim.wait();
     }
 
-    fn equipBag(self: *TomeGame, index: usize) void {
+    fn equipBag(self: *RunGame, index: usize) void {
         if (index >= self.inventory.count()) return;
         const item = self.inventory.at(index);
         if (item >= self.content.items.len) return;
@@ -726,7 +726,7 @@ pub const TomeGame = struct {
         return score;
     }
 
-    fn usePotion(self: *TomeGame) bool {
+    fn usePotion(self: *RunGame) bool {
         for (self.inventory.slice()) |id| {
             if (id >= self.content.items.len) continue;
             const def = &self.content.items[id];
@@ -741,13 +741,13 @@ pub const TomeGame = struct {
         return false;
     }
 
-    pub fn debugGrantLoot(self: *TomeGame, n: u32) void {
+    pub fn debugGrantLoot(self: *RunGame, n: u32) void {
         var i: u32 = 0;
         while (i < n) : (i += 1) self.grantDrop(true);
         self.rebuildMods();
     }
 
-    fn grantDrop(self: *TomeGame, guaranteed: bool) void {
+    fn grantDrop(self: *RunGame, guaranteed: bool) void {
         if (self.content.items.len == 0 or self.content.enemies.len == 0) return;
         const chance = if (guaranteed) 0.0 else self.loot_rng.random().float(f32);
         const pick = self.loot_rng.random().float(f32);
@@ -774,7 +774,7 @@ pub const TomeGame = struct {
         }
     }
 
-    pub fn update(self: *TomeGame, input: Input, dt_raw: f32) void {
+    pub fn update(self: *RunGame, input: Input, dt_raw: f32) void {
         const dt = @min(0.05, dt_raw);
         self.dt = dt;
         self.time += dt;
@@ -945,7 +945,7 @@ pub const TomeGame = struct {
 
     /// Keep the whole room on screen while still following the hero: clamp the
     /// look-at point to the middle band and bias it toward the hero.
-    fn followCamera(self: *TomeGame) void {
+    fn followCamera(self: *RunGame) void {
         const half_extent = @as(f32, @floatFromInt(sim_mod.grid_w - 1)) * 0.5;
         const margin = 3.0;
         self.camera.target.x = std.math.clamp(self.hero_vis.pos.x, -half_extent + margin, half_extent - margin);
@@ -954,14 +954,14 @@ pub const TomeGame = struct {
         self.camera_target = self.camera.target;
     }
 
-    fn spawnFloat(self: *TomeGame, pos: math.Vec3, value: i32, color_value: u32) void {
+    fn spawnFloat(self: *RunGame, pos: math.Vec3, value: i32, color_value: u32) void {
         if (value == 0) return;
         const i = self.float_cursor;
         self.float_cursor = (i + 1) % self.floats.len;
         self.floats[i] = .{ .pos = pos.add(math.Vec3.init(0, 1.4, 0)), .value = value, .life = 0.75, .color = color_value };
     }
 
-    fn drawFloats(self: *TomeGame) void {
+    fn drawFloats(self: *RunGame) void {
         for (self.floats) |f| {
             if (f.life <= 0) continue;
             const p = self.camera.project(f.pos, self.renderer.width, self.renderer.height) orelse continue;
@@ -978,7 +978,7 @@ pub const TomeGame = struct {
 
     /// Screen pixel -> simulation cell, clamped by the camera's ground-plane
     /// intersection. Used by mouse aiming.
-    fn pickCell(self: *const TomeGame, sx: f32, sy: f32) ?sim_mod.GridPos {
+    fn pickCell(self: *const RunGame, sx: f32, sy: f32) ?sim_mod.GridPos {
         const p = self.camera.pickGround(sx, sy, self.renderer.width, self.renderer.height) orelse return null;
         const center = @as(f32, @floatFromInt(sim_mod.grid_w - 1)) * 0.5;
         const gx: i32 = @intFromFloat(@round(p.x + center));
@@ -987,14 +987,14 @@ pub const TomeGame = struct {
         return .{ .x = gx, .y = gy };
     }
 
-    fn currentTarget(self: *const TomeGame) ?usize {
+    fn currentTarget(self: *const RunGame) ?usize {
         if (self.selected) |s| {
             if (s < self.sim.enemy_count and self.sim.enemies[s].alive) return s;
         }
         return self.sim.nearestEnemy(20);
     }
 
-    fn cycleTarget(self: *TomeGame) void {
+    fn cycleTarget(self: *RunGame) void {
         if (self.sim.enemy_count == 0) {
             self.selected = null;
             return;
@@ -1012,13 +1012,13 @@ pub const TomeGame = struct {
         self.selected = null;
     }
 
-    pub fn isAiming(self: *const TomeGame) bool {
+    pub fn isAiming(self: *const RunGame) bool {
         return self.aim_talent != null;
     }
 
     /// Escape path: aim is consumed first, so Esc never drops the run while
     /// the player is only cancelling a target. Returns true when consumed.
-    pub fn cancelAim(self: *TomeGame) bool {
+    pub fn cancelAim(self: *RunGame) bool {
         if (self.aim_talent == null) return false;
         self.aim_talent = null;
         self.aim_cell = null;
@@ -1026,21 +1026,21 @@ pub const TomeGame = struct {
         return true;
     }
 
-    fn clearAim(self: *TomeGame) void {
+    fn clearAim(self: *RunGame) void {
         self.aim_talent = null;
         self.aim_cell = null;
     }
 
     /// Currently highlighted enemy. Falls back to the nearest living enemy at
     /// any distance so an out-of-range target can still be previewed in red.
-    fn aimTarget(self: *const TomeGame) ?usize {
+    fn aimTarget(self: *const RunGame) ?usize {
         return self.currentTarget();
     }
 
     /// Prefer the current target when it is already legal; otherwise snap to
     /// the nearest legal enemy so pressing 1/2/3 does not open on a red
     /// out-of-range preview when a valid target is available.
-    fn bestAimTarget(self: *const TomeGame, talent: usize) ?usize {
+    fn bestAimTarget(self: *const RunGame, talent: usize) ?usize {
         if (self.aimTarget()) |cur| {
             if (target_mod.preview(&self.sim, talent, cur).valid()) return cur;
         }
@@ -1060,7 +1060,7 @@ pub const TomeGame = struct {
 
     /// Fireball is the only ground-targeted v1 talent. Returns the same
     /// verdict vocabulary as enemy aim so the HUD can reuse its strings.
-    fn groundAimVerdict(self: *const TomeGame, talent: usize, cell: sim_mod.GridPos) target_mod.Verdict {
+    fn groundAimVerdict(self: *const RunGame, talent: usize, cell: sim_mod.GridPos) target_mod.Verdict {
         if (!(self.class == .mage and talent == 0)) return .not_targetable;
         if (self.sim.state != .playing) return .not_playing;
         if (self.sim.hero.cooldowns[talent] > 0) return .cooldown;
@@ -1075,7 +1075,7 @@ pub const TomeGame = struct {
         return .ok;
     }
 
-    fn beginAim(self: *TomeGame, talent: usize) void {
+    fn beginAim(self: *RunGame, talent: usize) void {
         const name = self.sim.talentName(talent);
         if (self.sim.hero.cooldowns[talent] > 0) {
             self.sim.pushLog("{s} 冷却中", .{name});
@@ -1091,7 +1091,7 @@ pub const TomeGame = struct {
         self.sim.pushLog("瞄准 {s}：空格确认", .{name});
     }
 
-    fn switchAim(self: *TomeGame, talent: usize) void {
+    fn switchAim(self: *RunGame, talent: usize) void {
         if (target_mod.needsTarget(self.class, talent)) {
             self.beginAim(talent);
             return;
@@ -1104,7 +1104,7 @@ pub const TomeGame = struct {
     /// One number key. While aiming the same key confirms and another key
     /// switches; while idle a target talent starts aim and a self talent is
     /// released immediately (the old hotbar behaviour).
-    fn talentKey(self: *TomeGame, talent: usize) void {
+    fn talentKey(self: *RunGame, talent: usize) void {
         if (self.aim_talent) |aim| {
             if (aim == talent) {
                 _ = self.confirmAim();
@@ -1120,7 +1120,7 @@ pub const TomeGame = struct {
         }
     }
 
-    fn castTalentAt(self: *TomeGame, talent: usize, target: ?usize) bool {
+    fn castTalentAt(self: *RunGame, talent: usize, target: ?usize) bool {
         const before_hero = self.sim.hero.hp;
         var before: [sim_mod.max_enemies]f32 = undefined;
         var bi: usize = 0;
@@ -1133,7 +1133,7 @@ pub const TomeGame = struct {
         return used;
     }
 
-    fn castTalentAtCell(self: *TomeGame, talent: usize, cell: sim_mod.GridPos) bool {
+    fn castTalentAtCell(self: *RunGame, talent: usize, cell: sim_mod.GridPos) bool {
         const before_hero = self.sim.hero.hp;
         var before: [sim_mod.max_enemies]f32 = undefined;
         var bi: usize = 0;
@@ -1146,7 +1146,7 @@ pub const TomeGame = struct {
         return used;
     }
 
-    fn releaseTalent(self: *TomeGame, talent: usize) bool {
+    fn releaseTalent(self: *RunGame, talent: usize) bool {
         if (self.castTalentAt(talent, self.selected)) return true;
         self.sim.pushLog("技能不可用", .{});
         return false;
@@ -1154,7 +1154,7 @@ pub const TomeGame = struct {
 
     /// Confirm the pending aim. Validation failure logs a reason and leaves
     /// the turn and resource untouched; success spends exactly one turn.
-    fn confirmAim(self: *TomeGame) bool {
+    fn confirmAim(self: *RunGame) bool {
         const talent = self.aim_talent orelse return false;
         if (self.aim_cell) |cell| {
             const verdict = self.groundAimVerdict(talent, cell);
@@ -1194,7 +1194,7 @@ pub const TomeGame = struct {
         return true;
     }
 
-    fn flashAfter(self: *TomeGame, hero_before: f32, enemies_before: []const f32) void {
+    fn flashAfter(self: *RunGame, hero_before: f32, enemies_before: []const f32) void {
         const hero_loss = hero_before - self.sim.hero.hp;
         if (hero_loss > 0.5) {
             self.hero_vis.flash = 0.22;
@@ -1210,7 +1210,7 @@ pub const TomeGame = struct {
         }
     }
 
-    fn syncVisuals(self: *TomeGame, full: bool) void {
+    fn syncVisuals(self: *RunGame, full: bool) void {
         const hp = tilePos(self.sim.hero.pos.x, self.sim.hero.pos.y);
         self.hero_vis.target = hp;
         if (full) self.hero_vis.pos = hp;
@@ -1227,7 +1227,7 @@ pub const TomeGame = struct {
         }
     }
 
-    fn updateVisuals(self: *TomeGame, dt: f32) void {
+    fn updateVisuals(self: *RunGame, dt: f32) void {
         const lerp = @min(1.0, dt * 12.0);
         self.hero_vis.pos = math.Vec3.init(
             self.hero_vis.pos.x + (self.hero_vis.target.x - self.hero_vis.pos.x) * lerp,
@@ -1276,12 +1276,12 @@ pub const TomeGame = struct {
         return from + d * @min(1.0, amount);
     }
 
-    fn heroModel(self: *TomeGame) *const model_mod.Model {
+    fn heroModel(self: *RunGame) *const model_mod.Model {
         const names = [_][]const u8{ "warrior", "archmage", "chronomancer" };
         return self.models.at(self.models.indexOf(names[@backingInt(self.class)]) orelse 0);
     }
 
-    fn enemyModel(self: *TomeGame, kind: u8) *const model_mod.Model {
+    fn enemyModel(self: *RunGame, kind: u8) *const model_mod.Model {
         const names = [_][]const u8{ "skeleton", "wraith", "golem", "elite_skeleton", "elite_wraith", "abyss_guard" };
         const fallback = [_][]const u8{ "skeleton", "wraith", "golem", "skeleton", "wraith", "abyss_guard" };
         const name = names[@min(kind, names.len - 1)];
@@ -1289,7 +1289,7 @@ pub const TomeGame = struct {
         return self.models.at(self.models.indexOf(fallback[@min(kind, fallback.len - 1)]) orelse 0);
     }
 
-    pub fn render(self: *TomeGame) void {
+    pub fn render(self: *RunGame) void {
         self.renderer.begin(self.camera, self.time);
         self.addLights();
 
@@ -1334,7 +1334,7 @@ pub const TomeGame = struct {
         if (self.show_hud) hud.draw(&self.renderer, self.hud_state);
     }
 
-    fn drawWorldBars(self: *TomeGame) void {
+    fn drawWorldBars(self: *RunGame) void {
         const w: i32 = @intCast(self.renderer.width);
         const h: i32 = @intCast(self.renderer.height);
         if (self.camera.project(tilePos(self.sim.stairs.x, self.sim.stairs.y).add(math.Vec3.init(0, 1.0, 0)), self.renderer.width, self.renderer.height)) |sp| {
@@ -1396,7 +1396,7 @@ pub const TomeGame = struct {
         }
     }
 
-    fn addLights(self: *TomeGame) void {
+    fn addLights(self: *RunGame) void {
         const corners = [_]math.Vec3{
             math.Vec3.init(-5.2, 1.55, -5.2),
             math.Vec3.init(5.2, 1.55, -5.2),
@@ -1434,7 +1434,7 @@ pub const TomeGame = struct {
         }
     }
 
-    fn drawRings(self: *TomeGame) void {
+    fn drawRings(self: *RunGame) void {
         const ring = self.models.indexOf("rune_circle") orelse return;
         const ring_model = self.models.at(ring);
         self.renderer.drawModel(ring_model, null, math.Mat4.compose(self.hero_vis.pos.add(math.Vec3.init(0, 0.035, 0)), -self.time * 0.5, 0, 0, 0.40), .{
@@ -1468,7 +1468,7 @@ pub const TomeGame = struct {
     /// World-space aim preview: a pulsing ring on the highlighted enemy and
     /// one ring per cell covered by an area talent. Valid targets glow cyan,
     /// blocked ones red; nothing is drawn when the player is not aiming.
-    fn drawAimMarkers(self: *TomeGame) void {
+    fn drawAimMarkers(self: *RunGame) void {
         const talent = self.aim_talent orelse return;
         const ring_index = self.models.indexOf("rune_circle") orelse return;
         const ring_model = self.models.at(ring_index);
@@ -1526,7 +1526,7 @@ pub const TomeGame = struct {
         }
     }
 
-    fn drawProps(self: *TomeGame) void {
+    fn drawProps(self: *RunGame) void {
         // stairs marker: a cool beacon so it never gets lost behind a wall
         const sp = tilePos(self.sim.stairs.x, self.sim.stairs.y);
         self.renderer.drawGlow(sp.add(math.Vec3.init(0, 0.45, 0)), 0.55, palette.cyan_light, 0.85);
@@ -1563,7 +1563,7 @@ pub const TomeGame = struct {
         return name;
     }
 
-    fn initiativeNames(self: *const TomeGame) [3][]const u8 {
+    fn initiativeNames(self: *const RunGame) [3][]const u8 {
         var names = [3][]const u8{ "玩家", "", "" };
         var first: ?usize = null;
         var second: ?usize = null;
@@ -1583,7 +1583,7 @@ pub const TomeGame = struct {
         return names;
     }
 
-    fn plotMinimap(self: *TomeGame, gx: i32, gy: i32, value: u8) void {
+    fn plotMinimap(self: *RunGame, gx: i32, gy: i32, value: u8) void {
         const mm: i32 = 13;
         if (gx < 0 or gy < 0 or gx >= sim_mod.grid_w or gy >= sim_mod.grid_h) return;
         const mx = @min(mm - 1, @divTrunc(gx * mm, @as(i32, @intCast(sim_mod.grid_w))));
@@ -1591,7 +1591,7 @@ pub const TomeGame = struct {
         self.hud_state.minimap[@as(usize, @intCast(my)) * 13 + @as(usize, @intCast(mx))] = value;
     }
 
-    fn fillHudState(self: *TomeGame) void {
+    fn fillHudState(self: *RunGame) void {
         const initiative = self.initiativeNames();
         self.hud_state = .{
             .menu = !self.started,
@@ -1773,14 +1773,14 @@ pub const TomeGame = struct {
         }
     }
 
-    pub fn saveScreenshot(self: *TomeGame, io: std.Io, path: []const u8) !void {
+    pub fn saveScreenshot(self: *RunGame, io: std.Io, path: []const u8) !void {
         try png.writePng(io, self.gpa, path, self.renderer.width, self.renderer.height, self.renderer.color_buf);
     }
 };
 
-test "tome game: class menu selects and keeps the class on restart" {
+test "run game: class menu selects and keeps the class on restart" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
     defer g.destroy();
 
     g.openMenu();
@@ -1809,7 +1809,7 @@ test "tome game: class menu selects and keeps the class on restart" {
     try std.testing.expectEqual(sim_mod.State.playing, g.sim.state);
 }
 
-fn setGameEnemy(g: *TomeGame, index: usize, pos: sim_mod.GridPos, name: []const u8, hp: f32) void {
+fn setGameEnemy(g: *RunGame, index: usize, pos: sim_mod.GridPos, name: []const u8, hp: f32) void {
     g.sim.enemies[index] = .{
         .kind = 0,
         .name = name,
@@ -1824,22 +1824,22 @@ fn setGameEnemy(g: *TomeGame, index: usize, pos: sim_mod.GridPos, name: []const 
     };
 }
 
-fn placeGameEnemyAt(g: *TomeGame, p: sim_mod.GridPos, name: []const u8) bool {
+fn placeGameEnemyAt(g: *RunGame, p: sim_mod.GridPos, name: []const u8) bool {
     if (g.sim.isBlocked(p.x, p.y) or g.sim.enemyAt(p.x, p.y) != null) return false;
     setGameEnemy(g, g.sim.enemy_count, p, name, 999);
     g.sim.enemy_count += 1;
     return true;
 }
 
-fn addGameEnemy(g: *TomeGame, dx: i32, dy: i32, name: []const u8) void {
+fn addGameEnemy(g: *RunGame, dx: i32, dy: i32, name: []const u8) void {
     const p = g.sim.hero.pos;
     setGameEnemy(g, g.sim.enemy_count, .{ .x = p.x + dx, .y = p.y + dy }, name, 999);
     g.sim.enemy_count += 1;
 }
 
-test "tome game: aiming waits for confirmation and spends one turn" {
+test "run game: aiming waits for confirmation and spends one turn" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
     defer g.destroy();
     addGameEnemy(g, 1, 0, "骷髅兵");
 
@@ -1876,9 +1876,9 @@ test "tome game: aiming waits for confirmation and spends one turn" {
     try std.testing.expect(!g.isAiming());
 }
 
-test "tome game: space confirms, switch key changes aim, self talent releases" {
+test "run game: space confirms, switch key changes aim, self talent releases" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
     defer g.destroy();
     addGameEnemy(g, 1, 0, "骷髅兵");
 
@@ -1906,9 +1906,9 @@ test "tome game: space confirms, switch key changes aim, self talent releases" {
     try std.testing.expect(g.sim.hero.cooldowns[2] > 0);
 }
 
-test "tome game: tab cycles the aim target without spending a turn" {
+test "run game: tab cycles the aim target without spending a turn" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
     defer g.destroy();
     addGameEnemy(g, 1, 0, "骷髅兵");
     addGameEnemy(g, -1, 0, "幽魂");
@@ -1922,9 +1922,9 @@ test "tome game: tab cycles the aim target without spending a turn" {
     try std.testing.expectEqualStrings("幽魂", g.hud_state.aim.target);
 }
 
-test "tome game: cancel and invalid confirms never spend a turn or resource" {
+test "run game: cancel and invalid confirms never spend a turn or resource" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
     defer g.destroy();
 
     // No living enemy at all.
@@ -2017,9 +2017,9 @@ test "tome game: cancel and invalid confirms never spend a turn or resource" {
     try std.testing.expectEqual(res, g.sim.hero.resource);
 }
 
-test "tome game: untargeted talents still release immediately without aim" {
+test "run game: untargeted talents still release immediately without aim" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
     defer g.destroy();
     addGameEnemy(g, 1, 0, "骷髅兵");
 
@@ -2031,7 +2031,7 @@ test "tome game: untargeted talents still release immediately without aim" {
     try std.testing.expect(g.sim.hero.buff_turns > 0);
 }
 
-test "tome game: save/load round-trips the sim and gear" {
+test "run game: save/load round-trips the sim and gear" {
     const alloc = std.testing.allocator;
     const io = std.testing.io;
     var tmp = std.testing.tmpDir(.{});
@@ -2041,7 +2041,7 @@ test "tome game: save/load round-trips the sim and gear" {
     const gear_path = try std.fs.path.join(alloc, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "gear.json" });
     defer alloc.free(gear_path);
 
-    const g = try TomeGame.create(alloc, 320, 180, .warrior, 12345);
+    const g = try RunGame.create(alloc, 320, 180, .warrior, 12345);
     defer g.destroy();
     g.started = true;
     _ = g.sim.wait();
@@ -2061,9 +2061,9 @@ test "tome game: save/load round-trips the sim and gear" {
     try std.testing.expect(std.meta.eql(rng_state, g.loot_rng.s));
 }
 
-test "tome game: H toggles help without spending a turn" {
+test "run game: H toggles help without spending a turn" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
     defer g.destroy();
     const turn = g.sim.turn;
     g.update(.{ .help = true }, 1.0 / 60.0);
@@ -2074,9 +2074,9 @@ test "tome game: H toggles help without spending a turn" {
     try std.testing.expectEqual(turn, g.sim.turn);
 }
 
-test "tome game: aim refuses cooldown/resource-blocked talents" {
+test "run game: aim refuses cooldown/resource-blocked talents" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
     defer g.destroy();
     g.sim.hero.cooldowns[0] = 2;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
@@ -2087,9 +2087,9 @@ test "tome game: aim refuses cooldown/resource-blocked talents" {
     try std.testing.expect(!g.isAiming());
 }
 
-test "tome game: held repeat is throttled to one step per 0.3s" {
+test "run game: held repeat is throttled to one step per 0.3s" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 320, 180, .warrior, 12345);
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
     defer g.destroy();
     var dx: i32 = 0;
     var dy: i32 = 0;
@@ -2110,12 +2110,12 @@ test "tome game: held repeat is throttled to one step per 0.3s" {
     try std.testing.expect(g.sim.turn >= turn);
 }
 
-test "tome game: autosave history rotates and loads" {
+test "run game: autosave history rotates and loads" {
     const gpa = std.testing.allocator;
     const io = std.testing.io;
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     g.started = true;
     const auto1 = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "auto1.save" });
@@ -2147,12 +2147,12 @@ test "tome game: autosave history rotates and loads" {
     try std.testing.expect(!std.mem.eql(u8, g.slot_labels[2], "空"));
 }
 
-test "tome game: slots fall back to legacy run+gear pair" {
+test "run game: slots fall back to legacy run+gear pair" {
     const gpa = std.testing.allocator;
     const io = std.testing.io;
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     g.started = true;
     const run_path = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "legacy-run.json" });
@@ -2171,12 +2171,12 @@ test "tome game: slots fall back to legacy run+gear pair" {
     try std.testing.expectApproxEqAbs(hp, g.sim.hero.hp, 0.01);
 }
 
-test "tome game: slots save metadata and load" {
+test "run game: slots save metadata and load" {
     const gpa = std.testing.allocator;
     const io = std.testing.io;
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     g.started = true;
     const run_path = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "slot-run.json" });
@@ -2196,9 +2196,9 @@ test "tome game: slots save metadata and load" {
     try std.testing.expectApproxEqAbs(hp, g.sim.hero.hp, 0.01);
 }
 
-test "tome game: initiative shows the player and fastest enemy" {
+test "run game: initiative shows the player and fastest enemy" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     g.fillHudState();
     try std.testing.expectEqualStrings("玩家", g.hud_state.initiative[0]);
@@ -2218,9 +2218,9 @@ test "tome game: initiative shows the player and fastest enemy" {
     }
 }
 
-test "tome game: character panel spends a pending attribute point" {
+test "run game: character panel spends a pending attribute point" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     g.started = true;
     g.panel = .character;
@@ -2231,9 +2231,9 @@ test "tome game: character panel spends a pending attribute point" {
     try std.testing.expectEqual(@as(u8, 0), g.sim.hero.pending_points);
 }
 
-test "tome game: presentation locks input during enemy phase" {
+test "run game: presentation locks input during enemy phase" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     g.started = true;
     g.presentation = true;
@@ -2249,9 +2249,9 @@ test "tome game: presentation locks input during enemy phase" {
     try std.testing.expect(!g.hud_state.enemy_phase);
 }
 
-test "tome game: mouse click confirms an aimed enemy" {
+test "run game: mouse click confirms an aimed enemy" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     g.sim.enemy_count = 0;
     addGameEnemy(g, 1, 0, "骷髅兵");
@@ -2267,9 +2267,9 @@ test "tome game: mouse click confirms an aimed enemy" {
     try std.testing.expectEqual(turn + 1, g.sim.turn);
 }
 
-test "tome game: mouse click casts fireball on a ground cell" {
+test "run game: mouse click casts fireball on a ground cell" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 480, 270, .mage, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .mage, 12345);
     defer g.destroy();
     g.sim.enemy_count = 0;
     var target: ?sim_mod.GridPos = null;

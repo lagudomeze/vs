@@ -5,15 +5,15 @@
 //! (including known P1 findings) and asserts the invariants that the game
 //! does satisfy.
 const std = @import("std");
-const tome = @import("../game/tome_sim.zig");
-const TomeGame = @import("../game/tome_game.zig").TomeGame;
+const run = @import("../game/run_sim.zig");
+const RunGame = @import("../game/run_game.zig").RunGame;
 const save_mod = @import("../game/save.zig");
 const gear_save = @import("../game/gear_save.zig");
 
 const dt = 1.0 / 60.0;
 const dirs4 = [_][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
 
-fn setEnemy(g: *TomeGame, x: i32, y: i32, name: []const u8, hp: f32, speed: u16) usize {
+fn setEnemy(g: *RunGame, x: i32, y: i32, name: []const u8, hp: f32, speed: u16) usize {
     const idx = g.sim.enemy_count;
     g.sim.enemies[idx] = .{
         .kind = 0,
@@ -31,14 +31,14 @@ fn setEnemy(g: *TomeGame, x: i32, y: i32, name: []const u8, hp: f32, speed: u16)
     return idx;
 }
 
-fn digestSim(gpa: std.mem.Allocator, g: *const TomeGame) ![]u8 {
+fn digestSim(gpa: std.mem.Allocator, g: *const RunGame) ![]u8 {
     var copy = g.sim;
     copy.log_head = 0;
     copy.log_total = 0;
     return save_mod.saveAlloc(gpa, &copy);
 }
 
-fn sameDigest(gpa: std.mem.Allocator, a: *const TomeGame, b: *const TomeGame) !bool {
+fn sameDigest(gpa: std.mem.Allocator, a: *const RunGame, b: *const RunGame) !bool {
     const ab = try digestSim(gpa, a);
     defer gpa.free(ab);
     const bb = try digestSim(gpa, b);
@@ -46,11 +46,11 @@ fn sameDigest(gpa: std.mem.Allocator, a: *const TomeGame, b: *const TomeGame) !b
     return std.mem.eql(u8, ab, bb);
 }
 
-fn gearBytes(gpa: std.mem.Allocator, g: *const TomeGame) ![]u8 {
+fn gearBytes(gpa: std.mem.Allocator, g: *const RunGame) ![]u8 {
     return gear_save.toAlloc(gpa, &g.inventory);
 }
 
-fn resetAimBoard(g: *TomeGame) void {
+fn resetAimBoard(g: *RunGame) void {
     g.sim.hero.pos = .{ .x = 6, .y = 6 };
     g.sim.hero.last_pos = .{ .x = 6, .y = 6 };
     g.sim.hero.hp = g.sim.hero.hp_max;
@@ -65,13 +65,13 @@ fn resetAimBoard(g: *TomeGame) void {
 }
 
 const Approach = struct {
-    hero: tome.GridPos,
+    hero: run.GridPos,
     step_x: i32,
     step_y: i32,
-    chest: tome.GridPos,
+    chest: run.GridPos,
 };
 
-fn chestApproach(g: *const TomeGame) ?Approach {
+fn chestApproach(g: *const RunGame) ?Approach {
     for (g.sim.chests, g.sim.chest_alive) |c, alive| {
         if (!alive) continue;
         for (dirs4) |d| {
@@ -90,7 +90,7 @@ fn chestApproach(g: *const TomeGame) ?Approach {
     return null;
 }
 
-fn openChestScenario(g: *TomeGame) bool {
+fn openChestScenario(g: *RunGame) bool {
     const a = chestApproach(g) orelse return false;
     g.sim.enemy_count = 0;
     g.sim.enemies = @splat(.{});
@@ -114,7 +114,7 @@ fn makeTmpPath(alloc: std.mem.Allocator, tmp: *std.testing.TmpDir, name: []const
 
 test "qa3: aim entry and cancel spend nothing" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
@@ -134,13 +134,13 @@ test "qa3: aim entry and cancel spend nothing" {
     try std.testing.expectEqual(turn, g.sim.turn);
     try std.testing.expectEqual(res, g.sim.hero.resource);
     try std.testing.expect(!g.cancelAim());
-    try std.testing.expectEqual(tome.State.playing, g.sim.state);
+    try std.testing.expectEqual(run.State.playing, g.sim.state);
     std.debug.print("[qa3] aim entry/cancel: turn and resource unchanged (t={d}, r={d:.0})\n", .{ turn, res });
 }
 
 test "qa3: valid aim confirms once, one turn and one resource payment" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
@@ -161,7 +161,7 @@ test "qa3: valid aim confirms once, one turn and one resource payment" {
 
 test "qa3: same key currently confirms (spec text says cancel)" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
@@ -177,7 +177,7 @@ test "qa3: same key currently confirms (spec text says cancel)" {
 
 test "qa3: range/LOS confirm stays; missing resource refuses aim" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
 
     // Out of range.
@@ -197,7 +197,7 @@ test "qa3: range/LOS confirm stays; missing resource refuses aim" {
     // No line of sight: wall between hero (6,6) and target (6,4).
     resetAimBoard(g);
     _ = setEnemy(g, 6, 4, "骷髅兵", 70, 70);
-    g.sim.blocked[5 * tome.grid_w + 6] = true;
+    g.sim.blocked[5 * run.grid_w + 6] = true;
     g.update(.{ .talent = 1 }, dt);
     try std.testing.expect(!g.hud_state.aim.valid);
     try std.testing.expectEqualStrings("视线受阻", g.hud_state.aim.reason);
@@ -226,7 +226,7 @@ test "qa3: range/LOS confirm stays; missing resource refuses aim" {
 
 test "qa3: wait key while aiming cancels and waits" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
@@ -242,7 +242,7 @@ test "qa3: wait key while aiming cancels and waits" {
 
 test "qa3: tab cycles aim target without a turn" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     _ = setEnemy(g, 5, 6, "骷髅兵", 70, 70);
@@ -260,7 +260,7 @@ test "qa3: tab cycles aim target without a turn" {
 test "qa3: self talents fire immediately without entering aim" {
     const gpa = std.testing.allocator;
 
-    const w = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const w = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer w.destroy();
     resetAimBoard(w);
     const wt = w.sim.turn;
@@ -269,7 +269,7 @@ test "qa3: self talents fire immediately without entering aim" {
     try std.testing.expectEqual(wt + 1, w.sim.turn);
     try std.testing.expect(w.sim.hero.buff_turns > 0);
 
-    const m = try TomeGame.create(gpa, 480, 270, .mage, 12345);
+    const m = try RunGame.create(gpa, 480, 270, .mage, 12345);
     defer m.destroy();
     resetAimBoard(m);
     const mt = m.sim.turn;
@@ -279,7 +279,7 @@ test "qa3: self talents fire immediately without entering aim" {
     try std.testing.expect(!m.isAiming());
     try std.testing.expect(m.sim.turn == mt or m.sim.turn == mt + 1);
 
-    const c = try TomeGame.create(gpa, 480, 270, .chronomancer, 12345);
+    const c = try RunGame.create(gpa, 480, 270, .chronomancer, 12345);
     defer c.destroy();
     resetAimBoard(c);
     c.sim.hero.last_pos = .{ .x = 6, .y = 5 };
@@ -294,7 +294,7 @@ test "qa3: self talents fire immediately without entering aim" {
 
 test "qa3: autoPlayStep never leaves the bot aiming" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     _ = setEnemy(g, 6, 5, "骷髅兵", 70, 70);
@@ -320,13 +320,13 @@ test "qa3: save/load preserves state and gear" {
     const gear_path = try makeTmpPath(alloc, &tmp, "round-gear.json");
     defer alloc.free(gear_path);
 
-    const g1 = try TomeGame.create(alloc, 480, 270, .warrior, 12345);
+    const g1 = try RunGame.create(alloc, 480, 270, .warrior, 12345);
     defer g1.destroy();
     var steps: usize = 0;
     while (steps < 80 and g1.sim.turn < 25 and g1.sim.state == .playing) : (steps += 1) g1.autoPlayStep();
     g1.saveRun(io, sim_path, gear_path);
 
-    const g2 = try TomeGame.create(alloc, 480, 270, .warrior, 12345);
+    const g2 = try RunGame.create(alloc, 480, 270, .warrior, 12345);
     defer g2.destroy();
     g2.loadRun(io, sim_path, gear_path);
 
@@ -358,13 +358,13 @@ test "qa3: loot rng survives save/load" {
     const gear_path = try makeTmpPath(alloc, &tmp, "loot-gear.json");
     defer alloc.free(gear_path);
 
-    const g1 = try TomeGame.create(alloc, 480, 270, .warrior, 12345);
+    const g1 = try RunGame.create(alloc, 480, 270, .warrior, 12345);
     defer g1.destroy();
     try std.testing.expect(openChestScenario(g1));
     const a = chestApproach(g1).?;
     g1.saveRun(io, sim_path, gear_path);
 
-    const g2 = try TomeGame.create(alloc, 480, 270, .warrior, 12345);
+    const g2 = try RunGame.create(alloc, 480, 270, .warrior, 12345);
     defer g2.destroy();
     g2.loadRun(io, sim_path, gear_path);
 
@@ -390,7 +390,7 @@ test "qa3: corrupt save and missing gear leave the current run alone" {
     const gear_path = try makeTmpPath(alloc, &tmp, "bad-gear.json");
     defer alloc.free(gear_path);
 
-    const g = try TomeGame.create(alloc, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(alloc, 480, 270, .warrior, 12345);
     defer g.destroy();
     _ = g.sim.wait();
     try std.testing.expect(g.inventory.pickup(0));
@@ -401,7 +401,7 @@ test "qa3: corrupt save and missing gear leave the current run alone" {
     const gear_before = try gearBytes(alloc, g);
     defer alloc.free(gear_before);
     // Corrupt the sim half; current run and the corrupt file must stay.
-    const bad = "{\"format\":\"vx-tome-save\",\"version\":1,";
+    const bad = "{\"format\":\"vx-run-save\",\"version\":1,";
     try tmp.dir.writeFile(io, .{ .sub_path = "bad-run.json", .data = bad });
     g.loadRun(io, sim_path, gear_path);
     const after_bad = try digestSim(alloc, g);
@@ -443,7 +443,7 @@ test "qa3: empty gear object is rejected without clearing the bag" {
     const gear_path = try makeTmpPath(alloc, &tmp, "empty-gear.json");
     defer alloc.free(gear_path);
 
-    const g = try TomeGame.create(alloc, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(alloc, 480, 270, .warrior, 12345);
     defer g.destroy();
     try std.testing.expect(g.inventory.pickup(0));
     g.saveRun(io, sim_path, gear_path);
@@ -460,7 +460,7 @@ test "qa3: empty gear object is rejected without clearing the bag" {
 
 // ---------------------------------------------------------------- mechanics
 
-fn setupFighter(s: *tome.Sim, speed: u16) void {
+fn setupFighter(s: *run.Sim, speed: u16) void {
     s.turn = 1;
     s.hero.armor = 0;
     s.hero.hp = s.hero.hp_max;
@@ -480,7 +480,7 @@ fn setupFighter(s: *tome.Sim, speed: u16) void {
 }
 
 test "qa3: speed 150 acts twice, speed 70 skips on even turns" {
-    var fast = tome.Sim.init(41, .warrior);
+    var fast = run.Sim.init(41, .warrior);
     setupFighter(&fast, 150);
     const f0 = fast.hero.hp;
     _ = fast.wait();
@@ -491,7 +491,7 @@ test "qa3: speed 150 acts twice, speed 70 skips on even turns" {
     try std.testing.expect(a1 > 0);
     try std.testing.expectApproxEqAbs(a1, a2 * 2.0, 0.01);
 
-    var slow = tome.Sim.init(43, .warrior);
+    var slow = run.Sim.init(43, .warrior);
     setupFighter(&slow, 70);
     const s0 = slow.hero.hp;
     _ = slow.wait();
@@ -502,7 +502,7 @@ test "qa3: speed 150 acts twice, speed 70 skips on even turns" {
 }
 
 test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
-    var s = tome.Sim.init(47, .warrior);
+    var s = run.Sim.init(47, .warrior);
     s.turn = 2;
     s.hero.pos = .{ .x = 6, .y = 6 };
     s.hero.armor = 0;
@@ -526,7 +526,7 @@ test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
     _ = s.wait();
     try std.testing.expectEqual(hp, s.hero.hp); // 1 cell away > 0.9
 
-    var h = tome.Sim.init(49, .warrior);
+    var h = run.Sim.init(49, .warrior);
     h.turn = 2;
     h.hero.pos = .{ .x = 6, .y = 6 };
     h.hero.armor = 0;
@@ -553,12 +553,12 @@ test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
 }
 
 test "qa3: boss seals floor-3 stairs without spending a turn" {
-    var s = tome.Sim.init(53, .warrior);
+    var s = run.Sim.init(53, .warrior);
     s.floor = 3;
     s.turn = 1;
-    var from: ?tome.GridPos = null;
+    var from: ?run.GridPos = null;
     for (dirs4) |d| {
-        const p = tome.GridPos{ .x = s.stairs.x + d[0], .y = s.stairs.y + d[1] };
+        const p = run.GridPos{ .x = s.stairs.x + d[0], .y = s.stairs.y + d[1] };
         if (s.map.isWalkable(.{ .x = p.x, .y = p.y })) {
             from = p;
             break;
@@ -595,7 +595,7 @@ test "qa3: boss seals floor-3 stairs without spending a turn" {
 
 test "qa3: H toggles help and freezes turns" {
     const gpa = std.testing.allocator;
-    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
     defer g.destroy();
     resetAimBoard(g);
     const turn = g.sim.turn;

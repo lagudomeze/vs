@@ -408,7 +408,7 @@ pub const Dungeon = struct {
         return d;
     }
 
-    /// Deterministic ToME-style floor: bordered room complex, guaranteed
+    /// Deterministic turn-based floor: bordered room complex, guaranteed
     /// entrance -> stairs route, floor-scaled chests / spawns / traps.
     pub fn generate(seed: u64, floor_in: u8) Dungeon {
         const floor = @max(1, floor_in);

@@ -93,7 +93,7 @@ cells(shape, origin, dir) []Cell
 - 冷却与持续时间的时钟推进；
 - 时间事件：TurnStarted、ActorTurnStarted、ActorTurnEnded、RoundEnded。
 
-推荐模型：ToME 式能量。
+推荐模型：turn-based 式能量。
 
 ~~~text
 每个 tick: energy += speed
@@ -172,7 +172,7 @@ cells(shape, origin, dir) []Cell
 
 当前债：
 
-- 玩家天赋规格在 tome_target.specFor；
+- 玩家天赋规格在 run_target.specFor；
 - 消耗/冷却在 Sim.talentCost/talentCooldown；
 - 执行 switch 在 Sim.useTalentOn；
 - skills.json 已有 SkillDef，但玩家天赋实际没走它；
@@ -244,10 +244,10 @@ raw
 当前债：
 
 - XP/升级循环在 Sim.killEnemy；
-- 掉落/装备在 TomeGame；
+- 掉落/装备在 RunGame；
 - 装备修正通过 items.rebuild 再调 Sim.applyModifiers；
 - 升级曲线硬编码 100*level；
-- 自动加点与手动加点在 Sim/TomeGame 分叉。
+- 自动加点与手动加点在 Sim/RunGame 分叉。
 
 ### M9 运行/遭遇
 
@@ -395,9 +395,9 @@ M5 ActionResolved
 
 因此机制的数据结构必须放在不依赖 SDL/zflecs 的模块里。
 
-## 7. ToME4 对照
+## 7. reference roguelike 对照
 
-| ToME4 | 抽象 | 我们的差异 |
+| reference roguelike | 抽象 | 我们的差异 |
 | --- | --- | --- |
 | Actor energy 1000 | M2 能量 | 现在 100 + 偶数回合特判 |
 | DamageType + projector | M6 类型/管线 | 只有物理，公式三处重复 |
@@ -476,7 +476,7 @@ M5 ActionResolved
 
 ## 11. 需要确认的决策
 
-1. 时间模型：采用 ToME 式能量（推荐），还是保留现在的偶数回合特判？
+1. 时间模型：采用 turn-based 式能量（推荐），还是保留现在的偶数回合特判？
 2. 伤害类型：第一版做 物理/火焰/冰霜/奥术/时空 五类，还是先只做物理 + 抗性接口？
 3. ECS 边界：确认 sim 用纯组件数组、render 用 zflecs 投影，不把 Sim 整体迁 zflecs？
 4. 配置边界：职业/公式用 Zig comptime 表，物品/技能用 JSON，是否接受？
