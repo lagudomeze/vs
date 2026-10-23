@@ -8,7 +8,7 @@ const Options = struct {
     hero: u32 = 0,
     hero_set: bool = false,
     start_menu: bool = false,
-    seed: u64 = 12345,
+    seed: u64 = 0, // 0 = pick a fresh seed for this run
     arena: bool = false,
     yaw: f32 = -0.35,
     pitch: f32 = 0.70,
@@ -44,6 +44,7 @@ fn usage() void {
         \\  --frames N        simulation frames before a headless capture; window auto-quit
         \\  --run-seconds S   window mode: capture and quit after S seconds
         \\  --hero N          start as hero 0=Berserker 1=Archmage 2=Chronomancer (skips the class menu)
+        \\  --seed N          fixed dungeon seed (default 0 = fresh seed each run)
         \\  --start-menu      force the class-selection cards (headless screenshots/QA)
         \\  --yaw DEG         camera yaw (default -20)
         \\  --pitch DEG       camera pitch (default 40)
