@@ -765,6 +765,16 @@ test "qa2: autoplay batch over 100 seeds preserves turn/hp/floor invariants" {
     }
 }
 
+test "qa2: easy mode batch remains playable" {
+    var c = try content_mod.load(std.testing.allocator);
+    defer c.deinit();
+    const b = try runBatchWithDifficulty(seed_count, &c, .easy);
+    printBatch("easy", &b);
+    try std.testing.expectEqual(@as(u32, @intCast(seed_count * run.class_count)), b.runs);
+    try std.testing.expectEqual(@as(u32, 0), b.timeouts);
+    try std.testing.expectEqual(b.runs, b.wins + b.deaths);
+}
+
 test "qa2: hard mode batch remains playable" {
     var c = try content_mod.load(std.testing.allocator);
     defer c.deinit();

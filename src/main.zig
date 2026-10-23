@@ -48,7 +48,7 @@ fn usage() void {
         \\  --hero N          start as hero 0=Berserker 1=Archmage 2=Chronomancer (skips the class menu)
         \\  --seed N          fixed dungeon seed (default 0 = fresh seed each run)
         \\  --start-menu      force the class-selection cards (headless screenshots/QA)
-        \\  --difficulty M    normal | hard (default normal)
+        \\  --difficulty M    normal | hard | easy (default normal)
         \\  --yaw DEG         camera yaw (default -20)
         \\  --pitch DEG       camera pitch (default 40)
         \\  --dist U          camera orbit distance (default 8.2)
@@ -110,7 +110,7 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.seed = try std.fmt.parseInt(u64, try argAt(argv, &i), 10);
         } else if (std.mem.eql(u8, a, "--difficulty")) {
             const value = try argAt(argv, &i);
-            if (std.mem.eql(u8, value, "hard")) o.difficulty = .hard else if (std.mem.eql(u8, value, "normal")) o.difficulty = .normal else return error.BadDifficulty;
+            if (std.mem.eql(u8, value, "hard")) o.difficulty = .hard else if (std.mem.eql(u8, value, "normal")) o.difficulty = .normal else if (std.mem.eql(u8, value, "easy")) o.difficulty = .easy else return error.BadDifficulty;
         } else if (std.mem.eql(u8, a, "--arena")) {
             o.arena = true;
         } else if (std.mem.eql(u8, a, "--yaw")) {

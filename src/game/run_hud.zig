@@ -143,9 +143,17 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const tw = renderer.Renderer.textWidth(menu_title, 2);
     r.drawText(@divTrunc(w, 2) - @divTrunc(tw, 2), 7, menu_title, palette.gold, 2, true);
     var sub_buf: [64]u8 = undefined;
-    const sub = fmt(&sub_buf, "SEED {d}  {s} [D] 切换", .{ state.menu_seed, if (state.difficulty == 1) "HARD" else "NORMAL" });
+    const sub = fmt(&sub_buf, "SEED {d}  {s} [D] 切换", .{ state.menu_seed, switch (state.difficulty) {
+        1 => "HARD",
+        2 => "EASY",
+        else => "NORMAL",
+    } });
     const sw = renderer.Renderer.textWidth(sub, 1);
-    r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), 27, sub, if (state.difficulty == 1) palette.red else palette.muted, 1, false);
+    r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), 27, sub, switch (state.difficulty) {
+        1 => palette.red,
+        2 => palette.cyan_light,
+        else => palette.muted,
+    }, 1, false);
 
     const accents = [_]u32{ palette.gold, palette.cyan, color.pack(185, 128, 230) };
     const card_w: i32 = 146;
@@ -245,6 +253,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     var buf: [64]u8 = undefined;
     r.drawText(10, 8, state.class_name, palette.gold, 1, false);
     if (state.difficulty == 1) r.drawText(130, 8, "HARD", palette.red, 1, false);
+    if (state.difficulty == 2) r.drawText(136, 8, "EASY", palette.cyan_light, 1, false);
     const lv = fmt(&buf, "{d}级  XP {d}/{d}", .{ state.level, state.xp, state.xp_next });
     r.drawText(10, 21, lv, palette.muted, 1, false);
     bar(r, 10, 32, 150, 7, if (state.hp_max > 0) state.hp / state.hp_max else 0, palette.health_light);
