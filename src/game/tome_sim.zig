@@ -9,17 +9,14 @@ pub const grid_w = dungeon_mod.size;
 pub const grid_h = dungeon_mod.size;
 pub const max_enemies = 12;
 
-pub const Class = enum(u8) { warrior, mage, chronomancer };
-pub const class_count = 3;
+pub const Class = attributes.Class;
+pub const class_count = attributes.class_count;
+pub const classFromIndex = attributes.classFromIndex;
 
-pub fn classFromIndex(i: u8) Class {
-    return @fromBackingInt(@intCast(@min(i, class_count - 1)));
-}
-
-pub const class_names = [_][]const u8{ "狂战士", "元素法师", "时空法师" };
-pub const resource_names = [_][]const u8{ "精力", "法力", "悖论" };
+pub const class_names = attributes.class_names;
+pub const resource_names = attributes.resource_names;
 /// One-line positioning hints for the class-selection cards.
-pub const class_roles = [_][]const u8{ "近战 防御", "远程 伤害", "远程 减速" };
+pub const class_roles = attributes.class_roles;
 
 /// One-line Chinese effect text for every class talent (hotbar hint strip,
 /// class cards and the character panel). Keep each line short enough for the
@@ -40,11 +37,11 @@ pub fn nextSeed(seed: u64) u64 {
 }
 
 pub fn classHpMax(class: Class) u16 {
-    return @intFromFloat(40 + base_stats[@backingInt(class)].constitution * 8);
+    return @intFromFloat(attributes.recompute(attributes.baseStats(class), &.{}, class).derived.hp_max);
 }
 
 pub fn classResourceMax(class: Class) u16 {
-    return @intFromFloat(60 + base_stats[@backingInt(class)].will * 4);
+    return @intFromFloat(attributes.recompute(attributes.baseStats(class), &.{}, class).derived.resource_max);
 }
 
 pub fn talentNameFor(class: Class, i: usize) []const u8 {
@@ -91,22 +88,11 @@ pub const Stats = struct {
             .will = v[5],
         };
     }
-
-    pub fn mainStat(self: Stats, class: Class) f32 {
-        return switch (class) {
-            .warrior => self.strength,
-            .mage, .chronomancer => self.magic,
-        };
-    }
 };
 
-const base_stats = [_]Stats{
-    Stats.fromArray(.{ 14, 10, 16, 8, 4, 10 }),
-    Stats.fromArray(.{ 6, 8, 8, 12, 18, 12 }),
-    Stats.fromArray(.{ 7, 10, 9, 14, 14, 13 }),
-};
-
-const class_base_attack = [_]f32{ 18, 11, 14 };
+fn statsFromAttributes(st: attributes.Stats) Stats {
+    return Stats.fromArray(.{ st.get(.strength), st.get(.agility), st.get(.constitution), st.get(.perception), st.get(.magic), st.get(.will) });
+}
 
 pub const State = enum(u8) { playing, dead, victory };
 
@@ -222,7 +208,7 @@ pub const Sim = struct {
         self.seed = seed;
         self.rng = std.Random.DefaultPrng.init(seed);
         self.class = class;
-        self.hero = Hero{ .class = class, .stats = base_stats[@backingInt(class)] };
+        self.hero = Hero{ .class = class, .stats = statsFromAttributes(attributes.baseStats(class)) };
         self.floor = 1;
         self.turn = 1;
         self.kills = 0;
@@ -259,26 +245,11 @@ pub const Sim = struct {
     }
 
     pub fn mainStatIndex(self: *const Sim) usize {
-        return switch (self.class) {
-            .warrior => 0,
-            .mage, .chronomancer => 4,
-        };
+        return @backingInt(attributes.profile(self.class).main_stat);
     }
 
     pub fn recomputeHero(self: *Sim) void {
-        const st = self.hero.stats;
-        const main = st.mainStat(self.class);
-        const base_atk = class_base_attack[@backingInt(self.class)];
-        self.hero.hp_max = 40 + st.constitution * 8;
-        self.hero.resource_max = 60 + st.will * 4;
-        self.hero.attack = base_atk + main * 1.2;
-        self.hero.armor = st.constitution * 0.5;
-        self.hero.crit = @min(0.50, 0.05 + st.perception * 0.004);
-        self.hero.speed = @intFromFloat(std.math.clamp(100 + (st.agility - 10) * 2, 50, 200));
-        self.hero.res_per_turn = 8 + st.will * 0.35;
-        self.hero.eff_stats = .{ st.strength, st.agility, st.constitution, st.perception, st.magic, st.will };
-        self.hero.hp = @min(self.hero.hp, self.hero.hp_max);
-        self.hero.resource = @min(self.hero.resource, self.hero.resource_max);
+        self.applyModifiers(&.{});
     }
 
     pub fn applyModifiers(self: *Sim, mods: []const attributes.Modifier) void {
@@ -290,12 +261,7 @@ pub const Sim = struct {
             self.hero.stats.magic,
             self.hero.stats.will,
         });
-        const klass: attributes.Class = switch (self.class) {
-            .warrior => .warrior,
-            .mage => .mage,
-            .chronomancer => .chronomancer,
-        };
-        const sheet = attributes.recompute(base, mods, klass);
+        const sheet = attributes.recompute(base, mods, self.class);
         self.hero.eff_stats = sheet.stats;
         self.hero.hp_max = sheet.derived.hp_max;
         self.hero.resource_max = sheet.derived.resource_max;
@@ -1393,4 +1359,28 @@ test "tome sim: class choice reseeds deterministically" {
     try std.testing.expectEqual(a, s.seed);
     try std.testing.expectEqual(Class.mage, s.class);
     try std.testing.expectEqual(Class.mage, s.hero.class);
+}
+
+test "hero sheet is the attributes sheet, not a second formula copy" {
+    for ([_]Class{ .warrior, .mage, .chronomancer }) |class| {
+        const s = Sim.init(12345, class);
+        const base = attributes.Stats.fromArray(.{
+            s.hero.stats.strength,
+            s.hero.stats.agility,
+            s.hero.stats.constitution,
+            s.hero.stats.perception,
+            s.hero.stats.magic,
+            s.hero.stats.will,
+        });
+        const sheet = attributes.recompute(base, &.{}, class);
+        try std.testing.expectApproxEqAbs(sheet.derived.hp_max, s.hero.hp_max, 0.001);
+        try std.testing.expectApproxEqAbs(sheet.derived.resource_max, s.hero.resource_max, 0.001);
+        try std.testing.expectApproxEqAbs(sheet.derived.attack, s.hero.attack, 0.001);
+        try std.testing.expectApproxEqAbs(sheet.derived.armor, s.hero.armor, 0.001);
+        try std.testing.expectApproxEqAbs(sheet.derived.crit, s.hero.crit, 0.0001);
+        try std.testing.expectApproxEqAbs(sheet.derived.speed, @as(f32, @floatFromInt(s.hero.speed)), 0.001);
+        try std.testing.expectApproxEqAbs(sheet.derived.resource_per_turn, s.hero.res_per_turn, 0.001);
+        try std.testing.expectEqual(@as(u16, @intFromFloat(sheet.derived.hp_max)), classHpMax(class));
+        try std.testing.expectEqual(@as(u16, @intFromFloat(sheet.derived.resource_max)), classResourceMax(class));
+    }
 }

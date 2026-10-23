@@ -166,47 +166,52 @@ pub const ClassProfile = struct {
     resource: ResourceKind,
 };
 
-pub const class_profiles = [class_count]ClassProfile{
-    .{ .base_attack = 18, .main_stat = .strength, .resource = .stamina },
-    .{ .base_attack = 11, .main_stat = .magic, .resource = .mana },
-    .{ .base_attack = 14, .main_stat = .magic, .resource = .paradox },
+/// One row per class: identity + numbers. Adding a class is one table row;
+/// the profile/base-stat views are derived from the same source.
+pub const ClassDef = struct {
+    name: []const u8,
+    role: []const u8,
+    base_attack: f32,
+    main_stat: StatKind,
+    resource: ResourceKind,
+    base_stats: [stat_count]f32,
+};
+
+pub const class_defs = [class_count]ClassDef{
+    .{ .name = "狂战士", .role = "近战 防御", .base_attack = 18, .main_stat = .strength, .resource = .stamina, .base_stats = .{ 14, 10, 16, 8, 4, 10 } },
+    .{ .name = "元素法师", .role = "远程 伤害", .base_attack = 11, .main_stat = .magic, .resource = .mana, .base_stats = .{ 6, 8, 8, 12, 18, 12 } },
+    .{ .name = "时空法师", .role = "远程 减速", .base_attack = 14, .main_stat = .magic, .resource = .paradox, .base_stats = .{ 7, 10, 9, 14, 14, 13 } },
 };
 
 pub fn profile(class: Class) ClassProfile {
-    return class_profiles[@backingInt(class)];
+    const def = class_defs[@backingInt(class)];
+    return .{ .base_attack = def.base_attack, .main_stat = def.main_stat, .resource = def.resource };
 }
 
 pub fn resourceLabel(class: Class) []const u8 {
     return profile(class).resource.label();
 }
 
-/// 六属性基础值（docs/BALANCE_V1.md 第 2 节）。
-pub const class_base_stats = [class_count]Stats{
-    Stats.fromArray(.{ 14, 10, 16, 8, 4, 10 }), // 狂战士
-    Stats.fromArray(.{ 6, 8, 8, 12, 18, 12 }), // 元素法师
-    Stats.fromArray(.{ 7, 10, 9, 14, 14, 13 }), // 时空法师
-};
-
 pub fn baseStats(class: Class) Stats {
-    return class_base_stats[@backingInt(class)];
+    return Stats.fromArray(class_defs[@backingInt(class)].base_stats);
 }
 
+fn classField(comptime field: []const u8) [class_count][]const u8 {
+    var out: [class_count][]const u8 = undefined;
+    for (&out, class_defs) |*slot, def| slot.* = @field(def, field);
+    return out;
+}
+
+pub const class_names = classField("name");
+pub const class_roles = classField("role");
+
+pub const resource_names = blk: {
+    var out: [class_count][]const u8 = undefined;
+    for (&out, class_defs) |*slot, def| slot.* = def.resource.label();
+    break :blk out;
+};
+
 pub const formulas = struct {
-    pub const hp_base: f32 = 40;
-    pub const hp_per_constitution: f32 = 8;
-    pub const resource_base: f32 = 60;
-    pub const resource_per_will: f32 = 4;
-    pub const attack_scale: f32 = 1.2;
-    pub const armor_per_constitution: f32 = 0.5;
-    pub const crit_base: f32 = 0.05;
-    pub const crit_per_perception: f32 = 0.004;
-    /// 回合速度：100 为基准（敏捷 10），每点敏捷 ±2。
-    pub const speed_base: f32 = 100;
-    pub const speed_per_agility: f32 = 2;
-    pub const speed_baseline_agility: f32 = 10;
-    /// 每回合资源回复。
-    pub const resource_per_turn_base: f32 = 8;
-    pub const resource_per_turn_per_will: f32 = 0.35;
     /// 15% of every hit always penetrates armor.
     pub const armor_penetration: f32 = 0.15;
     pub const armor_k: f32 = 50;
@@ -230,6 +235,49 @@ pub const caps = struct {
     pub const pct_max: f32 = 5.0;
 };
 
+/// A linear contribution from one primary stat.
+pub const StatTerm = struct {
+    stat: StatKind,
+    per: f32,
+};
+
+/// Data row for one derived stat. The recompute system is generic: it walks
+/// this table, so adding a derived stat needs one enum tag + one row, not a
+/// new hand-written formula block.
+pub const DerivedDef = struct {
+    base: f32 = 0,
+    terms: []const StatTerm = &.{},
+    min: f32,
+    max: f32 = std.math.floatMax(f32),
+    /// >0 scales the class main stat (attack uses 1.2).
+    main_scale: f32 = 0,
+    /// Add the class's base attack before scaling.
+    class_base_attack: bool = false,
+};
+
+pub const derived_defs = .{
+    .hp_max = DerivedDef{ .base = 40, .terms = &[_]StatTerm{.{ .stat = .constitution, .per = 8 }}, .min = caps.hp_min },
+    .resource_max = DerivedDef{ .base = 60, .terms = &[_]StatTerm{.{ .stat = .will, .per = 4 }}, .min = caps.resource_min },
+    .attack = DerivedDef{ .terms = &.{}, .min = caps.attack_min, .main_scale = 1.2, .class_base_attack = true },
+    .armor = DerivedDef{ .terms = &[_]StatTerm{.{ .stat = .constitution, .per = 0.5 }}, .min = caps.armor_min },
+    .crit = DerivedDef{ .base = 0.05, .terms = &[_]StatTerm{.{ .stat = .perception, .per = 0.004 }}, .min = caps.crit_min, .max = caps.crit_max },
+    .speed = DerivedDef{ .base = 80, .terms = &[_]StatTerm{.{ .stat = .agility, .per = 2 }}, .min = caps.speed_min, .max = caps.speed_max },
+    .resource_per_turn = DerivedDef{ .base = 8, .terms = &[_]StatTerm{.{ .stat = .will, .per = 0.35 }}, .min = caps.resource_min },
+};
+
+comptime {
+    for (@typeInfo(Derived).@"struct".field_names) |field_name| {
+        if (!@hasField(@TypeOf(derived_defs), field_name)) {
+            @compileError("derived stat has no derived_defs row: " ++ field_name);
+        }
+    }
+    for (@typeInfo(@TypeOf(derived_defs)).@"struct".field_names) |field_name| {
+        if (!@hasField(Derived, field_name)) {
+            @compileError("derived_defs row has no Derived field: " ++ field_name);
+        }
+    }
+}
+
 pub const Derived = struct {
     hp_max: f32 = 0,
     resource_max: f32 = 0,
@@ -243,16 +291,10 @@ pub const Derived = struct {
     resource_per_turn: f32 = 0,
 
     pub fn value(self: Derived, ref: StatRef) ?f32 {
-        return switch (ref) {
-            .hp_max => self.hp_max,
-            .resource_max => self.resource_max,
-            .attack => self.attack,
-            .armor => self.armor,
-            .crit => self.crit,
-            .speed => self.speed,
-            .resource_per_turn => self.resource_per_turn,
-            else => null,
-        };
+        inline for (@typeInfo(Derived).@"struct".field_names) |field_name| {
+            if (ref == @field(StatRef, field_name)) return @field(self, field_name);
+        }
+        return null;
     }
 };
 
@@ -389,57 +431,19 @@ pub fn recompute(base: Stats, mods: []const Modifier, class: Class) Sheet {
         );
     }
 
-    const con = stats[@backingInt(StatKind.constitution)];
-    const per = stats[@backingInt(StatKind.perception)];
-    const agi = stats[@backingInt(StatKind.agility)];
-    const wil = stats[@backingInt(StatKind.will)];
     const p = profile(class);
     const main = stats[@backingInt(p.main_stat)];
-    const max = std.math.floatMax(f32);
 
     var derived = Derived{};
-    derived.hp_max = acc.apply(
-        .hp_max,
-        formulas.hp_base + con * formulas.hp_per_constitution,
-        caps.hp_min,
-        max,
-    );
-    derived.resource_max = acc.apply(
-        .resource_max,
-        formulas.resource_base + wil * formulas.resource_per_will,
-        caps.resource_min,
-        max,
-    );
-    derived.attack = acc.apply(
-        .attack,
-        p.base_attack + main * formulas.attack_scale,
-        caps.attack_min,
-        max,
-    );
-    derived.armor = acc.apply(
-        .armor,
-        con * formulas.armor_per_constitution,
-        caps.armor_min,
-        max,
-    );
-    derived.crit = acc.apply(
-        .crit,
-        formulas.crit_base + per * formulas.crit_per_perception,
-        caps.crit_min,
-        caps.crit_max,
-    );
-    derived.speed = acc.apply(
-        .speed,
-        formulas.speed_base + (agi - formulas.speed_baseline_agility) * formulas.speed_per_agility,
-        caps.speed_min,
-        caps.speed_max,
-    );
-    derived.resource_per_turn = acc.apply(
-        .resource_per_turn,
-        formulas.resource_per_turn_base + wil * formulas.resource_per_turn_per_will,
-        caps.resource_min,
-        max,
-    );
+    inline for (@typeInfo(Derived).@"struct".field_names) |field_name| {
+        const def = @field(derived_defs, field_name);
+        const ref = @field(StatRef, field_name);
+        var base_value = def.base;
+        if (def.class_base_attack) base_value += p.base_attack;
+        for (def.terms) |term| base_value += stats[@backingInt(term.stat)] * term.per;
+        if (def.main_scale != 0) base_value += main * def.main_scale;
+        @field(derived, field_name) = acc.apply(ref, base_value, def.min, def.max);
+    }
 
     return .{ .stats = stats, .derived = derived };
 }
