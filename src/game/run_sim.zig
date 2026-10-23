@@ -1115,6 +1115,15 @@ pub const Sim = struct {
             self.pushLog("石魔像 震地 -{d:.0}", .{dmg});
             return;
         }
+        if ((e.identity.kind == 1 or e.identity.kind == 4) and d <= e.combat.range and los and e.action.special_cd == 0) {
+            const raw = e.combat.attack.val * 0.7;
+            const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount;
+            self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
+            e.vitals.set(@min(e.vitals.full, e.vitals.val + dmg * 0.5));
+            e.action.special_cd = 3;
+            self.pushLog("幽魂 汲取 -{d:.0}", .{dmg});
+            return;
+        }
         if (d <= 1 or (d <= e.combat.range and los)) {
             self.enemyAttack(idx);
             return;
@@ -1670,6 +1679,29 @@ test "run sim: affixes are deterministic and vampiric heals on hit" {
     });
     _ = s.wait();
     try std.testing.expect(s.enemies[0].vitals.val > 40);
+}
+
+test "run sim: wraith drain damages and heals itself" {
+    var s = Sim.init(84, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{
+        .kind = 1,
+        .name = "幽魂",
+        .pos = .{ .x = s.hero.pos.x + 2, .y = s.hero.pos.y },
+        .hp = 10,
+        .hp_max = 44,
+        .attack = 10,
+        .armor = 1,
+        .speed = 110,
+        .range = 3,
+        .xp = 25,
+        .energy = 100,
+    });
+    const hp = s.hero.vitals.val;
+    s.enemyAct(0);
+    try std.testing.expect(s.hero.vitals.val < hp);
+    try std.testing.expect(s.enemies[0].vitals.val > 10);
+    try std.testing.expectEqual(@as(u8, 3), s.enemies[0].action.special_cd);
 }
 
 test "run sim: golem shockwave hits at range two" {
