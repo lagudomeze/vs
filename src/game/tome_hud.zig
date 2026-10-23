@@ -63,7 +63,7 @@ pub const State = struct {
     slot_mode: u8 = 0,
     slot_labels: [3][]const u8 = .{ "空", "空", "空" },
     /// Player + at most one fastest living enemy, matching enemyPhase order.
-    initiative: [2][]const u8 = .{ "", "" },
+    initiative: [3][]const u8 = .{ "", "", "" },
     initiative_count: u8 = 0,
     kills: u32 = 0,
     enemies_left: u32 = 0,
@@ -259,7 +259,9 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     const turn = if (state.enemy_phase) "敌人行动" else fmt(&buf, "玩家回合 {d}", .{state.turn});
     r.drawText(w - 154, 37, turn, if (state.enemy_phase) palette.red else palette.gold_light, 1, false);
     var init_buf: [96]u8 = undefined;
-    const order = if (state.initiative_count >= 2)
+    const order = if (state.initiative_count >= 3)
+        fmt(&init_buf, "先攻 {s}>{s}>{s}", .{ state.initiative[0], state.initiative[1], state.initiative[2] })
+    else if (state.initiative_count >= 2)
         fmt(&init_buf, "先攻 {s}>{s}", .{ state.initiative[0], state.initiative[1] })
     else
         fmt(&init_buf, "先攻 {s}", .{state.initiative[0]});
