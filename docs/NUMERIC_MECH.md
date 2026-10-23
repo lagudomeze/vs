@@ -138,11 +138,11 @@ health.recomputeFull(full_mods);
 - 存档映射不变。
 - 测试/QA 行为等价。
 
-### Phase C：六维
+### Phase C：六维（已完成）
 
-- Stats[6] 改成 PrimarySheet。
+- ✅ Hero.sheet.stats 改成 PrimarySheet（6 个独立 mech.Value）。
 - 加点/装备/UI 用字段表遍历。
-- Save DTO 的 stats 仍是六个 f32。
+- ✅ Save DTO 的 stats 仍是六个 f32，加载时重建 PrimarySheet。
 
 ### Phase D：派生值
 

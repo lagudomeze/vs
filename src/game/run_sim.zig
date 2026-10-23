@@ -73,28 +73,8 @@ pub fn talentDescFor(class: Class, i: usize) []const u8 {
 
 pub const GridPos = struct { x: i32, y: i32 };
 
-pub const Stats = struct {
-    strength: f32 = 0,
-    agility: f32 = 0,
-    constitution: f32 = 0,
-    perception: f32 = 0,
-    magic: f32 = 0,
-    will: f32 = 0,
-
-    pub fn fromArray(v: [6]f32) Stats {
-        return .{
-            .strength = v[0],
-            .agility = v[1],
-            .constitution = v[2],
-            .perception = v[3],
-            .magic = v[4],
-            .will = v[5],
-        };
-    }
-};
-
-fn statsFromAttributes(st: attributes.Stats) Stats {
-    return Stats.fromArray(.{ st.get(.strength), st.get(.agility), st.get(.constitution), st.get(.perception), st.get(.magic), st.get(.will) });
+fn statsFromAttributes(st: attributes.Stats) numeric.PrimarySheet {
+    return numeric.PrimarySheet.fromArray(.{ st.get(.strength), st.get(.agility), st.get(.constitution), st.get(.perception), st.get(.magic), st.get(.will) });
 }
 
 pub const State = enum(u8) { playing, dead, victory };
@@ -117,7 +97,7 @@ pub const TalentState = struct {
 };
 
 pub const HeroSheet = struct {
-    stats: Stats = .{},
+    stats: numeric.PrimarySheet = .{},
     eff_stats: [6]f32 = .{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -335,14 +315,8 @@ pub const Sim = struct {
     /// modifiers (RunGame.rebuildMods) after this base-stat change.
     pub fn spendPoint(self: *Sim, stat: usize) bool {
         if (self.hero.progression.pending_points == 0 or stat >= 6) return false;
-        switch (stat) {
-            0 => self.hero.sheet.stats.strength += 1,
-            1 => self.hero.sheet.stats.agility += 1,
-            2 => self.hero.sheet.stats.constitution += 1,
-            3 => self.hero.sheet.stats.perception += 1,
-            4 => self.hero.sheet.stats.magic += 1,
-            else => self.hero.sheet.stats.will += 1,
-        }
+        if (stat >= 6) return false;
+        self.hero.sheet.stats.add(@fromBackingInt(@intCast(stat)), 1);
         self.hero.progression.pending_points -= 1;
         self.recomputeHero();
         return true;
@@ -357,14 +331,7 @@ pub const Sim = struct {
     }
 
     pub fn applyModifiers(self: *Sim, mods: []const attributes.Modifier) void {
-        const base = attributes.Stats.fromArray(.{
-            self.hero.sheet.stats.strength,
-            self.hero.sheet.stats.agility,
-            self.hero.sheet.stats.constitution,
-            self.hero.sheet.stats.perception,
-            self.hero.sheet.stats.magic,
-            self.hero.sheet.stats.will,
-        });
+        const base = attributes.Stats.fromArray(self.hero.sheet.stats.toArray());
         const sheet = attributes.recompute(base, mods, self.class);
         self.hero.sheet.eff_stats = sheet.stats;
         self.hero.vitals.setFull(sheet.derived.hp_max);
@@ -891,8 +858,8 @@ pub const Sim = struct {
             self.hero.progression.level += 1;
             if (self.auto_allocate) {
                 switch (self.class) {
-                    .warrior => self.hero.sheet.stats.strength += 1,
-                    .mage, .chronomancer => self.hero.sheet.stats.magic += 1,
+                    .warrior => self.hero.sheet.stats.add(.strength, 1),
+                    .mage, .chronomancer => self.hero.sheet.stats.add(.magic, 1),
                 }
             } else {
                 self.hero.progression.pending_points +|= 1;
@@ -1246,14 +1213,14 @@ test "run sim: level-up banks a point and auto allocate spends it" {
         .range = 1,
         .xp = 200,
     });
-    const str = s.hero.sheet.stats.strength;
+    const str = s.hero.sheet.stats.strength.val;
     s.hero.combat.attack = 100;
     s.playerAttack(0, 1.0);
     try std.testing.expectEqual(@as(u16, 2), s.hero.progression.level);
     try std.testing.expectEqual(@as(u8, 1), s.hero.progression.pending_points);
-    try std.testing.expectEqual(str, s.hero.sheet.stats.strength);
+    try std.testing.expectEqual(str, s.hero.sheet.stats.strength.val);
     try std.testing.expect(s.spendPoint(0));
-    try std.testing.expectEqual(str + 1, s.hero.sheet.stats.strength);
+    try std.testing.expectEqual(str + 1, s.hero.sheet.stats.strength.val);
     try std.testing.expectEqual(@as(u8, 0), s.hero.progression.pending_points);
 
     var auto = Sim.init(23, .warrior);
@@ -1263,10 +1230,10 @@ test "run sim: level-up banks a point and auto allocate spends it" {
     auto.enemies[0].vitals.val = 1;
     auto.enemies[0].life.alive = true;
     auto.enemies[0].reward.xp = 200;
-    const base = auto.hero.sheet.stats.strength;
+    const base = auto.hero.sheet.stats.strength.val;
     auto.hero.combat.attack = 100;
     auto.playerAttack(0, 1.0);
-    try std.testing.expectEqual(base + 1, auto.hero.sheet.stats.strength);
+    try std.testing.expectEqual(base + 1, auto.hero.sheet.stats.strength.val);
     try std.testing.expectEqual(@as(u8, 0), auto.hero.progression.pending_points);
 }
 
@@ -1551,12 +1518,12 @@ test "hero sheet is the attributes sheet, not a second formula copy" {
     for ([_]Class{ .warrior, .mage, .chronomancer }) |class| {
         const s = Sim.init(12345, class);
         const base = attributes.Stats.fromArray(.{
-            s.hero.sheet.stats.strength,
-            s.hero.sheet.stats.agility,
-            s.hero.sheet.stats.constitution,
-            s.hero.sheet.stats.perception,
-            s.hero.sheet.stats.magic,
-            s.hero.sheet.stats.will,
+            s.hero.sheet.stats.strength.val,
+            s.hero.sheet.stats.agility.val,
+            s.hero.sheet.stats.constitution.val,
+            s.hero.sheet.stats.perception.val,
+            s.hero.sheet.stats.magic.val,
+            s.hero.sheet.stats.will.val,
         });
         const sheet = attributes.recompute(base, &.{}, class);
         try std.testing.expectApproxEqAbs(sheet.derived.hp_max, s.hero.vitals.full, 0.001);

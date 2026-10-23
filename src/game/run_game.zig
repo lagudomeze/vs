@@ -2308,9 +2308,9 @@ test "run game: character panel spends a pending attribute point" {
     g.started = true;
     g.panel = .character;
     g.sim.hero.progression.pending_points = 1;
-    const str = g.sim.hero.sheet.stats.strength;
+    const str = g.sim.hero.sheet.stats.strength.val;
     g.update(.{ .stat = 0 }, 1.0 / 60.0);
-    try std.testing.expectEqual(str + 1, g.sim.hero.sheet.stats.strength);
+    try std.testing.expectEqual(str + 1, g.sim.hero.sheet.stats.strength.val);
     try std.testing.expectEqual(@as(u8, 0), g.sim.hero.progression.pending_points);
 }
 
