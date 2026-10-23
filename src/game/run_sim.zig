@@ -14,6 +14,8 @@ pub const max_enemies = 12;
 
 pub const Class = attributes.Class;
 
+pub const ShrineChoice = enum(u8) { main_stat, constitution, will };
+
 pub const Difficulty = enum(u8) {
     normal,
     hard,
@@ -97,7 +99,14 @@ pub fn talentDescFor(class: Class, i: usize) []const u8 {
     return class_talent_descs[@backingInt(class)][@min(i, 2)];
 }
 
-pub const GridPos = struct { x: i32, y: i32 };
+pub const GridPos = struct {
+    x: i32,
+    y: i32,
+
+    pub fn eql(self: GridPos, other: GridPos) bool {
+        return self.x == other.x and self.y == other.y;
+    }
+};
 
 fn statsFromAttributes(st: attributes.Stats) numeric.PrimarySheet {
     return numeric.PrimarySheet.fromArray(.{ st.get(.strength), st.get(.agility), st.get(.constitution), st.get(.perception), st.get(.magic), st.get(.will) });
@@ -317,6 +326,9 @@ pub const Sim = struct {
     aoe_target: GridPos = .{ .x = 0, .y = 0 },
     aoe_armed: bool = false,
     boss_enraged: bool = false,
+    shrine: GridPos = .{ .x = 0, .y = 0 },
+    shrine_active: bool = false,
+    shrine_used: bool = false,
     log_buf: [6]LogLine = .{ .{}, .{}, .{}, .{}, .{}, .{} },
     log_head: usize = 0,
     log_total: usize = 0,
@@ -349,6 +361,8 @@ pub const Sim = struct {
         self.kill_loot_events = 0;
         self.aoe_armed = false;
         self.boss_enraged = false;
+        self.shrine_active = false;
+        self.shrine_used = false;
         self.state = .playing;
         self.enemy_phase_pending = false;
         self.defer_enemies = false;
@@ -479,6 +493,71 @@ pub const Sim = struct {
         return @intCast(@abs(a.x - b.x) + @abs(a.y - b.y));
     }
 
+    fn chooseShrine(self: *Sim) void {
+        self.shrine_active = false;
+        self.shrine_used = false;
+        const entry = GridPos{ .x = self.map.entrance.x, .y = self.map.entrance.y };
+        const stairs = GridPos{ .x = self.map.stairs.x, .y = self.map.stairs.y };
+        var candidates: [grid_w * grid_h]GridPos = undefined;
+        var n: usize = 0;
+        var y: i32 = 0;
+        while (y < grid_h) : (y += 1) {
+            var x: i32 = 0;
+            while (x < grid_w) : (x += 1) {
+                const p = GridPos{ .x = x, .y = y };
+                if (self.isBlocked(x, y)) continue;
+                if (p.eql(entry) or p.eql(stairs)) continue;
+                if (dist(p, entry) < 6) continue;
+                if (self.featureAt(p)) continue;
+                candidates[n] = p;
+                n += 1;
+            }
+        }
+        if (n == 0) return;
+        var srng = std.Random.DefaultPrng.init(self.seed ^ (@as(u64, self.floor) *% 0x9e3779b97f4a7c15));
+        self.shrine = candidates[srng.random().intRangeLessThan(usize, 0, n)];
+        self.shrine_active = true;
+    }
+
+    fn featureAt(self: *const Sim, p: GridPos) bool {
+        for (self.chests[0..self.chest_count]) |c| {
+            if (c.eql(p)) return true;
+        }
+        for (self.traps[0..self.trap_count]) |t| {
+            if (t.eql(p)) return true;
+        }
+        for (self.enemies[0..self.enemy_count]) |e| {
+            if (e.pos.eql(p)) return true;
+        }
+        return false;
+    }
+
+    pub fn atShrine(self: *const Sim) bool {
+        return self.shrine_active and !self.shrine_used and self.hero.pos.eql(self.shrine);
+    }
+
+    pub fn shrineMainLabel(self: *const Sim) []const u8 {
+        return switch (attributes.profile(self.class).main_stat) {
+            .strength => "力量",
+            .magic => "魔力",
+            else => "属性",
+        };
+    }
+
+    pub fn useShrine(self: *Sim, choice: ShrineChoice) bool {
+        if (!self.atShrine()) return false;
+        const stat: attributes.StatKind = switch (choice) {
+            .main_stat => attributes.profile(self.class).main_stat,
+            .constitution => .constitution,
+            .will => .will,
+        };
+        self.hero.sheet.stats.add(stat, 2);
+        self.recomputeHero();
+        self.shrine_used = true;
+        self.pushLog("SHRINE {s} +2", .{self.shrineMainLabel()});
+        return true;
+    }
+
     pub fn generateFloor(self: *Sim) void {
         self.enemy_count = 0;
         self.aoe_armed = false;
@@ -527,6 +606,7 @@ pub const Sim = struct {
             if (i >= max_spawns) break;
             self.spawnEnemyAt(kinds[i % kinds.len], .{ .x = p.x, .y = p.y });
         }
+        self.chooseShrine();
         self.pushLog("第 {d} 层：{d} 个敌人", .{ self.floor, self.enemy_count });
     }
 
@@ -1260,6 +1340,19 @@ test "run sim: stepping on stairs advances the floor" {
         _ = s.move(0, 1);
         try std.testing.expect(s.floor >= 2);
     }
+}
+
+test "run sim: shrine grants one permanent stat choice" {
+    var s = Sim.init(55, .mage);
+    try std.testing.expect(s.shrine_active);
+    s.hero.pos = s.shrine;
+    try std.testing.expect(s.atShrine());
+    const magic = s.hero.sheet.stats.magic.val;
+    try std.testing.expect(s.useShrine(.main_stat));
+    try std.testing.expectApproxEqAbs(magic + 2, s.hero.sheet.stats.magic.val, 0.001);
+    try std.testing.expect(s.shrine_used);
+    try std.testing.expect(!s.atShrine());
+    try std.testing.expect(!s.useShrine(.will));
 }
 
 test "run sim: boss enrages below half hp and speeds up its cleave" {

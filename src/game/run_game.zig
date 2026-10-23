@@ -168,6 +168,7 @@ pub const RunGame = struct {
     /// False while the class-selection menu is up; the sim is already
     /// generated so the menu can preview the 3D dungeon behind the cards.
     started: bool = true,
+    shrine_open: bool = false,
     hero_vis: Visual = .{},
     enemy_vis: [sim_mod.max_enemies]Visual = undefined,
     floats: [24]FloatText = .{ .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{} },
@@ -344,6 +345,28 @@ pub const RunGame = struct {
         self.restart();
         self.sim.pushLog("开始：{s}", .{sim_mod.class_names[@backingInt(self.class)]});
         self.fillHudState();
+    }
+
+    pub fn debugShrine(self: *RunGame) void {
+        self.started = true;
+        self.shrine_open = true;
+        self.sim.shrine_active = true;
+        self.sim.shrine_used = false;
+        self.fillHudState();
+    }
+
+    pub fn closeShrine(self: *RunGame) void {
+        self.shrine_open = false;
+        self.fillHudState();
+    }
+
+    fn chooseShrine(self: *RunGame, index: usize) void {
+        if (index >= 3) return;
+        const choice: sim_mod.ShrineChoice = @fromBackingInt(@intCast(index));
+        if (self.sim.useShrine(choice)) {
+            self.shrine_open = false;
+            self.fillHudState();
+        }
     }
 
     pub fn setDifficulty(self: *RunGame, difficulty: sim_mod.Difficulty) void {
@@ -622,6 +645,7 @@ pub const RunGame = struct {
         self.show_help = false;
         self.panel = .none;
         self.started = true;
+        self.shrine_open = self.sim.atShrine();
         self.rebuildMesh();
         self.resetVisuals();
         self.fillHudState();
@@ -857,6 +881,15 @@ pub const RunGame = struct {
             return;
         }
 
+        if (self.shrine_open) {
+            if (input.talent >= 0) self.chooseShrine(@intCast(input.talent));
+            self.syncVisuals(false);
+            self.updateVisuals(dt);
+            self.followCamera();
+            self.fillHudState();
+            return;
+        }
+
         if (self.slot_menu != .none) {
             self.fillHudState();
             return;
@@ -964,7 +997,13 @@ pub const RunGame = struct {
                 var before: [sim_mod.max_enemies]f32 = undefined;
                 var bi: usize = 0;
                 while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].vitals.val;
-                if (!self.sim.move(input.step_x, input.step_y)) self.sim.pushLog("前方被挡住", .{});
+                const moved = self.sim.move(input.step_x, input.step_y);
+                if (!moved) {
+                    self.sim.pushLog("前方被挡住", .{});
+                } else if (self.sim.state == .playing and self.sim.atShrine()) {
+                    self.shrine_open = true;
+                    self.clearAim();
+                }
                 self.flashAfter(before_hero, before[0..self.sim.enemy_count]);
                 if (input.step_x != 0 or input.step_y != 0) {
                     self.hero_vis.target_yaw = std.math.atan2(@as(f32, @floatFromInt(input.step_x)), @as(f32, @floatFromInt(input.step_y)));
@@ -1632,6 +1671,17 @@ pub const RunGame = struct {
                 self.renderer.drawGlow(tp.add(math.Vec3.init(0, 0.1, 0)), 0.22, palette.red, 0.5);
             }
         }
+
+        if (self.sim.shrine_active and !self.sim.shrine_used) {
+            const shrine_pos = tilePos(self.sim.shrine.x, self.sim.shrine.y);
+            self.renderer.drawGlow(shrine_pos.add(math.Vec3.init(0, 0.55, 0)), 0.75, palette.cyan_light, 0.75);
+            if (self.models.indexOf("brazier")) |bi| {
+                self.renderer.drawModel(self.models.at(bi), null, math.Mat4.compose(shrine_pos, 0, 0, 0, 1.0), .{ .tint = palette.cyan_light, .id = 90 });
+            }
+            if (self.models.indexOf("rune_circle")) |ri| {
+                self.renderer.drawModel(self.models.at(ri), null, math.Mat4.compose(shrine_pos.add(math.Vec3.init(0, 0.04, 0)), self.time * 0.6, 0, 0, 0.7), .{ .tint = palette.cyan_light, .id = 91 });
+            }
+        }
     }
 
     fn shortEnemyName(name: []const u8) []const u8 {
@@ -1674,6 +1724,8 @@ pub const RunGame = struct {
             .help = self.show_help,
             .menu_seed = self.seed,
             .difficulty = @backingInt(self.difficulty),
+            .shrine_open = self.shrine_open,
+            .shrine_main_label = self.sim.shrineMainLabel(),
             .seed = self.sim.seed,
             .buff_turns = self.sim.hero.status.buff_turns,
             .buff_pct = self.sim.hero.status.buff_pct,
@@ -1884,6 +1936,22 @@ test "run game: menu toggles difficulty and restarts the preview" {
     try std.testing.expectEqual(sim_mod.Difficulty.hard, g.difficulty);
     try std.testing.expectEqual(@as(u8, 1), g.hud_state.difficulty);
     try std.testing.expectEqual(sim_mod.Difficulty.hard, g.sim.difficulty);
+}
+
+test "run game: shrine panel consumes a choice once" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .mage, 12345);
+    defer g.destroy();
+
+    g.sim.shrine = g.sim.hero.pos;
+    g.sim.shrine_active = true;
+    g.debugShrine();
+    try std.testing.expect(g.hud_state.shrine_open);
+    const magic = g.sim.hero.sheet.stats.magic.val;
+    g.update(.{ .talent = 0 }, 1.0 / 60.0);
+    try std.testing.expectApproxEqAbs(magic + 2, g.sim.hero.sheet.stats.magic.val, 0.001);
+    try std.testing.expect(!g.shrine_open);
+    try std.testing.expect(g.sim.shrine_used);
 }
 
 test "run game: inventory P consumes a healing item" {

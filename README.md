@@ -21,6 +21,7 @@
 - **存档/读档**：槽1/2/3 分别写 saves/slot1.save / slot2.save / slot3.save，一个文件同时装 Sim 全状态、背包/装备与 loot_rng；F9 槽位面板读取；坏档不覆盖当前局。旧 run/gear 双文件仍可回退读取。
 - **中文 HUD（常驻面板 <30%）**：角色卡、楼层卡、战斗日志、天赋栏、角色/背包面板；背包显示品质/属性摘要，天赋栏显示消耗、基础冷却和当前状态（可用/冷却中/缺资源），角色面板可复查。H 打开操作说明。Ark Pixel 12px 子集。
 - **3D 像素场景**：地牢地砖、墙、楼梯、宝箱、陷阱、精英和 Boss 模型；脚底环、目标血条、危险标记、楼梯光柱。
+- **祭坛**：每层一处；踩上去三选一永久强化（主属性 / 体质 / 意志 +2），Esc 可离开，使用后消失；HUD 显示 SHRINE 面板。
 - **无窗口验证**：headless 截图；自动跑局用于 QA。
 
 ![select](docs/screenshots/run_select.png)
@@ -97,6 +98,7 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | --start-menu | 强制显示职业菜单（headless 截图/QA 用；headless 默认跳过） |
 | --seed N | 固定地牢种子（默认 0 = 每局随机） |
 | --difficulty normal\|hard | 难度；困难敌人 HP ×1.20、伤害 ×1.10 |
+| --shrine | headless 打开祭坛面板（截图/QA） |
 | --auto | headless 自动向楼梯推进、打怪、放天赋 |
 | --inventory / --character | 启动时打开对应面板（截图/审查用） |
 | --loot N | 调试：直接获得 N 件掉落（截图/QA 用） |
@@ -162,10 +164,10 @@ docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 
 ## 验证
 
-- zig build / zig build test：13/13 steps、167/167 tests。
+- zig build / zig build test：13/13 steps、169/169 tests。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/run_select.png`。
 - 职业菜单显示的 SEED 就是本局真实 seed；选择职业只按同一 seed 重开；R 保留职业，未锁定时换新 seed。
-- 大图 QA（100 seed × 3 职业，纯逻辑 bot）：普通 61.7%（185/300）：狂战士 41%、元素法师 83%、时空法师 61%；困难 34.3%（103/300），0 超时/不变量违规；test-qa 95/95。
+- 大图 QA（100 seed × 3 职业，纯逻辑 bot）：普通 61.7%（185/300）：狂战士 41%、元素法师 83%、时空法师 61%；困难 34.3%（103/300），0 超时/不变量违规；test-qa 96/96。
 - auto 是演示/巡检 bot，不保证通关；31×31 + 楼层 Boss 下可能停在 Boss 层，实际 QA 以 test-qa 为准。
 - Boss 深渊斩每 3 个敌方回合预警一次，半径 0.9 格；走出标记格即可躲开；Boss 存活时第 3 层楼梯封印。
 - 速度机制已改为 energy 银行：精英幽魂 150 积累双动，石魔像 70 隔回合少动。

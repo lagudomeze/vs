@@ -169,6 +169,9 @@ const MapSave = struct {
     aoe_target: GridPosSave,
     aoe_armed: bool,
     boss_enraged: bool = false,
+    shrine: GridPosSave = .{ .x = 0, .y = 0 },
+    shrine_active: bool = false,
+    shrine_used: bool = false,
 };
 
 const SaveRoot = struct {
@@ -382,6 +385,9 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .aoe_target = savePos(sim.aoe_target),
             .aoe_armed = sim.aoe_armed,
             .boss_enraged = sim.boss_enraged,
+            .shrine = savePos(sim.shrine),
+            .shrine_active = sim.shrine_active,
+            .shrine_used = sim.shrine_used,
         },
         .log = log_buf[0..sim.log_total],
     };
@@ -450,7 +456,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     if (h.level == 0 or h.level > 50) return error.InvalidValue;
 
     const map = &root.map;
-    if (!inBounds(map.entrance) or !inBounds(map.stairs) or !inBounds(map.aoe_target)) {
+    if (!inBounds(map.entrance) or !inBounds(map.stairs) or !inBounds(map.aoe_target) or !inBounds(map.shrine)) {
         return error.InvalidCoordinate;
     }
     if (!rngNonZero(root.rng)) return error.InvalidRng;
@@ -574,6 +580,9 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     sim.aoe_target = loadPos(map.aoe_target);
     sim.aoe_armed = map.aoe_armed;
     sim.boss_enraged = map.boss_enraged;
+    sim.shrine = loadPos(map.shrine);
+    sim.shrine_active = map.shrine_active;
+    sim.shrine_used = map.shrine_used;
     sim.blocked = map.blocked;
     sim.stairs = loadPos(map.stairs);
     for (map.chests, 0..) |p, i| sim.chests[i] = loadPos(p);
@@ -771,6 +780,10 @@ fn expectSameRun(expected: *const Sim, actual: *const Sim) !void {
     try testing.expectEqual(expected.enemy_count, actual.enemy_count);
     try testing.expectEqual(expected.aoe_armed, actual.aoe_armed);
     try testing.expectEqual(expected.boss_enraged, actual.boss_enraged);
+    try testing.expectEqual(expected.shrine_active, actual.shrine_active);
+    try testing.expectEqual(expected.shrine_used, actual.shrine_used);
+    try testing.expectEqual(expected.shrine.x, actual.shrine.x);
+    try testing.expectEqual(expected.shrine.y, actual.shrine.y);
     try testing.expectEqual(expected.aoe_target.x, actual.aoe_target.x);
     try testing.expectEqual(expected.aoe_target.y, actual.aoe_target.y);
     try testing.expectEqual(expected.stairs.x, actual.stairs.x);
