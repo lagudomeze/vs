@@ -47,6 +47,8 @@ pub const State = struct {
     help: bool = false,
     menu_seed: u64 = 0,
     difficulty: u8 = 0,
+    shrine_open: bool = false,
+    shrine_main_label: []const u8 = "力量",
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -490,6 +492,8 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), @divTrunc(h, 2) + 26, sub, palette.muted, 1, true);
     }
 
+    if (state.shrine_open) drawShrine(r, state, w, h);
+
     // save / load slot modal, on top of everything
     if (state.slot_mode != 0) {
         r.fillRect(0, 0, w, h, palette.deep);
@@ -516,6 +520,33 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         }
         r.drawText(px + 16, py + ph - 24, "1/2/3 选择   Esc 取消", palette.muted, 1, true);
     }
+}
+
+fn drawShrine(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
+    const pw: i32 = 300;
+    const ph: i32 = 154;
+    const px = @divTrunc(w - pw, 2);
+    const py = @divTrunc(h - ph, 2);
+    r.fillRect(0, 0, w, h, palette.deep);
+    r.fillRect(px, py, pw, ph, palette.panel);
+    r.strokeRect(px, py, pw, ph, palette.cyan);
+    r.fillRect(px + 2, py + 2, pw - 4, 2, palette.cyan_light);
+
+    const title = "SHRINE";
+    const tw = renderer.Renderer.textWidth(title, 2);
+    r.drawText(px + @divTrunc(pw - tw, 2), py + 10, title, palette.cyan_light, 2, true);
+    var sub_buf: [64]u8 = undefined;
+    const sub = fmt(&sub_buf, "POWER UP", .{});
+    const sw = renderer.Renderer.textWidth(sub, 1);
+    r.drawText(px + @divTrunc(pw - sw, 2), py + 38, sub, palette.muted, 1, false);
+
+    const lines = [_][]const u8{ "  +2", "体质 +2", "意志 +2" };
+    var buf: [48]u8 = undefined;
+    for (lines, 0..) |suffix, i| {
+        const line = if (i == 0) fmt(&buf, "1 {s}{s}", .{ state.shrine_main_label, suffix }) else fmt(&buf, "{d} {s}", .{ i + 1, suffix });
+        r.drawText(px + 34, py + 62 + @as(i32, @intCast(i)) * 22, line, palette.cream, 1, false);
+    }
+    r.drawText(px + 16, py + ph - 22, "1/2/3 选择   Esc 关闭", palette.muted, 1, false);
 }
 
 fn expectGlyphs(text: []const u8) !void {

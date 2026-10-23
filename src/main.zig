@@ -33,6 +33,7 @@ const Options = struct {
     hide_hud: bool = false,
     help: bool = false,
     help_screen: bool = false,
+    shrine_screen: bool = false,
 };
 
 fn usage() void {
@@ -61,6 +62,7 @@ fn usage() void {
         \\  --auto-slots      open the auto-backup panel (screenshots/QA)
         \\  --aim N           headless: open aim on talent N for screenshots (no confirm)
         \\  --help-screen     show the in-game controls panel for screenshots
+        \\  --shrine          show the shrine choice panel for screenshots
         \\  --debug           show the debug HUD
         \\  --lineup          class showcase camera (for documentation shots)
         \\  --hide-hud        render without the HUD
@@ -151,6 +153,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.aim = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
         } else if (std.mem.eql(u8, a, "--help-screen")) {
             o.help_screen = true;
+        } else if (std.mem.eql(u8, a, "--shrine")) {
+            o.shrine_screen = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
             o.hide_hud = true;
         } else if (std.mem.eql(u8, a, "--help") or std.mem.eql(u8, a, "-h")) {
@@ -332,6 +336,8 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             if (game.slot_menu != .none) {
                 game.closeSlotMenu();
                 slot_frame = true;
+            } else if (game.shrine_open) {
+                game.closeShrine();
             } else if (!game.cancelAim()) {
                 if (game.show_help) {
                     game.show_help = false;
@@ -477,6 +483,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
     defer game.destroy();
 
     game.setDifficulty(options.difficulty);
+    if (options.shrine_screen) game.debugShrine();
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
     game.presentation = !options.auto_demo and !options.headless;
