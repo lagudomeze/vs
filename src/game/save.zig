@@ -1,4 +1,4 @@
-//! Save / load for the pure ToME run state (`tome_sim.Sim`).
+//! Save / load for the pure turn-based run state (`run_sim.Sim`).
 //!
 //! The module has no SDL, renderer or HUD dependency. It only needs an
 //! allocator for the JSON buffer and a `std.Io` for the optional file
@@ -9,15 +9,15 @@
 //! ---------
 //! One minified `std.json` document:
 //!
-//!   {"format":"vx-tome-save","version":1,"seed":12345,"class":"warrior",
+//!   {"format":"vx-run-save","version":1,"seed":12345,"class":"warrior",
 //!    "floor":1,"floors":3,"turn":42,"state":"playing","kills":2,
 //!    "chest_loot":1,"kill_loot":2,"rng":[u64,u64,u64,u64],
 //!    "hero":{...},"enemies":[...],"map":{...},"log":["...",...]}
 //!
 //! * `version` is checked exactly; a different version is an error.
-//! * Coordinates are the simulation's 13x13 grid coordinates and are checked to
+//! * Coordinates are the simulation's 31x31 grid coordinates and are checked to
 //!   be in bounds and walkable where the run state requires it.
-//! * Enemy names are derived from the enemy kind in `tome_sim`, so they
+//! * Enemy names are derived from the enemy kind in `run_sim`, so they
 //!   are validated against that kind instead of being trusted as free text.
 //! * `log` is written oldest -> newest (display order); on load the ring
 //!   buffer is rebuilt so `logAt` and the HUD keep the same order.
@@ -41,7 +41,7 @@
 //! buffer. `loadFile` opens the file read-only, so a corrupt save stays on
 //! disk untouched for inspection.
 const std = @import("std");
-const sim_mod = @import("tome_sim.zig");
+const sim_mod = @import("run_sim.zig");
 const dungeon_mod = @import("dungeon.zig");
 
 const Sim = sim_mod.Sim;
@@ -50,7 +50,7 @@ const Enemy = sim_mod.Enemy;
 /// Current on-disk format. Bump whenever a field changes meaning or the RNG
 /// representation changes.
 pub const save_version: u16 = 2;
-pub const format_name = "vx-tome-save";
+pub const format_name = "vx-run-save";
 
 /// Hard cap for `loadAlloc` / `loadFile`. A real v1 save is a few
 /// kilobytes; anything larger is treated as a bad file instead of being parsed.
@@ -75,7 +75,7 @@ pub const SaveError = error{
     EmptySave,
     /// Input exceeds `max_save_bytes`.
     SaveTooLarge,
-    /// `format` is not `vx-tome-save`.
+    /// `format` is not `vx-run-save`.
     NotSaveFormat,
     /// `version` is not `save_version`.
     UnsupportedVersion,
@@ -181,7 +181,7 @@ const SaveRoot = struct {
     log: []const []const u8,
 };
 
-/// Enemy kind -> display name, mirroring `tome_sim.enemy_defs`. The table
+/// Enemy kind -> display name, mirroring `run_sim.enemy_defs`. The table
 /// lives here so the save format can validate `kind` and `name` as a pair
 /// without exposing the simulation's private definitions. The
 /// "enemy names match the simulation" test keeps the two in sync.
@@ -821,7 +821,7 @@ test "save: fresh run round-trips (short log, no events)" {
 
     const bytes = try saveAlloc(alloc, &sim);
     defer alloc.free(bytes);
-    try testing.expect(std.mem.startsWith(u8, bytes, "{\"format\":\"vx-tome-save\",\"version\":2,"));
+    try testing.expect(std.mem.startsWith(u8, bytes, "{\"format\":\"vx-run-save\",\"version\":2,"));
     try testing.expect(std.mem.indexOfScalar(u8, bytes, '\n') == null);
 
     var loaded = try loadAlloc(alloc, bytes);
@@ -888,7 +888,7 @@ test "load: empty, truncated and garbage input returns an error" {
         "null",
         "[]",
         "not json",
-        "{\"format\":\"vx-tome-save\"}",
+        "{\"format\":\"vx-run-save\"}",
     };
     for (garbage) |text| try expectLoadFails(alloc, text);
 }
@@ -1007,7 +1007,7 @@ test "save file: round-trip and a corrupt file is rejected without overwriting" 
     var loaded = try loadFile(io, alloc, save_path);
     try expectSameRun(&sim, &loaded);
 
-    const corrupt = "{\"format\":\"vx-tome-save\",\"version\":2,";
+    const corrupt = "{\"format\":\"vx-run-save\",\"version\":2,";
     try tmp.dir.writeFile(io, .{ .sub_path = "run.json", .data = corrupt });
     const before = try tmp.dir.readFileAlloc(io, "run.json", alloc, .limited(max_save_bytes));
     defer alloc.free(before);

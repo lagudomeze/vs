@@ -6,7 +6,7 @@
 
 ## 1. 目标与边界
 
-提供 ToME4 风格回合制地牢所需的全部网格逻辑：
+提供 reference roguelike 风格回合制地牢所需的全部网格逻辑：
 
 - 13×13 网格、边界墙、入口与远端 stairs；
 - 确定性楼层生成（房间、柱子、碎石、水域、火盆、宝箱、陷阱、敌人出生点）；
@@ -203,7 +203,7 @@ d.validate() -> ValidateError!void
 | >3 | 4 | 8 | 4 | 饱和（v1 只有 3 层） |
 
 - 使用 `chestsForFloor` / `spawnsForFloor` / `trapsForFloor` 生成内容，不要在 Game 里再写一份数字。
-- 敌人种类按 `docs/TOME_V1.md` §7 的楼层表由内容层决定；本模块只给位置。
+- 敌人种类按 `docs/RUN_V1.md` §7 的楼层表由内容层决定；本模块只给位置。
 - Boss 建议：在 `spawnSlice()` 里挑离入口 Manhattan 最远的点作为 Boss 位，其余作为普通怪；或把 stairs 房中心改造成 Boss 房（需要额外内容层逻辑）。
 - 生成器保证同一格不会同时是宝箱/出生点/陷阱/入口/stairs；敌人通常不会在距入口 3 格内开局（极窄地图会回退）。
 

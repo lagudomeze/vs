@@ -1,4 +1,4 @@
-//! Pure talent-targeting rules for the ToME4-style aim step.
+//! Pure talent-targeting rules for the turn-based aim step.
 //!
 //! The game needs one source of truth for three questions:
 //!   1. does talent N take a target at all (aim) or fire immediately?
@@ -7,10 +7,10 @@
 //!   3. which cells does an area talent cover (for the preview rings)?
 //!
 //! Everything here is read-only over `Sim` and allocates nothing, so the aim
-//! state machine in `tome_game.zig`, the HUD preview line and the unit tests
+//! state machine in `run_game.zig`, the HUD preview line and the unit tests
 //! all share exactly the same rules.
 const std = @import("std");
-const tome = @import("tome_sim.zig");
+const run = @import("run_sim.zig");
 
 pub const TalentKind = enum(u8) {
     /// Single enemy hit (重击/冲锋/冰锥/时光箭/时间停滞).
@@ -47,7 +47,7 @@ pub const TalentSpec = struct {
     }
 };
 
-pub fn specFor(class: tome.Class, index: usize) TalentSpec {
+pub fn specFor(class: run.Class, index: usize) TalentSpec {
     const i = @min(index, 2);
     return switch (class) {
         .warrior => switch (i) {
@@ -68,7 +68,7 @@ pub fn specFor(class: tome.Class, index: usize) TalentSpec {
     };
 }
 
-pub fn needsTarget(class: tome.Class, index: usize) bool {
+pub fn needsTarget(class: run.Class, index: usize) bool {
     return specFor(class, index).needsTarget();
 }
 
@@ -116,7 +116,7 @@ pub const Preview = struct {
     distance: i32 = 0,
     /// Expected damage on the primary target, before crit rolls.
     damage: f32 = 0,
-    aoe_cells: [max_aoe_cells]tome.GridPos = @splat(.{ .x = 0, .y = 0 }),
+    aoe_cells: [max_aoe_cells]run.GridPos = @splat(.{ .x = 0, .y = 0 }),
     aoe_count: usize = 0,
 
     pub fn valid(self: Preview) bool {
@@ -132,18 +132,18 @@ pub const Preview = struct {
         return @intFromFloat(@round(self.damage));
     }
 
-    pub fn aoeSlice(self: *const Preview) []const tome.GridPos {
+    pub fn aoeSlice(self: *const Preview) []const run.GridPos {
         return self.aoe_cells[0..self.aoe_count];
     }
 };
 
-pub fn distance(a: tome.GridPos, b: tome.GridPos) i32 {
+pub fn distance(a: run.GridPos, b: run.GridPos) i32 {
     return @intCast(@abs(a.x - b.x) + @abs(a.y - b.y));
 }
 
 /// Same formula as `Sim.playerAttack` minus the random crit roll, including
 /// the 战吼 buff when it is active.
-pub fn estimateDamage(sim: *const tome.Sim, spec: TalentSpec, armor: f32) f32 {
+pub fn estimateDamage(sim: *const run.Sim, spec: TalentSpec, armor: f32) f32 {
     if (spec.damage_mult <= 0) return 0;
     var raw = sim.hero.attack * spec.damage_mult;
     if (sim.hero.buff_turns > 0) raw *= 1.0 + sim.hero.buff_pct;
@@ -151,7 +151,7 @@ pub fn estimateDamage(sim: *const tome.Sim, spec: TalentSpec, armor: f32) f32 {
 }
 
 /// Validate a possible confirmation without touching the simulation.
-pub fn preview(sim: *const tome.Sim, talent: usize, target: ?usize) Preview {
+pub fn preview(sim: *const run.Sim, talent: usize, target: ?usize) Preview {
     var p = Preview{};
     if (talent >= 3) return p;
 
@@ -205,7 +205,7 @@ pub fn preview(sim: *const tome.Sim, talent: usize, target: ?usize) Preview {
     return p;
 }
 
-fn fillAoe(p: *Preview, center: tome.GridPos, radius: i32) void {
+fn fillAoe(p: *Preview, center: run.GridPos, radius: i32) void {
     p.aoe_count = 0;
     var dy: i32 = -radius;
     while (dy <= radius) : (dy += 1) {
@@ -214,7 +214,7 @@ fn fillAoe(p: *Preview, center: tome.GridPos, radius: i32) void {
             if (@abs(dx) + @abs(dy) > radius) continue;
             const x = center.x + dx;
             const y = center.y + dy;
-            if (x < 0 or y < 0 or x >= tome.grid_w or y >= tome.grid_h) continue;
+            if (x < 0 or y < 0 or x >= run.grid_w or y >= run.grid_h) continue;
             if (p.aoe_count >= p.aoe_cells.len) return;
             p.aoe_cells[p.aoe_count] = .{ .x = x, .y = y };
             p.aoe_count += 1;
@@ -222,7 +222,7 @@ fn fillAoe(p: *Preview, center: tome.GridPos, radius: i32) void {
     }
 }
 
-fn placeEnemy(s: *tome.Sim, pos: tome.GridPos, hp: f32) void {
+fn placeEnemy(s: *run.Sim, pos: run.GridPos, hp: f32) void {
     s.enemy_count = 1;
     s.enemies[0] = .{
         .kind = 0,
@@ -238,7 +238,7 @@ fn placeEnemy(s: *tome.Sim, pos: tome.GridPos, hp: f32) void {
     };
 }
 
-test "tome target: only enemy-facing talents need an aim step" {
+test "run target: only enemy-facing talents need an aim step" {
     try std.testing.expect(needsTarget(.warrior, 0)); // 重击
     try std.testing.expect(needsTarget(.warrior, 1)); // 冲锋
     try std.testing.expect(!needsTarget(.warrior, 2)); // 战吼
@@ -252,8 +252,8 @@ test "tome target: only enemy-facing talents need an aim step" {
     try std.testing.expectEqual(@as(i32, 1), specFor(.mage, 0).aoe_radius);
 }
 
-test "tome target: adjacent enemy previews as valid with positive damage" {
-    var s = tome.Sim.init(101, .warrior);
+test "run target: adjacent enemy previews as valid with positive damage" {
+    var s = run.Sim.init(101, .warrior);
     placeEnemy(&s, .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y }, 70);
 
     const p = preview(&s, 0, 0);
@@ -271,8 +271,8 @@ test "tome target: adjacent enemy previews as valid with positive damage" {
     try std.testing.expectEqual(s.hero.resource_max, s.hero.resource);
 }
 
-test "tome target: missing or dead target is rejected" {
-    var s = tome.Sim.init(103, .warrior);
+test "run target: missing or dead target is rejected" {
+    var s = run.Sim.init(103, .warrior);
     try std.testing.expectEqual(Verdict.no_target, preview(&s, 0, null).verdict);
 
     placeEnemy(&s, .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y }, 70);
@@ -282,12 +282,12 @@ test "tome target: missing or dead target is rejected" {
     try std.testing.expectEqual(Verdict.no_target, preview(&s, 0, 0).verdict);
 }
 
-test "tome target: range is Manhattan and out-of-range previews are red" {
-    var s = tome.Sim.init(107, .warrior);
+test "run target: range is Manhattan and out-of-range previews are red" {
+    var s = run.Sim.init(107, .warrior);
     s.hero.pos = .{ .x = 1, .y = 1 };
     // Open a clean horizontal corridor so only range decides the verdict.
     var x: i32 = 2;
-    while (x <= 7) : (x += 1) s.blocked[1 * tome.grid_w + @as(usize, @intCast(x))] = false;
+    while (x <= 7) : (x += 1) s.blocked[1 * run.grid_w + @as(usize, @intCast(x))] = false;
     placeEnemy(&s, .{ .x = 3, .y = 1 }, 70);
 
     const p = preview(&s, 0, 0); // 重击 range 1
@@ -305,27 +305,27 @@ test "tome target: range is Manhattan and out-of-range previews are red" {
     try std.testing.expectEqual(Verdict.out_of_range, preview(&s, 1, 0).verdict);
 }
 
-test "tome target: walls block line of sight" {
-    var s = tome.Sim.init(109, .mage);
+test "run target: walls block line of sight" {
+    var s = run.Sim.init(109, .mage);
     s.hero.pos = .{ .x = 1, .y = 1 };
     // Clean corridor (2,1)..(5,1), then a wall right in the middle.
     var x: i32 = 2;
-    while (x <= 5) : (x += 1) s.blocked[1 * tome.grid_w + @as(usize, @intCast(x))] = false;
+    while (x <= 5) : (x += 1) s.blocked[1 * run.grid_w + @as(usize, @intCast(x))] = false;
     placeEnemy(&s, .{ .x = 5, .y = 1 }, 70);
-    s.blocked[1 * tome.grid_w + 3] = true; // wall at (3,1)
+    s.blocked[1 * run.grid_w + 3] = true; // wall at (3,1)
 
     const blocked = preview(&s, 0, 0); // 火球 range 5
     try std.testing.expect(!blocked.valid());
     try std.testing.expectEqual(Verdict.no_line_of_sight, blocked.verdict);
     try std.testing.expectEqualStrings("视线受阻", blocked.reason());
 
-    s.blocked[1 * tome.grid_w + 3] = false;
+    s.blocked[1 * run.grid_w + 3] = false;
     const clear = preview(&s, 0, 0);
     try std.testing.expect(clear.valid());
 }
 
-test "tome target: resources and cooldowns are checked before confirming" {
-    var s = tome.Sim.init(113, .warrior);
+test "run target: resources and cooldowns are checked before confirming" {
+    var s = run.Sim.init(113, .warrior);
     placeEnemy(&s, .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y }, 70);
 
     s.hero.resource = 0;
@@ -341,17 +341,17 @@ test "tome target: resources and cooldowns are checked before confirming" {
     try std.testing.expectEqual(Verdict.not_playing, preview(&s, 0, 0).verdict);
 }
 
-test "tome target: self talents are not aimable" {
-    const s = tome.Sim.init(127, .warrior);
+test "run target: self talents are not aimable" {
+    const s = run.Sim.init(127, .warrior);
     try std.testing.expectEqual(Verdict.not_targetable, preview(&s, 2, null).verdict);
-    const m = tome.Sim.init(131, .mage);
+    const m = run.Sim.init(131, .mage);
     try std.testing.expectEqual(Verdict.not_targetable, preview(&m, 2, null).verdict);
-    const c = tome.Sim.init(137, .chronomancer);
+    const c = run.Sim.init(137, .chronomancer);
     try std.testing.expectEqual(Verdict.not_targetable, preview(&c, 2, null).verdict);
 }
 
-test "tome target: fireball preview covers the cross-shaped blast" {
-    var s = tome.Sim.init(139, .mage);
+test "run target: fireball preview covers the cross-shaped blast" {
+    var s = run.Sim.init(139, .mage);
     s.hero.pos = .{ .x = 2, .y = 2 };
     placeEnemy(&s, .{ .x = 4, .y = 2 }, 70);
 
@@ -366,7 +366,7 @@ test "tome target: fireball preview covers the cross-shaped blast" {
     try std.testing.expect(found_center);
 }
 
-test "tome target: verdict texts are non-empty and stable" {
+test "run target: verdict texts are non-empty and stable" {
     const verdicts = [_]Verdict{ .not_playing, .not_targetable, .no_target, .out_of_range, .no_line_of_sight, .cooldown, .no_resource };
     for (verdicts) |v| {
         try std.testing.expect(!v.valid());

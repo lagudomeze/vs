@@ -1,10 +1,10 @@
 # VX / 以太堡：深层
 
-**ToME4 风格回合制 Roguelike + 真 3D 模型 + 像素画风 + 固定俯视可旋转相机**
+**单英雄回合制 Roguelike + 真 3D 模型 + 像素画风 + 固定俯视可旋转相机**
 
-选一个职业，在 31×31 的 3D 像素地牢里一格一格推进；相机跟随主角，屏幕只显示地图局部。玩家行动一次，敌人行动一次；用天赋、装备、等级和地形击败楼层守卫。画面保留真实 3D 网格、640×360 软件光栅化、64 色量化和 Bayer 抖动；玩法转向 ToME4 的回合制、格子、职业/天赋、掉落/装备和楼层推进。
+选一个职业，在 31×31 的 3D 像素地牢里一格一格推进；相机跟随主角，屏幕只显示地图局部。玩家行动一次，敌人按速度行动；用天赋、装备、等级和地形击败楼层守卫。画面保留真实 3D 网格、640×360 软件光栅化、64 色量化和 Bayer 抖动，玩法围绕回合制、格子、职业/天赋、掉落/装备和楼层推进。
 
-![to-me](docs/screenshots/tome_start.png)
+![start](docs/screenshots/run_start.png)
 
 ## 现在能跑什么
 
@@ -18,20 +18,20 @@
 - **天赋瞄准**：1/2/3 先进入瞄准，显示目标/距离/预计伤害/范围；空格/同键/左键确认，Esc 取消，Tab 换目标；火球可点地面格，AOE 范围环实时预览；超距/无视线/缺资源红色提示。
 - **敌人阶段/先攻**：玩家行动后 HUD 显示“敌人行动”，锁定输入约 0.3 秒再结算敌人移动/攻击；顶栏同时显示“先攻 玩家>两名最快敌人”，与敌人阶段的速度排序一致；敌人头顶显示攻击/远程/追击/深渊斩意图。自动跑局和 QA 仍即时结算。
 - **三槽存档 + 自动档**：F5/F9 打开槽位面板，1/2/3 保存或读取；每槽一个 JSON 容器（run+gear 一次原子提交）。下到新楼层自动轮换 saves/autosave1..3.save，F10 打开自动档面板读取最近 3 个备份。
-- **存档/读档**：槽1/2/3 分别写 saves/tome-slot1.json / slot2.save / slot3.save，一个文件同时装 Sim 全状态、背包/装备与 loot_rng；F9 槽位面板读取；坏档不覆盖当前局。旧 tome-run/tome-gear 双文件仍可回退读取。
+- **存档/读档**：槽1/2/3 分别写 saves/slot1.save / slot2.save / slot3.save，一个文件同时装 Sim 全状态、背包/装备与 loot_rng；F9 槽位面板读取；坏档不覆盖当前局。旧 run/gear 双文件仍可回退读取。
 - **中文 HUD（常驻面板 <30%）**：角色卡、楼层卡、战斗日志、天赋栏、角色/背包面板；背包显示品质/属性摘要，天赋栏显示消耗、基础冷却和当前状态（可用/冷却中/缺资源），角色面板可复查。H 打开操作说明。Ark Pixel 12px 子集。
 - **3D 像素场景**：地牢地砖、墙、楼梯、宝箱、陷阱、精英和 Boss 模型；脚底环、目标血条、危险标记、楼梯光柱。
 - **无窗口验证**：headless 截图；自动跑局用于 QA。
 
-![select](docs/screenshots/tome_select.png)
+![select](docs/screenshots/run_select.png)
 
-![large map](docs/screenshots/tome_large_map.png)
+![large map](docs/screenshots/run_large_map.png)
 
-![aim](docs/screenshots/tome_aim.png)
+![aim](docs/screenshots/run_aim.png)
 
-![enemy phase](docs/screenshots/tome_enemy_phase.png)
+![enemy phase](docs/screenshots/run_enemy_phase.png)
 
-![fight](docs/screenshots/tome_fight.png)
+![fight](docs/screenshots/run_fight.png)
 
 ## 快速开始
 
@@ -44,11 +44,11 @@
 ### 构建与运行
 
 ~~~powershell
-zig build run                  # 默认 ToME 回合制（先选职业）
+zig build run                  # 默认回合制（先选职业）
 zig build test                 # 单元 + 集成测试
-zig build run -- --headless --start-menu --frames 2 --out shots/tome-select.png
-zig build run -- --headless --frames 2 --out shots/tome.png
-zig build run -- --headless --auto --frames 30000 --out shots/tome-auto.png
+zig build run -- --headless --start-menu --frames 2 --out shots/run-select.png
+zig build run -- --headless --frames 2 --out shots/run.png
+zig build run -- --headless --auto --frames 30000 --out shots/run-auto.png
 zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照）
 ~~~
 
@@ -74,15 +74,15 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | H | 打开/关闭操作说明 |
 | F1 / F12 | 调试 / 截图 |
 
-![help](docs/screenshots/tome_help.png)
+![help](docs/screenshots/run_help.png)
 
-![inventory](docs/screenshots/tome_inventory.png)
+![inventory](docs/screenshots/run_inventory.png)
 
-![save slots](docs/screenshots/tome_slots.png)
+![save slots](docs/screenshots/run_slots.png)
 
-![auto backups](docs/screenshots/tome_auto_slots.png)
+![auto backups](docs/screenshots/run_auto_slots.png)
 
-![character](docs/screenshots/tome_character.png)
+![character](docs/screenshots/run_character.png)
 
 ## 参数
 
@@ -118,16 +118,16 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | 元素法师 | 法力 | 火球（5 格内 2.5× + 1.5 格溅射） | 冰锥（1.8× + 减速） | 闪现（3–5 格空地） |
 | 时空法师 | 悖论 | 时光箭（2.0× + 减速） | 时间停滞（1.2× + 跳过 2 回合） | 回溯（回到上一格） |
 
-天赋栏显示消耗、基础冷却和当前状态（可用/冷却中/缺资源），下方一行说明实际效果；角色面板里也能复查（[截图](docs/screenshots/tome_talent_panel.png)）。
+天赋栏显示消耗、基础冷却和当前状态（可用/冷却中/缺资源），下方一行说明实际效果；角色面板里也能复查（[截图](docs/screenshots/run_talent_panel.png)）。
 
-![talents](docs/screenshots/tome_talents.png)
+![talents](docs/screenshots/run_talents.png)
 
 ### 地牢与成长
 
 - 3 层；每层入口随机在底/左/右，楼梯在对侧，保证连通。
-- 宝箱 2–4 个、陷阱 1–4 个、敌人 4–8 个，随层数增加。
+- 宝箱 2–4 个、陷阱 1–4 个、敌人 8/9/6 个，随层数变化。
 - 击杀获得 XP；升级 +1 主属性并回满；第 3 层击败深渊守卫、解除楼梯封印后胜利。
-- 死亡即结束，R 从同一 seed 重开并保留当前职业（ToME4 式 roguelike）。
+- 死亡即结束，R 从同一 seed 重开并保留当前职业（经典 roguelike 式）。
 
 数值/组件设计见 [docs/NUMERIC_ARCHITECTURE.md](docs/NUMERIC_ARCHITECTURE.md)；机制边界与 ECS 映射见 [docs/MECHANISMS.md](docs/MECHANISMS.md)。
 
@@ -138,9 +138,9 @@ src/
   core/        math / color / palette / png / font / cjk_font
   engine/      model / rig / arena_mesh / renderer
   game/
-    tome_sim.zig     纯回合制模拟（无 SDL/渲染）
-    tome_game.zig    3D 场景、输入、相机、动画
-    tome_hud.zig     角色/楼层/目标/日志/天赋/面板
+    run_sim.zig     纯回合制模拟（无 SDL/渲染）
+    run_game.zig    3D 场景、输入、相机、动画
+    run_hud.zig     角色/楼层/目标/日志/天赋/面板
     dungeon.zig      31×31 确定性关卡、连通性、A*、LOS
     save.zig         RunState 存档/读档（纯逻辑，JSON v2）
     attributes.zig   六属性/派生/XP
@@ -154,13 +154,13 @@ assets/
   baked/        VXM 运行时模型
   models/       OBJ/MTL/rig 源
 tools/          characters / bake_assets / gen_cjk_font
-docs/           TOME_V1 / SAVE / ART_PASS / UX_REVIEW_TOME / screenshots
+docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 ~~~
 
 ## 验证
 
 - zig build / zig build test：13/13 steps、147/147 tests。
-- headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/tome_select.png`。
+- headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/run_select.png`。
 - 职业菜单显示的 SEED 就是本局真实 seed；选择职业只按同一 seed 重开，R 重开保持职业和 seed。
 - 大图 QA（100 seed × 3 职业，纯逻辑 bot）：通关率 62.3%（187/300）；狂战士 42%、元素法师 81%、时空法师 64%，0 超时/不变量违规；test-qa 81/81。
 - auto 是演示/巡检 bot，不保证通关；31×31 + 楼层 Boss 下可能停在 Boss 层，实际 QA 以 test-qa 为准。
@@ -169,11 +169,11 @@ docs/           TOME_V1 / SAVE / ART_PASS / UX_REVIEW_TOME / screenshots
 - 天赋瞄准/确认、F5/F9 存档读档均有单元测试；存档格式见 [docs/SAVE.md](docs/SAVE.md)。
 - 窗口模式：640×360、3× 最近邻、SDL 输入/截图正常。
 
-![victory](docs/screenshots/tome_victory.png)
+![victory](docs/screenshots/run_victory.png)
 
 ## 已知限制 / 下一步
 
-- 天赋可以用 Tab 切换目标，但还没有 ToME4 的选格/范围预览/确认取消。
+- 天赋已支持 Tab 选目标、范围预览和 Esc 取消；更复杂的选格/多段目标待做。
 - 背包内 1/2/3 可换装，空槽自动装备；多套装备/词缀/商店待做。
 - 敌人技能只有普攻 + Boss 深渊斩，没有召唤/更多 Boss 阶段。
 - 没有音频、天赋树、随机词缀；存档已接 F5/F9（见 [docs/SAVE.md](docs/SAVE.md)）。
@@ -185,6 +185,7 @@ docs/           TOME_V1 / SAVE / ART_PASS / UX_REVIEW_TOME / screenshots
 - **Ark Pixel Font** by TakWolf，SIL OFL 1.1；见 assets/fonts/。
 - **SDL3**（castholm/SDL Zig 包）、**flecs / zflecs**（MIT）。
 - 角色、敌人、地牢道具和代码由本项目生成/编写。
+- **玩法灵感**：ToME4（Tales of Maj'Eyal）的回合制、职业/天赋与地牢结构，仅作学习参考；本项目未包含其代码或素材。
 
 ---
 

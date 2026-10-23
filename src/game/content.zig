@@ -6,7 +6,7 @@
 //! failure is reported and that file falls back to the built-in defaults below
 //! so a bad data edit can never crash the game (CT-05/06 simplified).
 //!
-//! Turn-based v1 content, docs/TOME_V1.md: 8 items (第 8 节), 6 enemies
+//! Turn-based v1 content, docs/RUN_V1.md: 8 items (第 8 节), 6 enemies
 //! (第 7 节, includes elites and the boss), 9 player talents (第 6 节) plus the
 //! boss AOE skill. Cooldowns, resources and statuses are all counted in turns.
 
@@ -21,7 +21,7 @@ pub const file_skills = "skills.json";
 
 pub const SkillKind = enum(u8) { player, enemy };
 
-/// 天赋效果类型（docs/TOME_V1.md 第 6 节）。
+/// 天赋效果类型（docs/RUN_V1.md 第 6 节）。
 pub const SkillEffect = enum(u8) {
     damage,
     damage_knockback,
@@ -74,7 +74,7 @@ pub const EnemyDef = struct {
     hp: f32,
     damage: f32,
     armor: f32 = 0,
-    /// 回合速度（100 基准，docs/TOME_V1.md 第 4 节）。
+    /// 回合速度（100 基准，docs/RUN_V1.md 第 4 节）。
     speed: u16 = 100,
     /// 普攻距离（格）。
     attack_range: u16 = 1,
@@ -183,7 +183,7 @@ pub const Content = struct {
         return findSkill(self.skills, id);
     }
 
-    /// The class hotbar talents, in data order (1/2/3 in docs/TOME_V1.md).
+    /// The class hotbar talents, in data order (1/2/3 in docs/RUN_V1.md).
     pub fn talentsFor(
         self: *const Content,
         class: attributes.Class,
@@ -925,7 +925,7 @@ test "embedded content parses, validates and matches builtin defaults" {
     }
 }
 
-test "embedded tables match the TOME v1 content plan" {
+test "embedded tables match the RUN v1 content plan" {
     var content = try load(std.testing.allocator);
     defer content.deinit();
 

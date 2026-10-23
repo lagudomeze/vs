@@ -4,7 +4,7 @@
 - 环境：Windows、Zig 0.17.0、ReleaseFast、内部分辨率 480x270、固定步长 1/60、无窗口。
 - 证据：qa-results/baseline/（3 场景 JSON+CSV）、qa-results/baseline/auto5/（5 连跑）、qa-results/baseline/hero1、hero2。
 
-> 结论：当前实时原型在硬性不变量上全部通过（0 violations），5 波可通关；平衡指标只部分达标；发现 1 个低危代码缺陷（P3）与若干平衡/未实现项。团队已转向回合制（docs/TOME_V1.md），本报告作为遗留基线保留。
+> 结论：当前实时原型在硬性不变量上全部通过（0 violations），5 波可通关；平衡指标只部分达标；发现 1 个低危代码缺陷（P3）与若干平衡/未实现项。团队已转向回合制（docs/RUN_V1.md），本报告作为遗留基线保留。
 
 ## 1. 运行命令
 
@@ -100,4 +100,4 @@ idle_probe 为第 300 帧快照；max_enemy_travel/damage_taken 为前 300 帧�
 - 施法前摇/后摇/移动取消；ActionState。
 - 六属性派生、装备三槽、掉落、背包（I 面板壳已存在，数据为空）、XP/升级。
 - 单次重击占最大生命 <=35% 的校验对象不存在（敌人只有普攻）。
-- 上述条目在回合制（docs/TOME_V1.md）里将被重新设计，回合制 QA 见 docs/QA_PLAN_TOME.md。
+- 上述条目在回合制（docs/RUN_V1.md）里将被重新设计，回合制 QA 见 docs/QA_PLAN_RUN.md。

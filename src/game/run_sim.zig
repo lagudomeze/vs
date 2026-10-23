@@ -1,4 +1,4 @@
-//! Pure turn-based ToME4-style simulation: 13x13 grid, one hero, enemies,
+//! Pure turn-based simulation: 31x31 grid, one hero, enemies,
 //! floors, talents, XP and a deterministic RNG. No SDL, renderer or ECS.
 const std = @import("std");
 const dungeon_mod = @import("dungeon.zig");
@@ -228,7 +228,7 @@ pub const Sim = struct {
     }
 
     /// Spend one pending level-up point. The caller must re-apply equipment
-    /// modifiers (TomeGame.rebuildMods) after this base-stat change.
+    /// modifiers (RunGame.rebuildMods) after this base-stat change.
     pub fn spendPoint(self: *Sim, stat: usize) bool {
         if (self.hero.pending_points == 0 or stat >= 6) return false;
         switch (stat) {
@@ -641,7 +641,7 @@ pub const Sim = struct {
             self.enemyAttack(idx);
             return;
         }
-        // ToME-style chase: A* around walls, then a greedy fallback.
+        // roguelike chase: A* around walls, then a greedy fallback.
         if (self.map.astarToOccupiedGoal(
             .{ .x = e.pos.x, .y = e.pos.y },
             .{ .x = self.hero.pos.x, .y = self.hero.pos.y },
@@ -956,7 +956,7 @@ pub const Sim = struct {
     }
 };
 
-test "tome sim: wall bump costs no turn" {
+test "run sim: wall bump costs no turn" {
     var s = Sim.init(7, .warrior);
     const turn = s.turn;
     // find any blocked neighbour; the border guarantees one somewhere
@@ -978,7 +978,7 @@ test "tome sim: wall bump costs no turn" {
     }
 }
 
-test "tome sim: adjacent enemy acts on wait" {
+test "run sim: adjacent enemy acts on wait" {
     var s = Sim.init(11, .warrior);
     s.enemy_count = 1;
     s.enemies[0] = .{
@@ -999,7 +999,7 @@ test "tome sim: adjacent enemy acts on wait" {
     try std.testing.expect(s.turn > 1);
 }
 
-test "tome sim: warrior talent spends resource and starts cooldown" {
+test "run sim: warrior talent spends resource and starts cooldown" {
     var s = Sim.init(13, .warrior);
     s.enemy_count = 1;
     s.enemies[0] = .{
@@ -1020,7 +1020,7 @@ test "tome sim: warrior talent spends resource and starts cooldown" {
     try std.testing.expect(s.hero.cooldowns[0] > 0);
 }
 
-test "tome sim: stepping on stairs advances the floor" {
+test "run sim: stepping on stairs advances the floor" {
     var s = Sim.init(17, .mage);
     s.hero.pos = .{ .x = s.stairs.x, .y = s.stairs.y - 1 };
     if (s.canMove(0, 1)) {
@@ -1029,7 +1029,7 @@ test "tome sim: stepping on stairs advances the floor" {
     }
 }
 
-test "tome sim: killing the last boss wins" {
+test "run sim: killing the last boss wins" {
     var s = Sim.init(21, .mage);
     s.floor = s.floors;
     s.enemy_count = 1;
@@ -1051,7 +1051,7 @@ test "tome sim: killing the last boss wins" {
     try std.testing.expectEqual(State.victory, s.state);
 }
 
-test "tome sim: level-up banks a point and auto allocate spends it" {
+test "run sim: level-up banks a point and auto allocate spends it" {
     var s = Sim.init(22, .warrior);
     s.enemy_count = 1;
     s.enemies[0] = .{
@@ -1090,7 +1090,7 @@ test "tome sim: level-up banks a point and auto allocate spends it" {
     try std.testing.expectEqual(@as(u8, 0), auto.hero.pending_points);
 }
 
-test "tome sim: deferred enemy phase waits for resolution" {
+test "run sim: deferred enemy phase waits for resolution" {
     var s = Sim.init(51, .warrior);
     s.defer_enemies = true;
     s.enemy_count = 1;
@@ -1116,7 +1116,7 @@ test "tome sim: deferred enemy phase waits for resolution" {
     try std.testing.expect(s.hero.hp < hp or s.state == .dead);
 }
 
-test "tome sim: boss AOE resolves on the telegraphed turn" {
+test "run sim: boss AOE resolves on the telegraphed turn" {
     var s = Sim.init(31, .warrior);
     s.turn = 2;
     s.enemy_count = 1;
@@ -1139,7 +1139,7 @@ test "tome sim: boss AOE resolves on the telegraphed turn" {
     try std.testing.expect(s.hero.hp < hp);
 }
 
-test "tome sim: enemy speeds cover the extra/skip bands" {
+test "run sim: enemy speeds cover the extra/skip bands" {
     var fast = false;
     var slow = false;
     for (enemy_defs) |def| {
@@ -1150,7 +1150,7 @@ test "tome sim: enemy speeds cover the extra/skip bands" {
     try std.testing.expect(slow);
 }
 
-test "tome sim: mage fireball can be cast on a ground cell" {
+test "run sim: mage fireball can be cast on a ground cell" {
     var s = Sim.init(41, .mage);
     var center: ?GridPos = null;
     var y: i32 = 0;
@@ -1187,14 +1187,14 @@ test "tome sim: mage fireball can be cast on a ground cell" {
     try std.testing.expect(s.hero.cooldowns[0] > 0);
 }
 
-test "tome sim: fireball ground target validates range and walls" {
+test "run sim: fireball ground target validates range and walls" {
     var s = Sim.init(43, .mage);
     const turn = s.turn;
     try std.testing.expect(!s.useTalentAt(0, .{ .x = 0, .y = 0 })); // border wall
     try std.testing.expectEqual(turn, s.turn);
 }
 
-test "tome sim: boss seals the stairs until defeated" {
+test "run sim: boss seals the stairs until defeated" {
     var s = Sim.init(37, .warrior);
     s.floor = 3;
     s.turn = 1;
@@ -1231,7 +1231,7 @@ test "tome sim: boss seals the stairs until defeated" {
     try std.testing.expect(s.move(dx, dy));
 }
 
-test "tome sim: stepping away dodges the telegraphed boss AOE" {
+test "run sim: stepping away dodges the telegraphed boss AOE" {
     var s = Sim.init(33, .warrior);
     s.turn = 2;
     s.enemy_count = 1;
@@ -1261,7 +1261,7 @@ test "tome sim: stepping away dodges the telegraphed boss AOE" {
     try std.testing.expect(s.hero.hp >= hp);
 }
 
-test "tome sim: same seed produces the same floor" {
+test "run sim: same seed produces the same floor" {
     const a = Sim.init(99, .warrior);
     const b = Sim.init(99, .warrior);
     try std.testing.expectEqual(a.hero.pos.x, b.hero.pos.x);
@@ -1270,7 +1270,7 @@ test "tome sim: same seed produces the same floor" {
     try std.testing.expectEqual(a.enemy_count, b.enemy_count);
 }
 
-test "tome sim: intent preview is read-only" {
+test "run sim: intent preview is read-only" {
     var s = Sim.init(23, .warrior);
     s.enemy_count = 1;
     s.enemies[0] = .{
@@ -1302,7 +1302,7 @@ test "tome sim: intent preview is read-only" {
     try std.testing.expectEqual(turn, s.turn);
 }
 
-test "tome sim: boss intent telegraphs its AOE on the next enemy phase" {
+test "run sim: boss intent telegraphs its AOE on the next enemy phase" {
     var s = Sim.init(29, .warrior);
     s.turn = 2; // the player action below advances to enemy phase 3
     s.enemy_count = 1;
@@ -1331,7 +1331,7 @@ test "tome sim: boss intent telegraphs its AOE on the next enemy phase" {
     try std.testing.expectEqual(intent_mod.IntentKind.melee, next.kind);
 }
 
-test "tome sim: class menu metadata covers all three classes" {
+test "run sim: class menu metadata covers all three classes" {
     var ci: usize = 0;
     while (ci < class_count) : (ci += 1) {
         const class: Class = @fromBackingInt(@intCast(ci));
@@ -1348,7 +1348,7 @@ test "tome sim: class menu metadata covers all three classes" {
     }
 }
 
-test "tome sim: class choice reseeds deterministically" {
+test "run sim: class choice reseeds deterministically" {
     const a = nextSeed(12345);
     const b = nextSeed(12345);
     try std.testing.expectEqual(a, b);
