@@ -173,6 +173,7 @@ const MapSave = struct {
     shrine: GridPosSave = .{ .x = 0, .y = 0 },
     shrine_active: bool = false,
     shrine_used: bool = false,
+    floor_mod: u8 = 0,
 };
 
 const SaveRoot = struct {
@@ -391,6 +392,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .shrine = savePos(sim.shrine),
             .shrine_active = sim.shrine_active,
             .shrine_used = sim.shrine_used,
+            .floor_mod = @backingInt(sim.floor_mod),
         },
         .log = log_buf[0..sim.log_total],
     };
@@ -436,6 +438,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     if (root.version != save_version) return error.UnsupportedVersion;
     if (root.floors == 0) return error.InvalidValue;
     if (root.difficulty > @backingInt(sim_mod.Difficulty.easy)) return error.InvalidValue;
+    if (root.map.floor_mod > @backingInt(sim_mod.FloorMod.miasma)) return error.InvalidValue;
     if (root.floor == 0 or root.floor > root.floors) return error.InvalidValue;
     if (root.turn == 0) return error.InvalidValue;
     if (root.enemies.len > max_enemies) return error.TooManyEnemies;
@@ -587,6 +590,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     sim.shrine = loadPos(map.shrine);
     sim.shrine_active = map.shrine_active;
     sim.shrine_used = map.shrine_used;
+    sim.floor_mod = @fromBackingInt(@intCast(map.floor_mod));
     sim.blocked = map.blocked;
     sim.stairs = loadPos(map.stairs);
     for (map.chests, 0..) |p, i| sim.chests[i] = loadPos(p);
@@ -788,6 +792,7 @@ fn expectSameRun(expected: *const Sim, actual: *const Sim) !void {
     try testing.expectEqual(expected.boss_enraged, actual.boss_enraged);
     try testing.expectEqual(expected.shrine_active, actual.shrine_active);
     try testing.expectEqual(expected.shrine_used, actual.shrine_used);
+    try testing.expectEqual(expected.floor_mod, actual.floor_mod);
     try testing.expectEqual(expected.shrine.x, actual.shrine.x);
     try testing.expectEqual(expected.shrine.y, actual.shrine.y);
     try testing.expectEqual(expected.aoe_target.x, actual.aoe_target.x);
@@ -864,6 +869,7 @@ test "save: fresh run round-trips (short log, no events)" {
     var sim = Sim.initWithDifficulty(4242, .warrior, .easy);
     sim.hero.progression.pending_points = 2;
     sim.boss_enraged = true;
+    sim.floor_mod = .ember;
     try testing.expect(sim.log_total < log_lines_max);
 
     const bytes = try saveAlloc(alloc, &sim);
