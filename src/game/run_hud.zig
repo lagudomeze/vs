@@ -46,6 +46,7 @@ pub const State = struct {
     menu: bool = false,
     help: bool = false,
     menu_seed: u64 = 0,
+    difficulty: u8 = 0,
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -120,7 +121,7 @@ fn fmt(buf: []u8, comptime f: []const u8, args: anytype) []const u8 {
 
 const menu_title = "选职业";
 const menu_hint = "按 1 / 2 / 3 开始";
-const menu_footer = "1/2/3 选择  F9 读档槽  R 重开同职业";
+const menu_footer = "1/2/3 选择  D 切换  F9 读档  R 重开";
 const talent_label = "天赋";
 const help_title = "操作说明";
 const help_footer = "H 关闭";
@@ -140,9 +141,9 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const tw = renderer.Renderer.textWidth(menu_title, 2);
     r.drawText(@divTrunc(w, 2) - @divTrunc(tw, 2), 7, menu_title, palette.gold, 2, true);
     var sub_buf: [64]u8 = undefined;
-    const sub = fmt(&sub_buf, "{s} | SEED {d}", .{ menu_hint, state.menu_seed });
+    const sub = fmt(&sub_buf, "SEED {d}  {s} [D] 切换", .{ state.menu_seed, if (state.difficulty == 1) "HARD" else "NORMAL" });
     const sw = renderer.Renderer.textWidth(sub, 1);
-    r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), 35, sub, palette.muted, 1, false);
+    r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), 27, sub, if (state.difficulty == 1) palette.red else palette.muted, 1, false);
 
     const accents = [_]u32{ palette.gold, palette.cyan, color.pack(185, 128, 230) };
     const card_w: i32 = 146;
@@ -241,6 +242,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     backPanel(r, 6, 5, 160, 58);
     var buf: [64]u8 = undefined;
     r.drawText(10, 8, state.class_name, palette.gold, 1, false);
+    if (state.difficulty == 1) r.drawText(130, 8, "HARD", palette.red, 1, false);
     const lv = fmt(&buf, "{d}级  XP {d}/{d}", .{ state.level, state.xp, state.xp_next });
     r.drawText(10, 21, lv, palette.muted, 1, false);
     bar(r, 10, 32, 150, 7, if (state.hp_max > 0) state.hp / state.hp_max else 0, palette.health_light);

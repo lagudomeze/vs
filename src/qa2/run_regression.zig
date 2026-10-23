@@ -414,7 +414,17 @@ pub fn runAuto(
     c: *const content_mod.Content,
     turn_cap: u32,
 ) !RunOutcome {
-    var s = run.Sim.init(seed, class);
+    return runAutoWithDifficulty(seed, class, c, turn_cap, .normal);
+}
+
+pub fn runAutoWithDifficulty(
+    seed: u64,
+    class: run.Class,
+    c: *const content_mod.Content,
+    turn_cap: u32,
+    difficulty: run.Difficulty,
+) !RunOutcome {
+    var s = run.Sim.initWithDifficulty(seed, class, difficulty);
     var inv = items_mod.Inventory.init();
     var mods = items_mod.ModifierSet{};
     var loot_rng = std.Random.DefaultPrng.init(seed ^ 0x9e3779b97f4a7c15);
@@ -636,11 +646,15 @@ pub fn printBatch(label: []const u8, b: *const BatchStats) void {
 }
 
 pub fn runBatch(seed_total: usize, c: *const content_mod.Content) !BatchStats {
+    return runBatchWithDifficulty(seed_total, c, .normal);
+}
+
+pub fn runBatchWithDifficulty(seed_total: usize, c: *const content_mod.Content, difficulty: run.Difficulty) !BatchStats {
     var b = BatchStats{};
     for (0..seed_total) |i| {
         for (0..run.class_count) |ci| {
             const class: run.Class = @fromBackingInt(@intCast(@as(u8, @intCast(ci))));
-            const o = try runAuto(seedFor(i), class, c, max_auto_turns);
+            const o = try runAutoWithDifficulty(seedFor(i), class, c, max_auto_turns, difficulty);
             b.add(o);
         }
     }
@@ -749,6 +763,16 @@ test "qa2: autoplay batch over 100 seeds preserves turn/hp/floor invariants" {
             .{b.runs},
         );
     }
+}
+
+test "qa2: hard mode batch remains playable" {
+    var c = try content_mod.load(std.testing.allocator);
+    defer c.deinit();
+    const b = try runBatchWithDifficulty(seed_count, &c, .hard);
+    printBatch("hard", &b);
+    try std.testing.expectEqual(@as(u32, @intCast(seed_count * run.class_count)), b.runs);
+    try std.testing.expectEqual(@as(u32, 0), b.timeouts);
+    try std.testing.expectEqual(b.runs, b.wins + b.deaths);
 }
 
 test "qa2: fixed seed report is reproducible" {

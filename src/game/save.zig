@@ -174,6 +174,7 @@ const SaveRoot = struct {
     version: u16,
     seed: u64,
     class: sim_mod.Class,
+    difficulty: u8 = 0,
     floor: u8,
     floors: u8,
     turn: u32,
@@ -328,6 +329,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
         .version = save_version,
         .seed = sim.seed,
         .class = sim.class,
+        .difficulty = @backingInt(sim.difficulty),
         .floor = sim.floor,
         .floors = sim.floors,
         .turn = sim.turn,
@@ -421,6 +423,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     if (!std.mem.eql(u8, root.format, format_name)) return error.NotSaveFormat;
     if (root.version != save_version) return error.UnsupportedVersion;
     if (root.floors == 0) return error.InvalidValue;
+    if (root.difficulty > @backingInt(sim_mod.Difficulty.hard)) return error.InvalidValue;
     if (root.floor == 0 or root.floor > root.floors) return error.InvalidValue;
     if (root.turn == 0) return error.InvalidValue;
     if (root.enemies.len > max_enemies) return error.TooManyEnemies;
@@ -528,6 +531,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
         .seed = root.seed,
         .rng = .{ .s = root.rng },
         .class = root.class,
+        .difficulty = @fromBackingInt(@intCast(root.difficulty)),
         .hero = .{
             .class = root.class,
             .pos = loadPos(h.pos),
@@ -749,6 +753,7 @@ fn expectSameEnemy(expected: Enemy, actual: Enemy) !void {
 fn expectSameRun(expected: *const Sim, actual: *const Sim) !void {
     try testing.expectEqual(expected.seed, actual.seed);
     try testing.expectEqual(expected.class, actual.class);
+    try testing.expectEqual(expected.difficulty, actual.difficulty);
     try testing.expectEqual(expected.floor, actual.floor);
     try testing.expectEqual(expected.floors, actual.floors);
     try testing.expectEqual(expected.turn, actual.turn);
@@ -831,7 +836,7 @@ fn patchedSave(alloc: std.mem.Allocator, bytes: []const u8, patch: anytype) ![]u
 
 test "save: fresh run round-trips (short log, no events)" {
     const alloc = testing.allocator;
-    var sim = Sim.init(4242, .warrior);
+    var sim = Sim.initWithDifficulty(4242, .warrior, .hard);
     sim.hero.progression.pending_points = 2;
     try testing.expect(sim.log_total < log_lines_max);
 

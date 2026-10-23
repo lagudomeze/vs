@@ -79,6 +79,8 @@ pub const Input = struct {
     step_x: i32 = 0,
     step_y: i32 = 0,
     talent: i8 = -1,
+    /// Menu only: D toggles normal/hard before starting.
+    difficulty: bool = false,
     /// Space while aiming confirms the pending talent.
     confirm: bool = false,
     wait: bool = false,
@@ -130,6 +132,7 @@ pub const RunGame = struct {
     /// a fresh seed so a new run gets a new dungeon and loot sequence.
     seed_locked: bool = false,
     class: sim_mod.Class,
+    difficulty: sim_mod.Difficulty = .normal,
     slot_menu: SlotMenu = .none,
     slot_labels: [3][]const u8 = .{ "空", "空", "空" },
     slot_bufs: [3][96]u8 = undefined,
@@ -204,7 +207,7 @@ pub const RunGame = struct {
         self.renderer = try renderer.Renderer.init(self.gpa, width, height);
         self.content = try content_mod.load(self.gpa);
         self.loot_rng = std.Random.DefaultPrng.init(self.seed ^ 0x9e3779b97f4a7c15);
-        self.sim = sim_mod.Sim.init(self.seed, self.class);
+        self.sim = sim_mod.Sim.initWithDifficulty(self.seed, self.class, self.difficulty);
         self.sim.setEnemyDefs(self.content.enemies);
         self.sim.reset(self.seed, self.class);
         self.camera = .{
@@ -339,6 +342,19 @@ pub const RunGame = struct {
         self.restart();
         self.sim.pushLog("开始：{s}", .{sim_mod.class_names[@backingInt(self.class)]});
         self.fillHudState();
+    }
+
+    pub fn setDifficulty(self: *RunGame, difficulty: sim_mod.Difficulty) void {
+        if (self.difficulty == difficulty) return;
+        self.difficulty = difficulty;
+        self.sim.difficulty = difficulty;
+        self.sim.reset(self.seed, self.class);
+        self.resetVisuals();
+        self.fillHudState();
+    }
+
+    pub fn toggleDifficulty(self: *RunGame) void {
+        self.setDifficulty(if (self.difficulty == .normal) .hard else .normal);
     }
 
     fn classOf(self: *const RunGame) attributes.Class {
@@ -582,6 +598,7 @@ pub const RunGame = struct {
         self.sim.setEnemyDefs(self.content.enemies);
         self.seed = loaded.seed;
         self.class = loaded.class;
+        self.difficulty = loaded.difficulty;
         self.inventory = loaded_inv;
         self.mods.clear();
         self.rebuildMods();
@@ -824,6 +841,7 @@ pub const RunGame = struct {
         self.step_cooldown = @max(0, self.step_cooldown - dt);
 
         if (!self.started) {
+            if (input.difficulty) self.toggleDifficulty();
             if (input.talent >= 0) self.selectClass(sim_mod.classFromIndex(@intCast(input.talent)));
             self.syncVisuals(false);
             self.updateVisuals(dt);
@@ -1638,6 +1656,7 @@ pub const RunGame = struct {
             .menu = !self.started,
             .help = self.show_help,
             .menu_seed = self.seed,
+            .difficulty = @backingInt(self.difficulty),
             .seed = self.sim.seed,
             .buff_turns = self.sim.hero.status.buff_turns,
             .buff_pct = self.sim.hero.status.buff_pct,
@@ -1835,6 +1854,19 @@ test "run game: unlocked run rolls a new seed on restart" {
     try std.testing.expect(g.seed != first);
     try std.testing.expectEqual(sim_mod.Class.warrior, g.class);
     try std.testing.expectEqual(g.seed, g.sim.seed);
+}
+
+test "run game: menu toggles difficulty and restarts the preview" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+
+    g.openMenu();
+    try std.testing.expectEqual(sim_mod.Difficulty.normal, g.difficulty);
+    g.update(.{ .difficulty = true }, 1.0 / 60.0);
+    try std.testing.expectEqual(sim_mod.Difficulty.hard, g.difficulty);
+    try std.testing.expectEqual(@as(u8, 1), g.hud_state.difficulty);
+    try std.testing.expectEqual(sim_mod.Difficulty.hard, g.sim.difficulty);
 }
 
 test "run game: class menu selects and keeps the class on restart" {

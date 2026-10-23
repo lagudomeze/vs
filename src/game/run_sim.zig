@@ -13,6 +13,32 @@ pub const grid_h = dungeon_mod.size;
 pub const max_enemies = 12;
 
 pub const Class = attributes.Class;
+
+pub const Difficulty = enum(u8) {
+    normal,
+    hard,
+
+    pub fn label(self: Difficulty) []const u8 {
+        return switch (self) {
+            .normal => "普通",
+            .hard => "困难",
+        };
+    }
+
+    pub fn hpScale(self: Difficulty) f32 {
+        return switch (self) {
+            .normal => 1.0,
+            .hard => 1.20,
+        };
+    }
+
+    pub fn damageScale(self: Difficulty) f32 {
+        return switch (self) {
+            .normal => 1.0,
+            .hard => 1.10,
+        };
+    }
+};
 pub const class_count = attributes.class_count;
 pub const classFromIndex = attributes.classFromIndex;
 
@@ -105,6 +131,7 @@ pub const HeroSheet = struct {
 /// identity-level; mutable numbers live in their own components.
 pub const Hero = struct {
     class: Class = .warrior,
+    difficulty: Difficulty = .normal,
     pos: GridPos = .{ .x = 6, .y = 11 },
     last_pos: GridPos = .{ .x = 6, .y = 11 },
     sheet: HeroSheet = .{},
@@ -241,6 +268,7 @@ pub const Sim = struct {
     seed: u64,
     rng: std.Random.DefaultPrng,
     class: Class,
+    difficulty: Difficulty = .normal,
     hero: Hero,
     enemies: [max_enemies]Enemy = undefined,
     enemy_count: usize = 0,
@@ -278,10 +306,15 @@ pub const Sim = struct {
     log_total: usize = 0,
 
     pub fn init(seed: u64, class: Class) Sim {
+        return initWithDifficulty(seed, class, .normal);
+    }
+
+    pub fn initWithDifficulty(seed: u64, class: Class, difficulty: Difficulty) Sim {
         var s = Sim{
             .seed = seed,
             .rng = std.Random.DefaultPrng.init(seed),
             .class = class,
+            .difficulty = difficulty,
             .hero = Hero{ .class = class },
         };
         s.reset(seed, class);
@@ -497,12 +530,14 @@ pub const Sim = struct {
         if (pos.x == self.hero.pos.x and pos.y == self.hero.pos.y) return;
         const def = self.enemyDefForKind(kind);
         const idx = self.enemy_count;
+        const hp = def.combat.hp * self.difficulty.hpScale();
+        const dmg = def.combat.damage * self.difficulty.damageScale();
         self.enemies[idx] = .{
             .identity = .{ .kind = def.ai.kind, .name = def.name },
             .pos = pos,
-            .vitals = numeric.gaugeFull(numeric.Health, def.combat.hp),
+            .vitals = numeric.gaugeFull(numeric.Health, hp),
             .combat = .{
-                .attack = numeric.valueOf(numeric.Attack, def.combat.damage),
+                .attack = numeric.valueOf(numeric.Attack, dmg),
                 .armor = numeric.valueOf(numeric.Armor, def.combat.armor),
                 .speed = numeric.valueOf(numeric.Speed, @floatFromInt(def.combat.speed)),
                 .range = def.combat.attack_range,
@@ -1286,6 +1321,16 @@ test "run sim: boss AOE resolves on the telegraphed turn" {
     _ = s.wait();
     try std.testing.expect(s.hero.vitals.val < hp);
     try std.testing.expect(s.hero.status.burn_turns > 0);
+}
+
+test "run sim: hard difficulty scales enemy hp and damage" {
+    var normal = Sim.init(77, .warrior);
+    var hard = Sim.initWithDifficulty(77, .warrior, .hard);
+    try std.testing.expectEqual(normal.enemy_count, hard.enemy_count);
+    for (normal.enemies[0..normal.enemy_count], hard.enemies[0..hard.enemy_count]) |a, b| {
+        try std.testing.expectApproxEqAbs(a.vitals.full * 1.20, b.vitals.full, 0.01);
+        try std.testing.expectApproxEqAbs(a.combat.attack.val * 1.10, b.combat.attack.val, 0.01);
+    }
 }
 
 test "run sim: content keeps a fast and a slow speed band" {
