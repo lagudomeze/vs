@@ -206,9 +206,9 @@ raw
 
 当前债（最高优先）：
 
-- 护甲公式在 Sim.enemyAct（Boss AOE）、Sim.enemyAttack、Sim.playerAttack 各写一遍；
-- attributes.damageAfterArmor 已存在但未被 Sim 使用；
-- intent.scaledDamage 只算 attack*scale，没算护甲/抗性，HUD 预览会高估；
+- 已修：护甲公式统一走 combat.resolve，Sim 三处内联公式已删除；
+- 已修：attributes.damageAfterArmor 由 combat 调用；
+- 已修：Sim.intentFor 对预览应用同一减伤，HUD 不再高估；
 - 暴击在 playerAttack 内联，intent 无法复用；
 - 没有 DamageType/Resistance，所有伤害都是物理。
 

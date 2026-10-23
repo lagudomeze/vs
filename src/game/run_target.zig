@@ -11,6 +11,7 @@
 //! all share exactly the same rules.
 const std = @import("std");
 const run = @import("run_sim.zig");
+const combat = @import("combat.zig");
 
 pub const TalentKind = enum(u8) {
     /// Single enemy hit (重击/冲锋/冰锥/时光箭/时间停滞).
@@ -147,7 +148,7 @@ pub fn estimateDamage(sim: *const run.Sim, spec: TalentSpec, armor: f32) f32 {
     if (spec.damage_mult <= 0) return 0;
     var raw = sim.hero.attack * spec.damage_mult;
     if (sim.hero.buff_turns > 0) raw *= 1.0 + sim.hero.buff_pct;
-    return raw * (0.15 + 0.85 * 50.0 / (50.0 + armor));
+    return combat.preview(.{ .raw = raw }, .{ .armor = armor });
 }
 
 /// Validate a possible confirmation without touching the simulation.

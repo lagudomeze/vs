@@ -139,6 +139,7 @@ src/
   engine/      model / rig / arena_mesh / renderer
   game/
     run_sim.zig     纯回合制模拟（无 SDL/渲染）
+    combat.zig      伤害类型/防御/暴击唯一管线
     run_game.zig    3D 场景、输入、相机、动画
     run_hud.zig     角色/楼层/目标/日志/天赋/面板
     dungeon.zig      31×31 确定性关卡、连通性、A*、LOS
@@ -159,10 +160,10 @@ docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 
 ## 验证
 
-- zig build / zig build test：13/13 steps、147/147 tests。
+- zig build / zig build test：13/13 steps、150/150 tests。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/run_select.png`。
 - 职业菜单显示的 SEED 就是本局真实 seed；选择职业只按同一 seed 重开，R 重开保持职业和 seed。
-- 大图 QA（100 seed × 3 职业，纯逻辑 bot）：通关率 62.3%（187/300）；狂战士 42%、元素法师 81%、时空法师 64%，0 超时/不变量违规；test-qa 81/81。
+- 大图 QA（100 seed × 3 职业，纯逻辑 bot）：通关率 62.3%（187/300）；狂战士 42%、元素法师 81%、时空法师 64%，0 超时/不变量违规；test-qa 84/84。
 - auto 是演示/巡检 bot，不保证通关；31×31 + 楼层 Boss 下可能停在 Boss 层，实际 QA 以 test-qa 为准。
 - Boss 深渊斩每 3 个敌方回合预警一次，半径 0.9 格；走出标记格即可躲开；Boss 存活时第 3 层楼梯封印。
 - 速度机制已启用：精英幽魂 150（每 2 回合多一次行动），石魔像 70（每 2 回合跳过行动）。

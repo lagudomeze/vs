@@ -24,7 +24,7 @@ reference roguelike 的 Lua 数据本质上也是表 + 处理器，不是把公�
 | 派生战斗值 | combat attack/defense/armor/crit/speed | `Derived` + `derived_defs` |
 | 职业 | class 表：资源、主属性、初始属性 | `ClassDef` 单表 |
 | 资源 | stamina/mana/paradox/vim... | `ResourceKind` |
-| 伤害管线 | DamageType -> projector -> resistance/armor/crit | 目前只有物理 + 暴击，待泛化 |
+| 伤害管线 | DamageType -> projector -> resistance/armor/crit | combat.zig：物理/火焰/冰霜/奥术/时空 Tag，护甲只作用于物理 |
 | 天赋 | cost/cooldown/range/target/effect 表 | `skills.json` + `SkillDef` |
 | 状态 | effect 表：duration/stack/tick | 目前只有 stun/slow/buff 字段 |
 | 成长 | level/xp 曲线 | `Progression` |
