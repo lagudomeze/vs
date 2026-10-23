@@ -81,6 +81,8 @@ pub const Input = struct {
     talent: i8 = -1,
     /// Menu only: D toggles normal/hard before starting.
     difficulty: bool = false,
+    /// Inventory panel: consume a healing item.
+    use_item: bool = false,
     /// Space while aiming confirms the pending talent.
     confirm: bool = false,
     wait: bool = false,
@@ -786,9 +788,14 @@ pub const RunGame = struct {
             const def = &self.content.items[id];
             const use = def.use() orelse continue;
             if (use.heal <= 0) continue;
+            if (self.sim.hero.vitals.val >= self.sim.hero.vitals.full) {
+                self.sim.pushLog("生命已满", .{});
+                return false;
+            }
             if (!self.inventory.remove(id)) continue;
-            self.sim.hero.vitals.val = @min(self.sim.hero.vitals.full, self.sim.hero.vitals.val + use.heal);
-            self.sim.pushLog("使用 {s}：恢复 {d:.0} 生命", .{ def.name, use.heal });
+            const before = self.sim.hero.vitals.val;
+            self.sim.hero.vitals.set(before + use.heal);
+            self.sim.pushLog("{s} +{d:.0}", .{ def.name, self.sim.hero.vitals.val - before });
             _ = self.sim.wait();
             return true;
         }
@@ -937,6 +944,9 @@ pub const RunGame = struct {
         }
         if (self.panel == .inventory and input.talent >= 0) {
             self.equipBag(@intCast(input.talent));
+        }
+        if (self.panel == .inventory and input.use_item) {
+            _ = self.usePotion();
         }
 
         var used_potion = false;
@@ -1874,6 +1884,31 @@ test "run game: menu toggles difficulty and restarts the preview" {
     try std.testing.expectEqual(sim_mod.Difficulty.hard, g.difficulty);
     try std.testing.expectEqual(@as(u8, 1), g.hud_state.difficulty);
     try std.testing.expectEqual(sim_mod.Difficulty.hard, g.sim.difficulty);
+}
+
+test "run game: inventory P consumes a healing item" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+
+    var potion: ?u16 = null;
+    for (g.content.items, 0..) |def, i| {
+        if (def.use()) |use| {
+            if (use.heal > 0) {
+                potion = @intCast(i);
+                break;
+            }
+        }
+    }
+    const id = potion orelse return error.MissingPotion;
+    try std.testing.expect(g.inventory.pickup(id));
+    g.sim.hero.vitals.val = 10;
+    g.panel = .inventory;
+    const before = g.inventory.count();
+
+    g.update(.{ .use_item = true }, 1.0 / 60.0);
+    try std.testing.expect(g.sim.hero.vitals.val > 10);
+    try std.testing.expectEqual(before - 1, g.inventory.count());
 }
 
 test "run game: class menu selects and keeps the class on restart" {
