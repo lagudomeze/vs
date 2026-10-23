@@ -394,6 +394,7 @@ pub const Sim = struct {
     aoe_target: GridPos = .{ .x = 0, .y = 0 },
     aoe_armed: bool = false,
     boss_enraged: bool = false,
+    boss_summoned: bool = false,
     shrine: GridPos = .{ .x = 0, .y = 0 },
     shrine_active: bool = false,
     shrine_used: bool = false,
@@ -433,6 +434,7 @@ pub const Sim = struct {
         self.kill_loot_events = 0;
         self.aoe_armed = false;
         self.boss_enraged = false;
+        self.boss_summoned = false;
         self.shrine_active = false;
         self.shrine_used = false;
         self.gold = 0;
@@ -991,6 +993,7 @@ pub const Sim = struct {
             if (dmg <= 0) continue;
             e.vitals.val -= dmg;
             self.checkBossEnrage(i);
+            self.checkBossSummon(i);
             if (e.vitals.val <= 0) self.killEnemy(i);
         }
     }
@@ -1195,7 +1198,37 @@ pub const Sim = struct {
         e.vitals.val -= dealt;
         self.pushLog("命中 {s} {d:.0}{s}", .{ e.identity.name, dealt, if (result.crit) " 暴击" else "" });
         self.checkBossEnrage(idx);
+        self.checkBossSummon(idx);
         if (e.vitals.val <= 0) self.killEnemy(idx);
+    }
+
+    /// Boss phase: at half HP it calls one skeleton once. Uses the same
+    /// spawn path as floor generation so difficulty/affixes apply.
+    fn checkBossSummon(self: *Sim, idx: usize) void {
+        if (self.boss_summoned) return;
+        const e = &self.enemies[idx];
+        if (!e.life.alive or e.identity.kind != intent_mod.boss_kind) return;
+        if (e.vitals.val <= 0 or e.vitals.val > e.vitals.full * 0.5) return;
+        self.boss_summoned = true;
+        var summoned: usize = 0;
+        var oy: i32 = -2;
+        while (oy <= 2 and summoned < 1) : (oy += 1) {
+            var ox: i32 = -2;
+            while (ox <= 2 and summoned < 1) : (ox += 1) {
+                if (ox == 0 and oy == 0) continue;
+                const p = GridPos{ .x = e.pos.x + ox, .y = e.pos.y + oy };
+                if (self.isBlocked(p.x, p.y) or self.enemyAt(p.x, p.y) != null) continue;
+                const before = self.enemy_count;
+                self.spawnEnemyAt(0, p);
+                if (self.enemy_count > before) {
+                    self.enemies[before].vitals.val *= 0.6;
+                    // Enter stunned so the player gets one turn to react.
+                    _ = self.enemies[before].status.applyStun(1);
+                    summoned += 1;
+                }
+            }
+        }
+        self.pushLog("深渊守卫 召唤骷髅", .{});
     }
 
     /// Boss phase 2: once below 35% HP it gains 15% attack and 10 speed.
@@ -1729,6 +1762,31 @@ test "run sim: shrine grants one permanent stat choice" {
     try std.testing.expect(risk.useShrine(.risk));
     try std.testing.expectApproxEqAbs(str + 4, risk.hero.sheet.stats.strength.val, 0.001);
     try std.testing.expectApproxEqAbs(@max(1, con - 2), risk.hero.sheet.stats.constitution.val, 0.001);
+}
+
+test "run sim: boss summons skeletons at half hp once" {
+    var s = Sim.init(21, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{
+        .kind = 5,
+        .name = "深渊守卫",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 250,
+        .hp_max = 420,
+        .attack = 16,
+        .armor = 15,
+        .speed = 90,
+        .range = 1,
+        .xp = 200,
+        .energy = 100,
+    });
+    s.hero.combat.attack.val = 50;
+    s.playerAttack(0, 1.0);
+    try std.testing.expect(s.boss_summoned);
+    try std.testing.expect(s.enemy_count >= 2);
+    const after_first = s.enemy_count;
+    s.playerAttack(0, 1.0);
+    try std.testing.expectEqual(after_first, s.enemy_count);
 }
 
 test "run sim: boss enrages below half hp and speeds up its cleave" {
