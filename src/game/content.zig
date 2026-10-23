@@ -217,7 +217,7 @@ pub const Content = struct {
         var total: f32 = 0;
         for (self.items) |def| {
             if (!def.allowsClass(class)) continue;
-            total += @max(0.0, def.weight);
+            total += @max(0.0, def.drop.weight);
         }
         if (total <= 0) return null;
 
@@ -226,7 +226,7 @@ pub const Content = struct {
         for (self.items, 0..) |def, i| {
             if (!def.allowsClass(class)) continue;
             last = @intCast(i);
-            pick -= @max(0.0, def.weight);
+            pick -= @max(0.0, def.drop.weight);
             if (pick <= 0) return @intCast(i);
         }
         return last;
@@ -246,93 +246,107 @@ pub const builtin_items = [_]items.ItemDef{
     .{
         .id = "iron_sword",
         .name = "铁剑",
-        .slot = .main_hand,
         .quality = .common,
-        .classes = &.{.warrior},
-        .mods = &.{
-            .{ .stat = .attack, .flat = 6 },
-            .{ .stat = .strength, .flat = 2 },
-        },
+        .drop = .{ .classes = &.{.warrior} },
+        .kind = .{ .equipment = .{
+            .slot = .main_hand,
+            .mods = &.{
+                .{ .stat = .attack, .flat = 6 },
+                .{ .stat = .strength, .flat = 2 },
+            },
+        } },
         .description = "狂战士的制式铁剑：+6 攻击，+2 力量。",
     },
     .{
         .id = "staff",
         .name = "法杖",
-        .slot = .main_hand,
         .quality = .common,
-        .classes = &.{.mage},
-        .mods = &.{
-            .{ .stat = .attack, .flat = 5 },
-            .{ .stat = .magic, .flat = 3 },
-        },
+        .drop = .{ .classes = &.{.mage} },
+        .kind = .{ .equipment = .{
+            .slot = .main_hand,
+            .mods = &.{
+                .{ .stat = .attack, .flat = 5 },
+                .{ .stat = .magic, .flat = 3 },
+            },
+        } },
         .description = "元素法师的橡木法杖：+5 攻击，+3 魔力。",
     },
     .{
         .id = "leather_armor",
         .name = "皮甲",
-        .slot = .body,
         .quality = .common,
-        .mods = &.{
-            .{ .stat = .hp_max, .flat = 20 },
-            .{ .stat = .armor, .flat = 3 },
-        },
+        .kind = .{ .equipment = .{
+            .slot = .body,
+            .mods = &.{
+                .{ .stat = .hp_max, .flat = 20 },
+                .{ .stat = .armor, .flat = 3 },
+            },
+        } },
         .description = "轻便的皮质护甲：+20 生命上限，+3 护甲。",
     },
     .{
         .id = "mithril_armor",
         .name = "秘银甲",
-        .slot = .body,
         .quality = .rare,
-        .mods = &.{
-            .{ .stat = .hp_max, .flat = 35 },
-            .{ .stat = .armor, .flat = 6 },
-            .{ .stat = .will, .flat = 2 },
-        },
+        .kind = .{ .equipment = .{
+            .slot = .body,
+            .mods = &.{
+                .{ .stat = .hp_max, .flat = 35 },
+                .{ .stat = .armor, .flat = 6 },
+                .{ .stat = .will, .flat = 2 },
+            },
+        } },
         .description = "秘银环甲：+35 生命上限，+6 护甲，+2 意志。",
     },
     .{
         .id = "tiger_charm",
         .name = "猛虎护符",
-        .slot = .trinket,
         .quality = .rare,
-        .classes = &.{.warrior},
-        .mods = &.{
-            .{ .stat = .strength, .flat = 4 },
-            .{ .stat = .crit, .flat = 0.03 },
-        },
+        .drop = .{ .classes = &.{.warrior} },
+        .kind = .{ .equipment = .{
+            .slot = .trinket,
+            .mods = &.{
+                .{ .stat = .strength, .flat = 4 },
+                .{ .stat = .crit, .flat = 0.03 },
+            },
+        } },
         .description = "虎牙护符：+4 力量，+3% 暴击。",
     },
     .{
         .id = "hourglass",
         .name = "时光沙漏",
-        .slot = .trinket,
         .quality = .rare,
-        .classes = &.{.mage},
-        .mods = &.{
-            .{ .stat = .will, .flat = 5 },
-            .{ .stat = .resource_max, .flat = 10 },
-        },
+        .drop = .{ .classes = &.{.mage} },
+        .kind = .{ .equipment = .{
+            .slot = .trinket,
+            .mods = &.{
+                .{ .stat = .will, .flat = 5 },
+                .{ .stat = .resource_max, .flat = 10 },
+            },
+        } },
         .description = "封存时间的沙漏：+5 意志，+10 法力上限。",
     },
     .{
         .id = "healing_potion",
         .name = "生命瓶",
         .quality = .common,
-        .weight = 0.8,
-        .use = .{ .heal = 40 },
+        .drop = .{ .weight = 0.8 },
+        .kind = .{ .consumable = .{ .use = .{ .heal = 40 } } },
         .description = "恢复 40 生命；v1 暂不做使用 UI。",
     },
     .{
         .id = "gear_sigil",
         .name = "齿轮印记",
-        .slot = .trinket,
         .quality = .epic,
-        .classes = &.{.chronomancer},
-        .mods = &.{
-            .{ .stat = .perception, .flat = 3 },
-            .{ .stat = .magic, .flat = 2 },
-            .{ .stat = .crit, .flat = 0.05 },
-        },
+        .drop = .{ .classes = &.{.chronomancer} },
+        .kind = .{ .equipment = .{
+            .slot = .trinket,
+            .mods = &.{
+                .{ .stat = .perception, .flat = 3 },
+                .{ .stat = .magic, .flat = 2 },
+                .{ .stat = .crit, .flat = 0.05 },
+            },
+        } },
         .description = "时空法师的齿轮印记：+3 感知，+2 魔力，+5% 暴击。",
     },
 };
@@ -571,7 +585,44 @@ pub const builtin_skills = [_]SkillDef{
 };
 // ------------------------------------------------------------- load / parse
 
-const ItemsFile = struct { version: u32 = 1, items: []const items.ItemDef = &.{} };
+/// Wire format stays flat for JSON ergonomics; the runtime converts it to
+/// the ItemKind union so invalid combinations never reach gameplay.
+const RawItemDef = struct {
+    id: []const u8,
+    name: []const u8,
+    quality: items.Quality = .common,
+    slot: ?items.Slot = null,
+    classes: []const attributes.Class = &.{},
+    weight: f32 = 1.0,
+    mods: []const attributes.Modifier = &.{},
+    use: ?items.Use = null,
+    description: []const u8 = "",
+};
+
+const ItemsFile = struct { version: u32 = 1, items: []const RawItemDef = &.{} };
+
+fn convertItems(alloc: std.mem.Allocator, raw: []const RawItemDef) ![]const items.ItemDef {
+    const out = try alloc.alloc(items.ItemDef, raw.len);
+    for (raw, out) |src, *dst| {
+        if (src.slot != null and src.use != null) return error.ItemKindConflict;
+        if (src.slot == null and src.use == null) return error.ItemKindMissing;
+        const kind: items.ItemKind = if (src.slot) |slot|
+            .{ .equipment = .{ .slot = slot, .mods = src.mods } }
+        else if (src.use) |use|
+            .{ .consumable = .{ .use = use } }
+        else
+            .quest;
+        dst.* = .{
+            .id = src.id,
+            .name = src.name,
+            .quality = src.quality,
+            .drop = .{ .classes = src.classes, .weight = src.weight },
+            .kind = kind,
+            .description = src.description,
+        };
+    }
+    return out;
+}
 const EnemiesFile = struct { version: u32 = 1, enemies: []const EnemyDef = &.{} };
 const SkillsFile = struct { version: u32 = 1, skills: []const SkillDef = &.{} };
 
@@ -613,15 +664,18 @@ pub fn loadFrom(
     var report = Report{};
 
     var item_list: []const items.ItemDef = &builtin_items;
+    var items_ok = false;
     if (parseFile(ItemsFile, arena_alloc, file_items, items_bytes, &report)) |file| {
-        if (validateItems(file.items, &report)) {
-            item_list = file.items;
-        } else {
-            report.items = .fallback;
+        if (convertItems(arena_alloc, file.items)) |converted| {
+            if (validateItems(converted, &report)) {
+                item_list = converted;
+                items_ok = true;
+            }
+        } else |err| {
+            report.add(file_items, "物品 kind 冲突（slot 与 use 同时存在）", @errorName(err));
         }
-    } else {
-        report.items = .fallback;
     }
+    if (!items_ok) report.items = .fallback;
 
     var skill_list: []const SkillDef = &builtin_skills;
     if (parseFile(SkillsFile, arena_alloc, file_skills, skills_bytes, &report)) |file| {
@@ -679,33 +733,30 @@ fn validateItems(list: []const items.ItemDef, report: *Report) bool {
                 ok = false;
             }
         }
-        if (def.slot == null and def.use == null) {
-            report.add(file_items, "物品既不可装备也没有 use 效果", def.id);
-            ok = false;
-        }
-        if (def.slot != null and def.use != null) {
-            report.add(file_items, "装备不应带 use 效果", def.id);
-            ok = false;
-        }
-        if (!finiteInRange(def.weight, 0, 100)) {
+        if (!finiteInRange(def.drop.weight, 0, 100)) {
             report.add(file_items, "掉落权重超出范围", def.id);
             ok = false;
         }
-        if (def.use) |use| {
-            if (!finiteInRange(use.heal, 0, 10000) or !finiteInRange(use.resource, 0, 10000)) {
-                report.add(file_items, "消耗品效果超出范围", def.id);
-                ok = false;
-            }
-        }
-        for (def.mods) |mod| {
-            if (!finiteInRange(mod.flat, -1000, 1000)) {
-                report.add(file_items, "flat 修正超出范围", def.id);
-                ok = false;
-            }
-            if (!finiteInRange(mod.pct, attributes.caps.pct_min, attributes.caps.pct_max)) {
-                report.add(file_items, "pct 修正超出范围", def.id);
-                ok = false;
-            }
+        switch (def.kind) {
+            .equipment => |equipment| {
+                for (equipment.mods) |mod| {
+                    if (!finiteInRange(mod.flat, -1000, 1000)) {
+                        report.add(file_items, "flat 修正超出范围", def.id);
+                        ok = false;
+                    }
+                    if (!finiteInRange(mod.pct, attributes.caps.pct_min, attributes.caps.pct_max)) {
+                        report.add(file_items, "pct 修正超出范围", def.id);
+                        ok = false;
+                    }
+                }
+            },
+            .consumable => |consumable| {
+                if (!finiteInRange(consumable.use.heal, 0, 10000) or !finiteInRange(consumable.use.resource, 0, 10000)) {
+                    report.add(file_items, "消耗品效果超出范围", def.id);
+                    ok = false;
+                }
+            },
+            .quest => {},
         }
     }
     return ok;
@@ -934,14 +985,14 @@ test "embedded tables match the RUN v1 content plan" {
     try std.testing.expectEqual(@as(usize, 10), content.skills.len);
 
     const sword = content.item("iron_sword") orelse return error.MissingItem;
-    try std.testing.expectEqual(items.Slot.main_hand, sword.slot.?);
+    try std.testing.expectEqual(items.Slot.main_hand, sword.slot().?);
     try std.testing.expectEqual(items.Quality.common, sword.quality);
-    try std.testing.expectEqual(attributes.StatRef.attack, sword.mods[0].stat);
-    try std.testing.expectEqual(@as(f32, 6), sword.mods[0].flat);
+    try std.testing.expectEqual(attributes.StatRef.attack, sword.mods()[0].stat);
+    try std.testing.expectEqual(@as(f32, 6), sword.mods()[0].flat);
 
     const potion = content.item("healing_potion") orelse return error.MissingItem;
     try std.testing.expect(!potion.isEquippable());
-    try std.testing.expectEqual(@as(f32, 40), potion.use.?.heal);
+    try std.testing.expectEqual(@as(f32, 40), potion.use().?.heal);
 
     const sigil = content.item("gear_sigil") orelse return error.MissingItem;
     try std.testing.expectEqual(items.Quality.epic, sigil.quality);
@@ -1003,6 +1054,20 @@ test "duplicate ids are rejected and fall back" {
 
     try std.testing.expectEqual(Source.fallback, content.report.items);
     try std.testing.expectEqual(Source.embedded, content.report.enemies);
+    try std.testing.expectEqual(builtin_items.len, content.items.len);
+}
+
+test "item with both slot and use is rejected" {
+    const bad_items =
+        \\{ "version": 1, "items": [
+        \\  { "id": "bad", "name": "坏物品", "slot": "body", "use": { "heal": 10 } }
+        \\] }
+    ;
+    var content = try loadFrom(std.testing.allocator, bad_items, embedded.enemies_json, embedded.skills_json);
+    defer content.deinit();
+
+    try std.testing.expectEqual(Source.fallback, content.report.items);
+    try std.testing.expect(content.report.issue_count > 0);
     try std.testing.expectEqual(builtin_items.len, content.items.len);
 }
 

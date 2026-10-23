@@ -300,7 +300,7 @@ const DropResult = struct {
 
 fn itemScore(def: *const items_mod.ItemDef) f32 {
     var score: f32 = 0;
-    for (def.mods) |m| {
+    for (def.mods()) |m| {
         score += m.flat;
         score += m.pct * 20.0;
     }
@@ -323,9 +323,9 @@ fn grantDrop(
     const pick = rng.random().float(f32);
     const id = c.rollDrop(class, chance, pick, &c.enemies[0]) orelse return .{};
     const def = &c.items[id];
-    var result = DropResult{ .dropped = true, .equippable = def.slot != null };
+    var result = DropResult{ .dropped = true, .equippable = def.slot() != null };
     if (!inv.pickup(id)) return result;
-    if (def.slot) |slot| {
+    if (def.slot()) |slot| {
         if (def.allowsClass(class)) {
             var better = inv.equipped.get(slot) == null;
             if (inv.equipped.get(slot)) |current| {

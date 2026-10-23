@@ -60,29 +60,70 @@ pub const Use = struct {
     resource: f32 = 0,
 };
 
-pub const ItemDef = struct {
-    id: []const u8,
-    name: []const u8,
-    /// null means "not equippable" (consumable / quest item).
-    slot: ?Slot = null,
-    quality: Quality = .common,
+/// Loot-only metadata. Kept out of the kind union because every droppable
+/// item shares it.
+pub const DropRule = struct {
     /// Classes this item may drop for; empty means all classes.
     classes: []const attributes.Class = &.{},
     /// Loot weight inside the class pool.
     weight: f32 = 1.0,
+};
+
+pub const Equipment = struct {
+    slot: Slot,
     /// flat / pct 修正，见 attributes.Modifier。
     mods: []const attributes.Modifier = &.{},
-    use: ?Use = null,
+};
+
+pub const Consumable = struct {
+    use: Use,
+};
+
+/// Items are one of three shapes; illegal combinations (equipment with a
+/// potion effect etc.) are unrepresentable instead of being null-checked.
+pub const ItemKind = union(enum) {
+    equipment: Equipment,
+    consumable: Consumable,
+    quest,
+};
+
+pub const ItemDef = struct {
+    id: []const u8,
+    name: []const u8,
+    quality: Quality = .common,
+    drop: DropRule = .{},
+    kind: ItemKind = .quest,
     description: []const u8 = "",
 
     pub fn isEquippable(self: ItemDef) bool {
-        return self.slot != null;
+        return self.kind == .equipment;
+    }
+
+    pub fn slot(self: ItemDef) ?Slot {
+        return switch (self.kind) {
+            .equipment => |equipment| equipment.slot,
+            else => null,
+        };
+    }
+
+    pub fn mods(self: ItemDef) []const attributes.Modifier {
+        return switch (self.kind) {
+            .equipment => |equipment| equipment.mods,
+            else => &.{},
+        };
+    }
+
+    pub fn use(self: ItemDef) ?Use {
+        return switch (self.kind) {
+            .consumable => |consumable| consumable.use,
+            else => null,
+        };
     }
 
     /// Empty class list == 全职业.
     pub fn allowsClass(self: ItemDef, class: attributes.Class) bool {
-        if (self.classes.len == 0) return true;
-        for (self.classes) |allowed| {
+        if (self.drop.classes.len == 0) return true;
+        for (self.drop.classes) |allowed| {
             if (allowed == class) return true;
         }
         return false;
@@ -179,7 +220,7 @@ pub const Inventory = struct {
     pub fn equip(self: *Inventory, defs: []const ItemDef, item: ItemId) EquipError!void {
         if (item >= defs.len) return error.UnknownItem;
         const def = defs[item];
-        const slot = def.slot orelse return error.NotEquippable;
+        const slot = def.slot() orelse return error.NotEquippable;
         if (!self.remove(item)) return error.NotInInventory;
         if (self.equipped.get(slot)) |replaced| {
             // remove() just freed a bag slot, so this always fits.
@@ -217,7 +258,7 @@ pub const ModifierSet = struct {
     /// Appends every modifier of def, tagged as equipment. Modifiers beyond
     /// capacity are dropped (capacity covers a full v1 loadout).
     pub fn applyItem(self: *ModifierSet, item: ItemId, def: *const ItemDef) void {
-        for (def.mods) |mod| {
+        for (def.mods()) |mod| {
             if (self.len >= max_equipment_mods) return;
             self.mods[self.len] = .{
                 .stat = mod.stat,
@@ -369,21 +410,33 @@ pub fn panelFor(
 // ------------------------------------------------------------------- tests
 
 const test_defs = [_]ItemDef{
-    .{ .id = "test_sword", .name = "测试铁剑", .slot = .main_hand, .classes = &.{.warrior}, .mods = &.{
-        .{ .stat = .strength, .flat = 6 },
-        .{ .stat = .attack, .flat = 4 },
-    } },
-    .{ .id = "test_armor", .name = "测试皮甲", .slot = .body, .quality = .rare, .mods = &.{
-        .{ .stat = .hp_max, .flat = 20 },
-        .{ .stat = .armor, .flat = 3 },
-    } },
-    .{ .id = "test_charm", .name = "测试护符", .slot = .trinket, .mods = &.{
-        .{ .stat = .strength, .pct = 0.5 },
-    } },
-    .{ .id = "test_potion", .name = "测试瓶", .use = .{ .heal = 40 } },
-    .{ .id = "test_dagger", .name = "测试短刃", .slot = .main_hand, .mods = &.{
-        .{ .stat = .agility, .flat = 3 },
-    } },
+    .{ .id = "test_sword", .name = "测试铁剑", .drop = .{ .classes = &.{.warrior} }, .kind = .{ .equipment = .{
+        .slot = .main_hand,
+        .mods = &.{
+            .{ .stat = .strength, .flat = 6 },
+            .{ .stat = .attack, .flat = 4 },
+        },
+    } } },
+    .{ .id = "test_armor", .name = "测试皮甲", .quality = .rare, .kind = .{ .equipment = .{
+        .slot = .body,
+        .mods = &.{
+            .{ .stat = .hp_max, .flat = 20 },
+            .{ .stat = .armor, .flat = 3 },
+        },
+    } } },
+    .{ .id = "test_charm", .name = "测试护符", .kind = .{ .equipment = .{
+        .slot = .trinket,
+        .mods = &.{
+            .{ .stat = .strength, .pct = 0.5 },
+        },
+    } } },
+    .{ .id = "test_potion", .name = "测试瓶", .kind = .{ .consumable = .{ .use = .{ .heal = 40 } } } },
+    .{ .id = "test_dagger", .name = "测试短刃", .kind = .{ .equipment = .{
+        .slot = .main_hand,
+        .mods = &.{
+            .{ .stat = .agility, .flat = 3 },
+        },
+    } } },
 };
 
 const expectApprox = std.testing.expectApproxEqAbs;
