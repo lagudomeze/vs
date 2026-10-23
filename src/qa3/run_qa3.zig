@@ -15,7 +15,7 @@ const dirs4 = [_][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
 
 fn setEnemy(g: *RunGame, x: i32, y: i32, name: []const u8, hp: f32, speed: u16) usize {
     const idx = g.sim.enemy_count;
-    g.sim.enemies[idx] = .{
+    g.sim.enemies[idx] = run.enemyFromParts(.{
         .kind = 0,
         .name = name,
         .pos = .{ .x = x, .y = y },
@@ -26,7 +26,7 @@ fn setEnemy(g: *RunGame, x: i32, y: i32, name: []const u8, hp: f32, speed: u16) 
         .speed = speed,
         .range = 1,
         .xp = 20,
-    };
+    });
     g.sim.enemy_count += 1;
     return idx;
 }
@@ -153,7 +153,7 @@ test "qa3: valid aim confirms once, one turn and one resource payment" {
     try std.testing.expectEqual(turn + 1, g.sim.turn);
     try std.testing.expectEqual(res - 25.0, g.sim.hero.resource);
     try std.testing.expectEqual(@as(u16, 3), g.sim.hero.cooldowns[0]); // 4 set, endTurn ticks once
-    try std.testing.expect(g.sim.enemies[0].hp < 70);
+    try std.testing.expect(g.sim.enemies[0].vitals.hp < 70);
     std.debug.print("[qa3] valid confirm: turn {d}->{d}, resource {d:.0}->{d:.0}, cooldown={d}\n", .{
         turn, g.sim.turn, res, g.sim.hero.resource, g.sim.hero.cooldowns[0],
     });
@@ -465,7 +465,7 @@ fn setupFighter(s: *run.Sim, speed: u16) void {
     s.hero.armor = 0;
     s.hero.hp = s.hero.hp_max;
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = run.enemyFromParts(.{
         .kind = 0,
         .name = "骷髅兵",
         .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
@@ -476,7 +476,7 @@ fn setupFighter(s: *run.Sim, speed: u16) void {
         .speed = speed,
         .range = 1,
         .xp = 0,
-    };
+    });
 }
 
 test "qa3: speed 150 acts twice, speed 70 skips on even turns" {
@@ -510,7 +510,7 @@ test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
     s.aoe_armed = true;
     s.aoe_target = .{ .x = 7, .y = 6 };
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = run.enemyFromParts(.{
         .kind = 5,
         .name = "深渊守卫",
         .pos = .{ .x = 0, .y = 0 },
@@ -521,7 +521,7 @@ test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
         .speed = 90,
         .range = 1,
         .xp = 200,
-    };
+    });
     const hp = s.hero.hp;
     _ = s.wait();
     try std.testing.expectEqual(hp, s.hero.hp); // 1 cell away > 0.9
@@ -534,7 +534,7 @@ test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
     h.aoe_armed = true;
     h.aoe_target = h.hero.pos;
     h.enemy_count = 1;
-    h.enemies[0] = .{
+    h.enemies[0] = run.enemyFromParts(.{
         .kind = 5,
         .name = "深渊守卫",
         .pos = .{ .x = 0, .y = 0 },
@@ -545,7 +545,7 @@ test "qa3: boss AOE 0.9 spares adjacent cell and hits marked cell" {
         .speed = 90,
         .range = 1,
         .xp = 200,
-    };
+    });
     const hp2 = h.hero.hp;
     _ = h.wait();
     try std.testing.expect(h.hero.hp < hp2);
@@ -568,7 +568,7 @@ test "qa3: boss seals floor-3 stairs without spending a turn" {
     s.hero.pos = start;
     s.hero.last_pos = start;
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = run.enemyFromParts(.{
         .kind = 5,
         .name = "深渊守卫",
         .pos = .{ .x = 0, .y = 0 },
@@ -579,14 +579,14 @@ test "qa3: boss seals floor-3 stairs without spending a turn" {
         .speed = 90,
         .range = 1,
         .xp = 200,
-    };
+    });
     const turn = s.turn;
     const res = s.hero.resource;
     try std.testing.expect(!s.move(s.stairs.x - start.x, s.stairs.y - start.y));
     try std.testing.expectEqual(@as(u8, 3), s.floor);
     try std.testing.expectEqual(turn, s.turn);
     try std.testing.expectEqual(res, s.hero.resource);
-    s.enemies[0].alive = false;
+    s.enemies[0].vitals.alive = false;
     try std.testing.expect(s.move(s.stairs.x - start.x, s.stairs.y - start.y));
     std.debug.print("[qa3] stairs seal: blocked at floor 3, 0 turn/resource, opens after boss death\n", .{});
 }

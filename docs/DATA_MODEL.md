@@ -186,7 +186,7 @@ level, xp, pending_points,
 cooldowns, buff_turns, buff_pct, eff_stats
 ~~~
 
-run_sim.Enemy 有 13 个字段：
+run_sim.Enemy 已改为组件聚合（Identity / Position / Vitals / Combat / Status / Reward）；旧 13 字段视图只作历史说明：
 
 ~~~text
 kind, name, pos, hp, hp_max, attack, armor,
@@ -280,8 +280,8 @@ ECS 组件是“每个实体都有一份”的状态。ItemDef/SkillDef/EnemyDef
 
 ### Phase 2：Actor 组件化（行为不变）
 
-5. Hero -> 组件结构；Sim 保留 Hero 聚合作为兼容视图，内部字段转发。
-6. Enemy -> 组件结构；AI/Reward 独立。
+5. Hero -> 组件结构（待做）；Sim 保留 Hero 聚合作为兼容视图。
+6. ✅ Enemy -> 组件结构（Identity/Vitals/Combat/Status/Reward）；Sim 使用 content registry。
 7. recompute/damage/status/AI 系统改为接收组件指针。
 
 ### Phase 3：实例与 ECS

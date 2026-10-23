@@ -184,7 +184,7 @@ pub fn preview(sim: *const run.Sim, talent: usize, target: ?usize) Preview {
         return p;
     }
     const enemy = sim.enemies[idx];
-    if (!enemy.alive) {
+    if (!enemy.vitals.alive) {
         p.verdict = .no_target;
         return p;
     }
@@ -200,7 +200,7 @@ pub fn preview(sim: *const run.Sim, talent: usize, target: ?usize) Preview {
         return p;
     }
 
-    p.damage = estimateDamage(sim, spec, enemy.armor);
+    p.damage = estimateDamage(sim, spec, enemy.combat.armor);
     if (spec.kind == .aoe and spec.aoe_radius > 0) fillAoe(&p, enemy.pos, spec.aoe_radius);
     p.verdict = .ok;
     return p;
@@ -225,7 +225,7 @@ fn fillAoe(p: *Preview, center: run.GridPos, radius: i32) void {
 
 fn placeEnemy(s: *run.Sim, pos: run.GridPos, hp: f32) void {
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = run.enemyFromParts(.{
         .kind = 0,
         .name = "骷髅兵",
         .pos = pos,
@@ -236,7 +236,7 @@ fn placeEnemy(s: *run.Sim, pos: run.GridPos, hp: f32) void {
         .speed = 100,
         .range = 1,
         .xp = 20,
-    };
+    });
 }
 
 test "run target: only enemy-facing talents need an aim step" {
@@ -279,7 +279,7 @@ test "run target: missing or dead target is rejected" {
     placeEnemy(&s, .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y }, 70);
     try std.testing.expectEqual(Verdict.no_target, preview(&s, 0, 9).verdict);
 
-    s.enemies[0].alive = false;
+    s.enemies[0].vitals.alive = false;
     try std.testing.expectEqual(Verdict.no_target, preview(&s, 0, 0).verdict);
 }
 

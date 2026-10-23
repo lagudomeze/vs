@@ -121,21 +121,68 @@ pub const Hero = struct {
     eff_stats: [6]f32 = .{ 0, 0, 0, 0, 0, 0 },
 };
 
-pub const Enemy = struct {
+pub const EnemyIdentity = struct {
     kind: u8 = 0,
     name: []const u8 = "骷髅兵",
-    pos: GridPos = .{ .x = 0, .y = 0 },
+};
+
+pub const Vitals = struct {
     hp: f32 = 1,
     hp_max: f32 = 1,
+    alive: bool = true,
+};
+
+pub const EnemyCombat = struct {
     attack: f32 = 5,
     armor: f32 = 0,
     speed: u16 = 100,
     range: u16 = 1,
-    xp: u32 = 20,
+};
+
+pub const StatusSet = struct {
     stun_turns: u16 = 0,
     slow_turns: u16 = 0,
-    alive: bool = true,
 };
+
+pub const Reward = struct {
+    xp: u32 = 20,
+};
+
+/// Enemy actor as a composition of small components. Systems should take the
+/// component they need rather than the whole aggregate.
+pub const Enemy = struct {
+    identity: EnemyIdentity = .{},
+    pos: GridPos = .{ .x = 0, .y = 0 },
+    vitals: Vitals = .{},
+    combat: EnemyCombat = .{},
+    status: StatusSet = .{},
+    reward: Reward = .{},
+};
+
+/// Test/authoring helper: one flat literal -> component aggregate.
+pub fn enemyFromParts(parts: anytype) Enemy {
+    const T = @TypeOf(parts);
+    return .{
+        .identity = .{ .kind = parts.kind, .name = parts.name },
+        .pos = .{ .x = parts.pos.x, .y = parts.pos.y },
+        .vitals = .{
+            .hp = parts.hp,
+            .hp_max = parts.hp_max,
+            .alive = if (@hasField(T, "alive")) parts.alive else true,
+        },
+        .combat = .{
+            .attack = parts.attack,
+            .armor = if (@hasField(T, "armor")) parts.armor else 0,
+            .speed = if (@hasField(T, "speed")) parts.speed else 100,
+            .range = if (@hasField(T, "range")) parts.range else 1,
+        },
+        .status = .{
+            .stun_turns = if (@hasField(T, "stun_turns")) parts.stun_turns else 0,
+            .slow_turns = if (@hasField(T, "slow_turns")) parts.slow_turns else 0,
+        },
+        .reward = .{ .xp = if (@hasField(T, "xp")) parts.xp else 0 },
+    };
+}
 
 pub const LogLine = struct { text: [64]u8 = undefined, len: usize = 0 };
 
@@ -278,7 +325,7 @@ pub const Sim = struct {
         var i: usize = 0;
         while (i < self.enemy_count) : (i += 1) {
             const e = self.enemies[i];
-            if (e.alive and e.pos.x == x and e.pos.y == y) return i;
+            if (e.vitals.alive and e.pos.x == x and e.pos.y == y) return i;
         }
         return null;
     }
@@ -288,7 +335,7 @@ pub const Sim = struct {
     pub fn intentFor(self: *const Sim, index: usize) ?intent_mod.EnemyIntent {
         if (index >= self.enemy_count) return null;
         const e = self.enemies[index];
-        if (!e.alive) return null;
+        if (!e.vitals.alive) return null;
         var intent = intent_mod.preview(
             .{
                 .width = grid_w,
@@ -296,13 +343,13 @@ pub const Sim = struct {
                 .blocked = self.blocked[0..],
             },
             .{
-                .kind = e.kind,
+                .kind = e.identity.kind,
                 .pos = .{ .x = e.pos.x, .y = e.pos.y },
-                .range = e.range,
-                .attack = e.attack,
-                .stun_turns = e.stun_turns,
-                .slow_turns = e.slow_turns,
-                .alive = e.alive,
+                .range = e.combat.range,
+                .attack = e.combat.attack,
+                .stun_turns = e.status.stun_turns,
+                .slow_turns = e.status.slow_turns,
+                .alive = e.vitals.alive,
             },
             .{ .x = self.hero.pos.x, .y = self.hero.pos.y },
             self.turn +| 1,
@@ -322,7 +369,7 @@ pub const Sim = struct {
         var n: usize = 0;
         var i: usize = 0;
         while (i < self.enemy_count) : (i += 1) {
-            if (!self.enemies[i].alive) continue;
+            if (!self.enemies[i].vitals.alive) continue;
             out[n] = self.intentFor(i).?;
             n += 1;
         }
@@ -412,16 +459,16 @@ pub const Sim = struct {
         const def = self.enemyDefForKind(kind);
         const idx = self.enemy_count;
         self.enemies[idx] = .{
-            .kind = def.ai.kind,
-            .name = def.name,
+            .identity = .{ .kind = def.ai.kind, .name = def.name },
             .pos = pos,
-            .hp = def.combat.hp,
-            .hp_max = def.combat.hp,
-            .attack = def.combat.damage,
-            .armor = def.combat.armor,
-            .speed = def.combat.speed,
-            .range = def.combat.attack_range,
-            .xp = def.loot.xp,
+            .vitals = .{ .hp = def.combat.hp, .hp_max = def.combat.hp },
+            .combat = .{
+                .attack = def.combat.damage,
+                .armor = def.combat.armor,
+                .speed = def.combat.speed,
+                .range = def.combat.attack_range,
+            },
+            .reward = .{ .xp = def.loot.xp },
         };
         self.enemy_count += 1;
     }
@@ -435,7 +482,7 @@ pub const Sim = struct {
 
     pub fn hasLivingBoss(self: *const Sim) bool {
         for (self.enemies[0..self.enemy_count]) |e| {
-            if (e.alive and e.kind == intent_mod.boss_kind) return true;
+            if (e.vitals.alive and e.identity.kind == intent_mod.boss_kind) return true;
         }
         return false;
     }
@@ -471,7 +518,7 @@ pub const Sim = struct {
         if (self.state != .playing) return false;
         var danger = false;
         for (self.enemies[0..self.enemy_count]) |e| {
-            if (e.alive and dist(e.pos, self.hero.pos) <= 6) danger = true;
+            if (e.vitals.alive and dist(e.pos, self.hero.pos) <= 6) danger = true;
         }
         if (!danger) {
             self.hero.hp = @min(self.hero.hp_max, self.hero.hp + self.hero.hp_max * 0.08);
@@ -528,7 +575,7 @@ pub const Sim = struct {
         if (self.aoe_armed) return;
         if (!intent_mod.bossAoeDue(self.turn +| 1)) return;
         for (self.enemies[0..self.enemy_count]) |e| {
-            if (e.alive and e.kind == intent_mod.boss_kind) {
+            if (e.vitals.alive and e.identity.kind == intent_mod.boss_kind) {
                 self.aoe_target = self.hero.pos;
                 self.aoe_armed = true;
                 return;
@@ -583,7 +630,7 @@ pub const Sim = struct {
         var n: usize = 0;
         var i: usize = 0;
         while (i < self.enemy_count) : (i += 1) {
-            if (!self.enemies[i].alive) continue;
+            if (!self.enemies[i].vitals.alive) continue;
             order[n] = i;
             n += 1;
         }
@@ -592,19 +639,19 @@ pub const Sim = struct {
         while (a < n) : (a += 1) {
             const key = order[a];
             var b = a;
-            while (b > 0 and self.enemies[order[b - 1]].speed < self.enemies[key].speed) : (b -= 1) {
+            while (b > 0 and self.enemies[order[b - 1]].combat.speed < self.enemies[key].combat.speed) : (b -= 1) {
                 order[b] = order[b - 1];
             }
             order[b] = key;
         }
         for (order[0..n]) |idx| {
             var actions: u8 = 1;
-            const sp = self.enemies[idx].speed;
+            const sp = self.enemies[idx].combat.speed;
             if (sp >= 150 and self.turn % 2 == 0) actions = 2;
             if (sp <= 75 and self.turn % 2 == 0) actions = 0;
             var act: u8 = 0;
             while (act < actions) : (act += 1) {
-                if (!self.enemies[idx].alive) break;
+                if (!self.enemies[idx].vitals.alive) break;
                 if (self.hero.hp <= 0) break;
                 self.enemyAct(idx);
             }
@@ -613,16 +660,16 @@ pub const Sim = struct {
 
     fn enemyAct(self: *Sim, idx: usize) void {
         const e = &self.enemies[idx];
-        if (!e.alive) return;
-        if (e.stun_turns > 0) {
-            e.stun_turns -= 1;
+        if (!e.vitals.alive) return;
+        if (e.status.stun_turns > 0) {
+            e.status.stun_turns -= 1;
             return;
         }
-        if (e.slow_turns > 0) e.slow_turns -= 1;
-        if (e.kind == intent_mod.boss_kind and self.aoe_armed and intent_mod.bossAoeDue(self.turn)) {
+        if (e.status.slow_turns > 0) e.status.slow_turns -= 1;
+        if (e.identity.kind == intent_mod.boss_kind and self.aoe_armed and intent_mod.bossAoeDue(self.turn)) {
             self.aoe_armed = false;
             if (@as(f32, @floatFromInt(dist(self.hero.pos, self.aoe_target))) <= intent_mod.boss_aoe_radius) {
-                const raw = e.attack * intent_mod.boss_aoe_damage_scale * (if (e.slow_turns > 0) intent_mod.slow_damage_scale else 1.0);
+                const raw = e.combat.attack * intent_mod.boss_aoe_damage_scale * (if (e.status.slow_turns > 0) intent_mod.slow_damage_scale else 1.0);
                 const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.armor }).amount;
                 self.hero.hp = @max(0, self.hero.hp - dmg);
                 self.pushLog("深渊守卫 深渊斩 -{d:.0}", .{dmg});
@@ -637,7 +684,7 @@ pub const Sim = struct {
             .{ .x = self.hero.pos.x, .y = self.hero.pos.y },
             null,
         );
-        if (d <= 1 or (d <= e.range and los)) {
+        if (d <= 1 or (d <= e.combat.range and los)) {
             self.enemyAttack(idx);
             return;
         }
@@ -705,35 +752,35 @@ pub const Sim = struct {
 
     fn enemyAttack(self: *Sim, idx: usize) void {
         const e = self.enemies[idx];
-        var raw = e.attack * 0.72;
-        if (e.slow_turns > 0) raw *= 0.55;
+        var raw = e.combat.attack * 0.72;
+        if (e.status.slow_turns > 0) raw *= 0.55;
         const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.armor }).amount;
         self.hero.hp = @max(0, self.hero.hp - dmg);
-        self.pushLog("{s} 造成 {d:.0} 伤害", .{ e.name, dmg });
+        self.pushLog("{s} 造成 {d:.0} 伤害", .{ e.identity.name, dmg });
     }
 
     pub fn playerAttack(self: *Sim, idx: usize, mult: f32) void {
         const e = &self.enemies[idx];
-        if (!e.alive) return;
+        if (!e.vitals.alive) return;
         var raw = self.hero.attack * mult;
         if (self.hero.buff_turns > 0) raw *= 1.0 + self.hero.buff_pct;
         const crit = self.rng.random().float(f32) < self.hero.crit;
-        const result = combat.resolve(.{ .raw = raw, .crit = crit }, .{ .armor = e.armor });
-        e.hp -= result.amount;
-        self.pushLog("命中 {s} {d:.0}{s}", .{ e.name, result.amount, if (result.crit) " 暴击" else "" });
-        if (e.hp <= 0) self.killEnemy(idx);
+        const result = combat.resolve(.{ .raw = raw, .crit = crit }, .{ .armor = e.combat.armor });
+        e.vitals.hp -= result.amount;
+        self.pushLog("命中 {s} {d:.0}{s}", .{ e.identity.name, result.amount, if (result.crit) " 暴击" else "" });
+        if (e.vitals.hp <= 0) self.killEnemy(idx);
     }
 
     fn killEnemy(self: *Sim, idx: usize) void {
         const e = &self.enemies[idx];
-        if (!e.alive) return;
-        e.alive = false;
-        e.hp = 0;
-        if (e.kind == intent_mod.boss_kind) self.aoe_armed = false;
+        if (!e.vitals.alive) return;
+        e.vitals.alive = false;
+        e.vitals.hp = 0;
+        if (e.identity.kind == intent_mod.boss_kind) self.aoe_armed = false;
         self.kills += 1;
         self.kill_loot_events += 1;
-        self.pushLog("击杀 {s} +{d}XP", .{ e.name, e.xp });
-        self.hero.xp += e.xp;
+        self.pushLog("击杀 {s} +{d}XP", .{ e.identity.name, e.reward.xp });
+        self.hero.xp += e.reward.xp;
         while (self.hero.xp >= 100 * self.hero.level and self.hero.level < 50) {
             self.hero.xp -= 100 * self.hero.level;
             self.hero.level += 1;
@@ -756,7 +803,7 @@ pub const Sim = struct {
         }
         var any = false;
         for (self.enemies[0..self.enemy_count]) |en| {
-            if (en.alive) any = true;
+            if (en.vitals.alive) any = true;
         }
         if (!any and self.floor >= self.floors) self.state = .victory;
     }
@@ -767,7 +814,7 @@ pub const Sim = struct {
         var i: usize = 0;
         while (i < self.enemy_count) : (i += 1) {
             const e = self.enemies[i];
-            if (!e.alive) continue;
+            if (!e.vitals.alive) continue;
             const d = dist(e.pos, self.hero.pos);
             if (d > max_range) continue;
             if (d < best_d) {
@@ -812,7 +859,7 @@ pub const Sim = struct {
         if (preferred) |p| {
             if (p < self.enemy_count) {
                 const e = self.enemies[p];
-                if (e.alive and dist(e.pos, self.hero.pos) <= max_range) return p;
+                if (e.vitals.alive and dist(e.pos, self.hero.pos) <= max_range) return p;
             }
         }
         return self.nearestEnemy(max_range);
@@ -871,7 +918,7 @@ pub const Sim = struct {
                     self.aoeAttack(idx, 2.5, 1.5);
                 } else {
                     self.playerAttack(idx, 1.8);
-                    self.enemies[idx].slow_turns = 2;
+                    self.enemies[idx].status.slow_turns = 2;
                 }
                 self.endTurn();
                 return true;
@@ -890,10 +937,10 @@ pub const Sim = struct {
                 self.hero.cooldowns[i] = self.talentCooldown(i);
                 if (i == 0) {
                     self.playerAttack(idx, 2.0);
-                    if (self.enemies[idx].alive) self.enemies[idx].slow_turns = 2;
+                    if (self.enemies[idx].vitals.alive) self.enemies[idx].status.slow_turns = 2;
                 } else {
                     self.playerAttack(idx, 1.2);
-                    self.enemies[idx].stun_turns = 2;
+                    self.enemies[idx].status.stun_turns = 2;
                 }
                 self.endTurn();
                 return true;
@@ -912,11 +959,11 @@ pub const Sim = struct {
         var i: usize = 0;
         while (i < self.enemy_count) : (i += 1) {
             const e = &self.enemies[i];
-            if (!e.alive) continue;
+            if (!e.vitals.alive) continue;
             const d = dist(e.pos, center);
             if (d > @as(i32, @intFromFloat(radius))) continue;
             self.playerAttack(i, if (d == 0) mult else mult * 0.6);
-            if (!e.alive) continue;
+            if (!e.vitals.alive) continue;
         }
     }
 
@@ -980,7 +1027,7 @@ test "run sim: wall bump costs no turn" {
 test "run sim: adjacent enemy acts on wait" {
     var s = Sim.init(11, .warrior);
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = enemyFromParts(.{
         .kind = 0,
         .name = "骷髅兵",
         .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
@@ -991,7 +1038,7 @@ test "run sim: adjacent enemy acts on wait" {
         .speed = 100,
         .range = 1,
         .xp = 20,
-    };
+    });
     const hp = s.hero.hp;
     _ = s.wait();
     try std.testing.expect(s.hero.hp < hp);
@@ -1001,7 +1048,7 @@ test "run sim: adjacent enemy acts on wait" {
 test "run sim: warrior talent spends resource and starts cooldown" {
     var s = Sim.init(13, .warrior);
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = enemyFromParts(.{
         .kind = 0,
         .name = "骷髅兵",
         .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
@@ -1012,7 +1059,7 @@ test "run sim: warrior talent spends resource and starts cooldown" {
         .speed = 100,
         .range = 1,
         .xp = 20,
-    };
+    });
     const res = s.hero.resource;
     try std.testing.expect(s.useTalent(0));
     try std.testing.expect(s.hero.resource < res);
@@ -1032,7 +1079,7 @@ test "run sim: killing the last boss wins" {
     var s = Sim.init(21, .mage);
     s.floor = s.floors;
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = enemyFromParts(.{
         .kind = 5,
         .name = "深渊守卫",
         .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
@@ -1043,17 +1090,17 @@ test "run sim: killing the last boss wins" {
         .speed = 90,
         .range = 1,
         .xp = 200,
-    };
+    });
     s.hero.attack = 100;
     s.playerAttack(0, 1.0);
-    try std.testing.expect(s.enemies[0].hp <= 0);
+    try std.testing.expect(s.enemies[0].vitals.hp <= 0);
     try std.testing.expectEqual(State.victory, s.state);
 }
 
 test "run sim: level-up banks a point and auto allocate spends it" {
     var s = Sim.init(22, .warrior);
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = enemyFromParts(.{
         .kind = 0,
         .name = "骷髅兵",
         .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
@@ -1064,7 +1111,7 @@ test "run sim: level-up banks a point and auto allocate spends it" {
         .speed = 100,
         .range = 1,
         .xp = 200,
-    };
+    });
     const str = s.hero.stats.strength;
     s.hero.attack = 100;
     s.playerAttack(0, 1.0);
@@ -1079,9 +1126,9 @@ test "run sim: level-up banks a point and auto allocate spends it" {
     auto.auto_allocate = true;
     auto.enemy_count = 1;
     auto.enemies[0] = s.enemies[0];
-    auto.enemies[0].hp = 1;
-    auto.enemies[0].alive = true;
-    auto.enemies[0].xp = 200;
+    auto.enemies[0].vitals.hp = 1;
+    auto.enemies[0].vitals.alive = true;
+    auto.enemies[0].reward.xp = 200;
     const base = auto.hero.stats.strength;
     auto.hero.attack = 100;
     auto.playerAttack(0, 1.0);
@@ -1093,7 +1140,7 @@ test "run sim: deferred enemy phase waits for resolution" {
     var s = Sim.init(51, .warrior);
     s.defer_enemies = true;
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = enemyFromParts(.{
         .kind = 0,
         .name = "骷髅兵",
         .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
@@ -1105,7 +1152,7 @@ test "run sim: deferred enemy phase waits for resolution" {
         .range = 1,
         .xp = 20,
         .alive = true,
-    };
+    });
     const hp = s.hero.hp;
     try std.testing.expect(s.wait());
     try std.testing.expect(s.enemy_phase_pending);
@@ -1119,7 +1166,7 @@ test "run sim: boss AOE resolves on the telegraphed turn" {
     var s = Sim.init(31, .warrior);
     s.turn = 2;
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = enemyFromParts(.{
         .kind = 5,
         .name = "深渊守卫",
         .pos = .{ .x = 10, .y = 2 },
@@ -1130,7 +1177,7 @@ test "run sim: boss AOE resolves on the telegraphed turn" {
         .speed = 90,
         .range = 1,
         .xp = 200,
-    };
+    });
     s.aoe_armed = true;
     s.aoe_target = s.hero.pos;
     const hp = s.hero.hp;
@@ -1167,7 +1214,7 @@ test "run sim: mage fireball can be cast on a ground cell" {
     }
     const c = center orelse return error.SkipZigTest;
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = enemyFromParts(.{
         .kind = 0,
         .name = "骷髅兵",
         .pos = c,
@@ -1178,10 +1225,10 @@ test "run sim: mage fireball can be cast on a ground cell" {
         .speed = 100,
         .range = 1,
         .xp = 20,
-    };
+    });
     const turn = s.turn;
     try std.testing.expect(s.useTalentAt(0, c));
-    try std.testing.expect(s.enemies[0].hp < 70);
+    try std.testing.expect(s.enemies[0].vitals.hp < 70);
     try std.testing.expectEqual(turn + 1, s.turn);
     try std.testing.expect(s.hero.cooldowns[0] > 0);
 }
@@ -1209,7 +1256,7 @@ test "run sim: boss seals the stairs until defeated" {
     const from = start orelse return error.SkipZigTest;
     s.hero.pos = from;
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = enemyFromParts(.{
         .kind = 5,
         .name = "深渊守卫",
         .pos = .{ .x = 0, .y = 0 },
@@ -1220,13 +1267,13 @@ test "run sim: boss seals the stairs until defeated" {
         .speed = 90,
         .range = 1,
         .xp = 200,
-    };
+    });
     const dx = s.stairs.x - s.hero.pos.x;
     const dy = s.stairs.y - s.hero.pos.y;
     try std.testing.expect(!s.move(dx, dy));
     try std.testing.expectEqual(@as(u8, 3), s.floor);
     try std.testing.expectEqual(@as(u32, 1), s.turn);
-    s.enemies[0].alive = false;
+    s.enemies[0].vitals.alive = false;
     try std.testing.expect(s.move(dx, dy));
 }
 
@@ -1234,7 +1281,7 @@ test "run sim: stepping away dodges the telegraphed boss AOE" {
     var s = Sim.init(33, .warrior);
     s.turn = 2;
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = enemyFromParts(.{
         .kind = 5,
         .name = "深渊守卫",
         .pos = .{ .x = 10, .y = 2 },
@@ -1245,7 +1292,7 @@ test "run sim: stepping away dodges the telegraphed boss AOE" {
         .speed = 90,
         .range = 1,
         .xp = 200,
-    };
+    });
     s.aoe_armed = true;
     s.aoe_target = .{ .x = s.hero.pos.x, .y = s.hero.pos.y };
     const hp = s.hero.hp;
@@ -1272,7 +1319,7 @@ test "run sim: same seed produces the same floor" {
 test "run sim: intent preview is read-only" {
     var s = Sim.init(23, .warrior);
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = enemyFromParts(.{
         .kind = 0,
         .name = "骷髅兵",
         .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
@@ -1283,7 +1330,7 @@ test "run sim: intent preview is read-only" {
         .speed = 100,
         .range = 1,
         .xp = 20,
-    };
+    });
     const hp = s.hero.hp;
     const turn = s.turn;
 
@@ -1308,7 +1355,7 @@ test "run sim: boss intent telegraphs its AOE on the next enemy phase" {
     var s = Sim.init(29, .warrior);
     s.turn = 2; // the player action below advances to enemy phase 3
     s.enemy_count = 1;
-    s.enemies[0] = .{
+    s.enemies[0] = enemyFromParts(.{
         .kind = 5,
         .name = "深渊守卫",
         .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
@@ -1319,7 +1366,7 @@ test "run sim: boss intent telegraphs its AOE on the next enemy phase" {
         .speed = 90,
         .range = 1,
         .xp = 200,
-    };
+    });
 
     const intent = s.intentFor(0) orelse return error.MissingIntent;
     try std.testing.expectEqual(intent_mod.IntentKind.aoe, intent.kind);

@@ -145,18 +145,18 @@ fn checkEnemies(s: *const run.Sim) !void {
     var i: usize = 0;
     while (i < s.enemy_count) : (i += 1) {
         const e = s.enemies[i];
-        if (!e.alive) {
-            if (e.hp != 0) return error.DeadEnemyHasHp;
+        if (!e.vitals.alive) {
+            if (e.vitals.hp != 0) return error.DeadEnemyHasHp;
             continue;
         }
-        if (e.hp <= 0) return error.AliveEnemyHasNoHp;
+        if (e.vitals.hp <= 0) return error.AliveEnemyHasNoHp;
         if (outOfBounds(e.pos)) return error.EnemyOutOfBounds;
         if (s.isBlocked(e.pos.x, e.pos.y)) return error.EnemyInWall;
         if (samePos(e.pos, s.hero.pos)) return error.EnemyOnHero;
         var j: usize = 0;
         while (j < i) : (j += 1) {
             const other = s.enemies[j];
-            if (other.alive and samePos(other.pos, e.pos)) return error.OverlappingEnemies;
+            if (other.vitals.alive and samePos(other.pos, e.pos)) return error.OverlappingEnemies;
         }
     }
 }
@@ -176,7 +176,7 @@ fn snapshot(s: *const run.Sim) Snapshot {
     var first: ?run.GridPos = null;
     var i: usize = 0;
     while (i < s.enemy_count) : (i += 1) {
-        if (s.enemies[i].alive) {
+        if (s.enemies[i].vitals.alive) {
             first = s.enemies[i].pos;
             break;
         }
@@ -722,7 +722,7 @@ test "qa2: illegal moves never consume a turn or run the enemy phase" {
 fn firstAliveEnemy(s: *const run.Sim) ?run.GridPos {
     var i: usize = 0;
     while (i < s.enemy_count) : (i += 1) {
-        if (s.enemies[i].alive) return s.enemies[i].pos;
+        if (s.enemies[i].vitals.alive) return s.enemies[i].pos;
     }
     return null;
 }

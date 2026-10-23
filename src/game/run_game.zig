@@ -251,7 +251,7 @@ pub const RunGame = struct {
                 .target = p,
                 .yaw = std.math.atan2(-p.x, -p.z),
                 .target_yaw = std.math.atan2(-p.x, -p.z),
-                .anim = .{ .kind = enemyAnimKind(e.kind) },
+                .anim = .{ .kind = enemyAnimKind(e.identity.kind) },
             };
         }
     }
@@ -664,7 +664,7 @@ pub const RunGame = struct {
             var ei: usize = 0;
             while (ei < self.sim.enemy_count) : (ei += 1) {
                 const e = self.sim.enemies[ei];
-                if (e.alive and e.kind == 5) {
+                if (e.vitals.alive and e.identity.kind == 5) {
                     bi = ei;
                     break;
                 }
@@ -901,7 +901,7 @@ pub const RunGame = struct {
                 const before_hero = self.sim.hero.hp;
                 var before: [sim_mod.max_enemies]f32 = undefined;
                 var bi: usize = 0;
-                while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].hp;
+                while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].vitals.hp;
                 if (!self.sim.move(input.step_x, input.step_y)) self.sim.pushLog("前方被挡住", .{});
                 self.flashAfter(before_hero, before[0..self.sim.enemy_count]);
                 if (input.step_x != 0 or input.step_y != 0) {
@@ -992,7 +992,7 @@ pub const RunGame = struct {
 
     fn currentTarget(self: *const RunGame) ?usize {
         if (self.selected) |s| {
-            if (s < self.sim.enemy_count and self.sim.enemies[s].alive) return s;
+            if (s < self.sim.enemy_count and self.sim.enemies[s].vitals.alive) return s;
         }
         return self.sim.nearestEnemy(20);
     }
@@ -1007,7 +1007,7 @@ pub const RunGame = struct {
         var i: usize = 0;
         while (i < self.sim.enemy_count) : (i += 1) {
             const idx = (start + i) % self.sim.enemy_count;
-            if (self.sim.enemies[idx].alive) {
+            if (self.sim.enemies[idx].vitals.alive) {
                 self.selected = idx;
                 return;
             }
@@ -1050,7 +1050,7 @@ pub const RunGame = struct {
         var best: ?usize = null;
         var best_d: i32 = 0;
         for (self.sim.enemies[0..self.sim.enemy_count], 0..) |e, i| {
-            if (!e.alive) continue;
+            if (!e.vitals.alive) continue;
             const p = target_mod.preview(&self.sim, talent, i);
             if (!p.valid()) continue;
             if (best == null or p.distance < best_d) {
@@ -1127,7 +1127,7 @@ pub const RunGame = struct {
         const before_hero = self.sim.hero.hp;
         var before: [sim_mod.max_enemies]f32 = undefined;
         var bi: usize = 0;
-        while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].hp;
+        while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].vitals.hp;
         const used = self.sim.useTalentOn(talent, target);
         if (used) {
             self.hero_vis.anim.cast = 1.0;
@@ -1140,7 +1140,7 @@ pub const RunGame = struct {
         const before_hero = self.sim.hero.hp;
         var before: [sim_mod.max_enemies]f32 = undefined;
         var bi: usize = 0;
-        while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].hp;
+        while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].vitals.hp;
         const used = self.sim.useTalentAt(talent, cell);
         if (used) {
             self.hero_vis.anim.cast = 1.0;
@@ -1205,7 +1205,7 @@ pub const RunGame = struct {
         }
         var i: usize = 0;
         while (i < enemies_before.len and i < self.sim.enemy_count) : (i += 1) {
-            const loss = enemies_before[i] - self.sim.enemies[i].hp;
+            const loss = enemies_before[i] - self.sim.enemies[i].vitals.hp;
             if (loss > 0.5) {
                 self.enemy_vis[i].flash = 0.22;
                 self.spawnFloat(self.enemy_vis[i].pos, -@as(i32, @intFromFloat(loss)), palette.gold_light);
@@ -1223,7 +1223,7 @@ pub const RunGame = struct {
             const p = tilePos(e.pos.x, e.pos.y);
             self.enemy_vis[i].target = p;
             if (full) self.enemy_vis[i].pos = p;
-            self.enemy_vis[i].anim.kind = enemyAnimKind(e.kind);
+            self.enemy_vis[i].anim.kind = enemyAnimKind(e.identity.kind);
             const dx = p.x - self.enemy_vis[i].pos.x;
             const dz = p.z - self.enemy_vis[i].pos.z;
             if (@abs(dx) + @abs(dz) > 0.02) self.enemy_vis[i].target_yaw = std.math.atan2(dx, dz);
@@ -1302,8 +1302,8 @@ pub const RunGame = struct {
         self.renderer.drawShadow(self.hero_vis.pos.add(math.Vec3.init(0.06, 0, -0.04)), 0.30);
         var i: usize = 0;
         while (i < self.sim.enemy_count) : (i += 1) {
-            if (!self.sim.enemies[i].alive) continue;
-            self.renderer.drawShadow(self.enemy_vis[i].pos.add(math.Vec3.init(0.06, 0, -0.04)), 0.32 * enemyScale(self.sim.enemies[i].kind));
+            if (!self.sim.enemies[i].vitals.alive) continue;
+            self.renderer.drawShadow(self.enemy_vis[i].pos.add(math.Vec3.init(0.06, 0, -0.04)), 0.32 * enemyScale(self.sim.enemies[i].identity.kind));
         }
         self.drawRings();
         self.drawAimMarkers();
@@ -1320,11 +1320,11 @@ pub const RunGame = struct {
         i = 0;
         while (i < self.sim.enemy_count) : (i += 1) {
             const e = self.sim.enemies[i];
-            if (!e.alive) continue;
+            if (!e.vitals.alive) continue;
             var ep: rig.Pose = .{};
-            rig.compute(self.enemyModel(e.kind), self.enemy_vis[i].anim, &ep);
+            rig.compute(self.enemyModel(e.identity.kind), self.enemy_vis[i].anim, &ep);
             const tint = if (self.enemy_vis[i].flash > 0) color.pack(255, 110, 90) else 0xffffff;
-            self.renderer.drawModel(self.enemyModel(e.kind), ep.joints[0..ep.count], math.Mat4.compose(self.enemy_vis[i].pos, self.enemy_vis[i].yaw, 0, 0, enemyScale(e.kind)), .{
+            self.renderer.drawModel(self.enemyModel(e.identity.kind), ep.joints[0..ep.count], math.Mat4.compose(self.enemy_vis[i].pos, self.enemy_vis[i].yaw, 0, 0, enemyScale(e.identity.kind)), .{
                 .tint = tint,
                 .id = @intCast(300 + i),
             });
@@ -1358,15 +1358,15 @@ pub const RunGame = struct {
         var i: usize = 0;
         while (i < self.sim.enemy_count) : (i += 1) {
             const e = self.sim.enemies[i];
-            if (!e.alive) continue;
+            if (!e.vitals.alive) continue;
             const p = self.camera.project(self.enemy_vis[i].pos.add(math.Vec3.init(0, 2.0, 0)), self.renderer.width, self.renderer.height) orelse continue;
             if (p.depth <= 0.1) continue;
             const x: i32 = @intFromFloat(p.x);
             const y: i32 = @intFromFloat(p.y);
             if (x < -30 or x > w + 30 or y < -20 or y > h + 20) continue;
-            const bw: i32 = 18 + @as(i32, @intFromFloat(@min(18.0, e.hp_max / 22.0)));
+            const bw: i32 = 18 + @as(i32, @intFromFloat(@min(18.0, e.vitals.hp_max / 22.0)));
             self.renderer.fillRect(x - @divTrunc(bw, 2), y, bw, 3, palette.deep);
-            const frac = if (e.hp_max > 0) std.math.clamp(e.hp / e.hp_max, 0, 1) else 0;
+            const frac = if (e.vitals.hp_max > 0) std.math.clamp(e.vitals.hp / e.vitals.hp_max, 0, 1) else 0;
             const fill: i32 = @intFromFloat(@as(f32, @floatFromInt(bw - 2)) * frac);
             if (fill > 0) self.renderer.fillRect(x - @divTrunc(bw, 2) + 1, y + 1, fill, 1, palette.red);
             self.renderer.strokeRect(x - @divTrunc(bw, 2), y, bw, 3, palette.muted);
@@ -1387,8 +1387,8 @@ pub const RunGame = struct {
             if (target != null and target.? == i) {
                 const aiming = self.aim_talent != null;
                 var tbuf: [64]u8 = undefined;
-                const speed_mark = if (e.speed >= 150) " x2" else if (e.speed <= 75) " 慢" else "";
-                const tname = std.fmt.bufPrint(&tbuf, "{s} {d:.0}/{d:.0}{s}", .{ e.name, e.hp, e.hp_max, speed_mark }) catch e.name;
+                const speed_mark = if (e.combat.speed >= 150) " x2" else if (e.combat.speed <= 75) " 慢" else "";
+                const tname = std.fmt.bufPrint(&tbuf, "{s} {d:.0}/{d:.0}{s}", .{ e.identity.name, e.vitals.hp, e.vitals.hp_max, speed_mark }) catch e.identity.name;
                 const tw = renderer.Renderer.textWidth(tname, 1);
                 const lx = std.math.clamp(x - @divTrunc(tw, 2), 2, w - tw - 2);
                 const ly = @max(68, y - 13);
@@ -1425,8 +1425,8 @@ pub const RunGame = struct {
         });
         var i: usize = 0;
         while (i < self.sim.enemy_count) : (i += 1) {
-            if (!self.sim.enemies[i].alive) continue;
-            if (self.sim.enemies[i].kind == 5) {
+            if (!self.sim.enemies[i].vitals.alive) continue;
+            if (self.sim.enemies[i].identity.kind == 5) {
                 self.renderer.addLight(.{
                     .pos = self.enemy_vis[i].pos.add(math.Vec3.init(0, 1.2, 0)),
                     .color = .{ .x = 1.0, .y = 0.16, .z = 0.12 },
@@ -1448,7 +1448,7 @@ pub const RunGame = struct {
         });
         var i: usize = 0;
         while (i < self.sim.enemy_count) : (i += 1) {
-            if (!self.sim.enemies[i].alive) continue;
+            if (!self.sim.enemies[i].vitals.alive) continue;
             self.renderer.drawModel(ring_model, null, math.Mat4.compose(self.enemy_vis[i].pos.add(math.Vec3.init(0, 0.035, 0)), self.time * 0.35, 0, 0, 0.34), .{
                 .tint = color.pack(255, 92, 74),
                 .boost = 0.7,
@@ -1573,16 +1573,16 @@ pub const RunGame = struct {
         var i: usize = 0;
         while (i < self.sim.enemy_count) : (i += 1) {
             const e = self.sim.enemies[i];
-            if (!e.alive) continue;
-            if (first == null or e.speed > self.sim.enemies[first.?].speed) {
+            if (!e.vitals.alive) continue;
+            if (first == null or e.combat.speed > self.sim.enemies[first.?].combat.speed) {
                 second = first;
                 first = i;
-            } else if (second == null or e.speed > self.sim.enemies[second.?].speed) {
+            } else if (second == null or e.combat.speed > self.sim.enemies[second.?].combat.speed) {
                 second = i;
             }
         }
-        if (first) |idx| names[1] = shortEnemyName(self.sim.enemies[idx].name);
-        if (second) |idx| names[2] = shortEnemyName(self.sim.enemies[idx].name);
+        if (first) |idx| names[1] = shortEnemyName(self.sim.enemies[idx].identity.name);
+        if (second) |idx| names[2] = shortEnemyName(self.sim.enemies[idx].identity.name);
         return names;
     }
 
@@ -1621,7 +1621,7 @@ pub const RunGame = struct {
             .enemies_left = @intCast(self.sim.enemy_count - blk: {
                 var n: u32 = 0;
                 for (self.sim.enemies[0..self.sim.enemy_count]) |e| {
-                    if (!e.alive) n += 1;
+                    if (!e.vitals.alive) n += 1;
                 }
                 break :blk n;
             }),
@@ -1669,9 +1669,9 @@ pub const RunGame = struct {
         self.hud_state.target_range = 0;
         if (target) |ti| {
             const e = self.sim.enemies[ti];
-            self.hud_state.target_name = e.name;
-            self.hud_state.target_hp = e.hp;
-            self.hud_state.target_hp_max = e.hp_max;
+            self.hud_state.target_name = e.identity.name;
+            self.hud_state.target_hp = e.vitals.hp;
+            self.hud_state.target_hp_max = e.vitals.hp_max;
             const dx = e.pos.x - self.sim.hero.pos.x;
             const dy = e.pos.y - self.sim.hero.pos.y;
             self.hud_state.target_range = @intCast(@abs(dx) + @abs(dy));
@@ -1703,7 +1703,7 @@ pub const RunGame = struct {
                     .aoe_radius = p.spec.aoe_radius,
                     .reason = if (p.valid()) "" else p.reason(),
                 };
-                if (p.target) |ti| aim.target = self.sim.enemies[ti].name;
+                if (p.target) |ti| aim.target = self.sim.enemies[ti].identity.name;
                 self.hud_state.aim = aim;
             }
         }
@@ -1764,7 +1764,7 @@ pub const RunGame = struct {
         var ei: usize = 0;
         while (ei < self.sim.enemy_count) : (ei += 1) {
             const e = self.sim.enemies[ei];
-            if (!e.alive) continue;
+            if (!e.vitals.alive) continue;
             self.plotMinimap(e.pos.x, e.pos.y, 5);
         }
         self.plotMinimap(self.sim.hero.pos.x, self.sim.hero.pos.y, 4);
@@ -1813,7 +1813,7 @@ test "run game: class menu selects and keeps the class on restart" {
 }
 
 fn setGameEnemy(g: *RunGame, index: usize, pos: sim_mod.GridPos, name: []const u8, hp: f32) void {
-    g.sim.enemies[index] = .{
+    g.sim.enemies[index] = sim_mod.enemyFromParts(.{
         .kind = 0,
         .name = name,
         .pos = pos,
@@ -1824,7 +1824,7 @@ fn setGameEnemy(g: *RunGame, index: usize, pos: sim_mod.GridPos, name: []const u
         .speed = 100,
         .range = 1,
         .xp = 20,
-    };
+    });
 }
 
 fn placeGameEnemyAt(g: *RunGame, p: sim_mod.GridPos, name: []const u8) bool {
@@ -2208,7 +2208,7 @@ test "run game: initiative shows the player and fastest enemy" {
     var alive: usize = 0;
     var i: usize = 0;
     while (i < g.sim.enemy_count) : (i += 1) {
-        if (g.sim.enemies[i].alive) alive += 1;
+        if (g.sim.enemies[i].vitals.alive) alive += 1;
     }
     if (alive >= 2) {
         try std.testing.expectEqual(@as(u8, 3), g.hud_state.initiative_count);
