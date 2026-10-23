@@ -56,6 +56,7 @@ pub const State = struct {
     buff_pct: f32 = 0,
     burn_turns: u16 = 0,
     burn_damage: f32 = 0,
+    vulnerable_turns: u16 = 0,
     menu_cards: [3]ClassCard = .{ .{}, .{}, .{} },
     class_name: []const u8 = "",
     level: u16 = 1,
@@ -277,6 +278,13 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         var fbuf: [48]u8 = undefined;
         const burn = fmt(&fbuf, "灼烧 {d:.0}/回合  {d}回合", .{ state.burn_damage, state.burn_turns });
         r.drawText(10, 85, burn, palette.red, 1, false);
+    }
+
+    if (state.vulnerable_turns > 0 and !state.dead and !state.victory) {
+        backPanel(r, 6, 98, 160, 14);
+        var vbuf: [48]u8 = undefined;
+        const vuln = fmt(&vbuf, "VULN +20% dmg  {d}T", .{state.vulnerable_turns});
+        r.drawText(10, 101, vuln, color.pack(220, 120, 255), 1, false);
     }
 
     // top-right: floor / enemies / stairs / turn / initiative

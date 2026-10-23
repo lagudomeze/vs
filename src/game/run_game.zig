@@ -1792,6 +1792,7 @@ pub const RunGame = struct {
             .buff_pct = self.sim.hero.status.buff_pct,
             .burn_turns = self.sim.hero.status.burn_turns,
             .burn_damage = self.sim.hero.status.burn_damage,
+            .vulnerable_turns = self.sim.hero.status.vulnerable_turns,
             .class_name = sim_mod.class_names[@backingInt(self.class)],
             .level = self.sim.hero.progression.level,
             .xp = self.sim.hero.progression.xp,
