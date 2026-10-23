@@ -362,7 +362,7 @@ pub const RunGame = struct {
     }
 
     fn chooseShrine(self: *RunGame, index: usize) void {
-        if (index >= 3) return;
+        if (index >= 4) return;
         const choice: sim_mod.ShrineChoice = @fromBackingInt(@intCast(index));
         if (self.sim.useShrine(choice)) {
             self.shrine_open = false;
@@ -898,7 +898,11 @@ pub const RunGame = struct {
         }
 
         if (self.shrine_open) {
-            if (input.talent >= 0) self.chooseShrine(@intCast(input.talent));
+            if (input.talent >= 0) {
+                self.chooseShrine(@intCast(input.talent));
+            } else if (input.stat == 3) {
+                self.chooseShrine(3);
+            }
             self.syncVisuals(false);
             self.updateVisuals(dt);
             self.followCamera();

@@ -14,7 +14,7 @@ pub const max_enemies = 12;
 
 pub const Class = attributes.Class;
 
-pub const ShrineChoice = enum(u8) { main_stat, constitution, will };
+pub const ShrineChoice = enum(u8) { main_stat, constitution, will, risk };
 
 pub const Affix = enum(u8) { none, swift, armored, vampiric };
 
@@ -563,10 +563,19 @@ pub const Sim = struct {
     pub fn useShrine(self: *Sim, choice: ShrineChoice) bool {
         if (!self.atShrine()) return false;
         const stat: attributes.StatKind = switch (choice) {
-            .main_stat => attributes.profile(self.class).main_stat,
+            .main_stat, .risk => attributes.profile(self.class).main_stat,
             .constitution => .constitution,
             .will => .will,
         };
+        if (choice == .risk) {
+            self.hero.sheet.stats.add(stat, 4);
+            const con = self.hero.sheet.stats.get(.constitution);
+            self.hero.sheet.stats.set(.constitution, @max(1, con - 2));
+            self.recomputeHero();
+            self.shrine_used = true;
+            self.pushLog("SHRINE RISK", .{});
+            return true;
+        }
         self.hero.sheet.stats.add(stat, 2);
         self.recomputeHero();
         self.shrine_used = true;
@@ -1446,6 +1455,14 @@ test "run sim: shrine grants one permanent stat choice" {
     try std.testing.expect(s.shrine_used);
     try std.testing.expect(!s.atShrine());
     try std.testing.expect(!s.useShrine(.will));
+
+    var risk = Sim.init(56, .warrior);
+    risk.hero.pos = risk.shrine;
+    const str = risk.hero.sheet.stats.strength.val;
+    const con = risk.hero.sheet.stats.constitution.val;
+    try std.testing.expect(risk.useShrine(.risk));
+    try std.testing.expectApproxEqAbs(str + 4, risk.hero.sheet.stats.strength.val, 0.001);
+    try std.testing.expectApproxEqAbs(@max(1, con - 2), risk.hero.sheet.stats.constitution.val, 0.001);
 }
 
 test "run sim: boss enrages below half hp and speeds up its cleave" {

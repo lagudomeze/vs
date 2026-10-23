@@ -533,7 +533,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
 
 fn drawShrine(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const pw: i32 = 300;
-    const ph: i32 = 154;
+    const ph: i32 = 176;
     const px = @divTrunc(w - pw, 2);
     const py = @divTrunc(h - ph, 2);
     r.fillRect(0, 0, w, h, palette.deep);
@@ -549,13 +549,13 @@ fn drawShrine(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const sw = renderer.Renderer.textWidth(sub, 1);
     r.drawText(px + @divTrunc(pw - sw, 2), py + 38, sub, palette.muted, 1, false);
 
-    const lines = [_][]const u8{ "  +2", "体质 +2", "意志 +2" };
-    var buf: [48]u8 = undefined;
+    const lines = [_][]const u8{ "  +2", "体质 +2", "意志 +2", "主属性 +4 体质 -2" };
+    var buf: [64]u8 = undefined;
     for (lines, 0..) |suffix, i| {
         const line = if (i == 0) fmt(&buf, "1 {s}{s}", .{ state.shrine_main_label, suffix }) else fmt(&buf, "{d} {s}", .{ i + 1, suffix });
-        r.drawText(px + 34, py + 62 + @as(i32, @intCast(i)) * 22, line, palette.cream, 1, false);
+        r.drawText(px + 34, py + 58 + @as(i32, @intCast(i)) * 21, line, if (i == 3) palette.red else palette.cream, 1, false);
     }
-    r.drawText(px + 16, py + ph - 22, "1/2/3 选择   Esc 关闭", palette.muted, 1, false);
+    r.drawText(px + 16, py + ph - 20, "1/2/3/4 选择   Esc 关闭", palette.muted, 1, false);
 }
 
 fn expectGlyphs(text: []const u8) !void {
