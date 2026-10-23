@@ -129,7 +129,7 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 - 击杀获得 XP；升级 +1 主属性并回满；第 3 层击败深渊守卫、解除楼梯封印后胜利。
 - 死亡即结束，R 从同一 seed 重开并保留当前职业（经典 roguelike 式）。
 
-数值/组件设计见 [docs/NUMERIC_ARCHITECTURE.md](docs/NUMERIC_ARCHITECTURE.md)；机制边界与 ECS 映射见 [docs/MECHANISMS.md](docs/MECHANISMS.md)；定义/组件/聚合审计见 [docs/DATA_MODEL.md](docs/DATA_MODEL.md)。
+数值/组件设计见 [docs/NUMERIC_ARCHITECTURE.md](docs/NUMERIC_ARCHITECTURE.md)；机制边界与 ECS 映射见 [docs/MECHANISMS.md](docs/MECHANISMS.md)；定义/组件/聚合审计见 [docs/DATA_MODEL.md](docs/DATA_MODEL.md)；FlecsScript 内容层评估见 [docs/FLECS_CONTENT.md](docs/FLECS_CONTENT.md)。
 
 ## 代码结构
 
