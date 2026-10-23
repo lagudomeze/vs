@@ -913,6 +913,7 @@ pub const Sim = struct {
         while (vi < self.enemy_count) : (vi += 1) {
             self.enemies[vi].status.tickVulnerable();
         }
+        self.hero.status.tickVulnerable();
         self.hero.resource.val = @min(self.hero.resource.full, self.hero.resource.val + self.hero.resource_regen.val * self.floor_mod.resourceScale());
         if (self.hero.vitals.val <= 0) {
             self.state = .dead;
@@ -994,6 +995,7 @@ pub const Sim = struct {
                 const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount * self.hero.status.damageTakenScale();
                 self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
                 self.hero.status.applyBurn(2, e.combat.attack.val * 0.20 * self.floor_mod.burnScale());
+                _ = self.hero.status.applyVulnerable(2);
                 self.pushLog("深渊守卫 深渊斩 -{d:.0}", .{dmg});
             } else {
                 self.pushLog("躲开深渊斩", .{});
@@ -1081,6 +1083,9 @@ pub const Sim = struct {
         if (e.affix == .vampiric and dmg > 0) e.vitals.set(e.vitals.val + dmg * 0.20);
         if (e.identity.kind == 6 and dmg > 0) {
             self.hero.status.applyBurn(2, e.combat.attack.val * 0.10 * self.floor_mod.burnScale());
+        }
+        if (e.identity.kind == 2 and dmg > 0) {
+            _ = self.hero.status.applyVulnerable(1);
         }
         self.pushLog("{s} 造成 {d:.0} 伤害", .{ e.identity.name, dmg });
     }
@@ -1529,6 +1534,26 @@ test "run sim: affixes are deterministic and vampiric heals on hit" {
     try std.testing.expect(s.enemies[0].vitals.val > 40);
 }
 
+test "run sim: golem hit applies vulnerable to hero" {
+    var s = Sim.init(82, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{
+        .kind = 2,
+        .name = "石魔像",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 140,
+        .hp_max = 140,
+        .attack = 12,
+        .armor = 9,
+        .speed = 70,
+        .range = 1,
+        .xp = 40,
+        .energy = 100,
+    });
+    _ = s.wait();
+    try std.testing.expect(s.hero.status.vulnerable_turns > 0);
+}
+
 test "run sim: warrior charge applies vulnerable" {
     var s = Sim.init(81, .warrior);
     s.enemy_count = 1;
@@ -1731,6 +1756,7 @@ test "run sim: boss AOE resolves on the telegraphed turn" {
     _ = s.wait();
     try std.testing.expect(s.hero.vitals.val < hp);
     try std.testing.expect(s.hero.status.burn_turns > 0);
+    try std.testing.expect(s.hero.status.vulnerable_turns > 0);
 }
 
 test "run sim: hard difficulty scales enemy hp and damage" {
