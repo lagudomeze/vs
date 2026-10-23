@@ -251,25 +251,25 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
 
     var enemy_buf: [max_enemies]EnemySave = undefined;
     for (sim.enemies[0..sim.enemy_count], 0..) |e, i| {
-        if (!std.math.isFinite(e.hp) or !std.math.isFinite(e.hp_max) or
-            !std.math.isFinite(e.attack) or !std.math.isFinite(e.armor))
+        if (!std.math.isFinite(e.vitals.hp) or !std.math.isFinite(e.vitals.hp_max) or
+            !std.math.isFinite(e.combat.attack) or !std.math.isFinite(e.combat.armor))
         {
             return error.InvalidState;
         }
         enemy_buf[i] = .{
-            .kind = e.kind,
-            .name = e.name,
+            .kind = e.identity.kind,
+            .name = e.identity.name,
             .pos = savePos(e.pos),
-            .hp = e.hp,
-            .hp_max = e.hp_max,
-            .attack = e.attack,
-            .armor = e.armor,
-            .speed = e.speed,
-            .range = e.range,
-            .xp = e.xp,
-            .stun_turns = e.stun_turns,
-            .slow_turns = e.slow_turns,
-            .alive = e.alive,
+            .hp = e.vitals.hp,
+            .hp_max = e.vitals.hp_max,
+            .attack = e.combat.attack,
+            .armor = e.combat.armor,
+            .speed = e.combat.speed,
+            .range = e.combat.range,
+            .xp = e.reward.xp,
+            .stun_turns = e.status.stun_turns,
+            .slow_turns = e.status.slow_turns,
+            .alive = e.vitals.alive,
         };
     }
 
@@ -565,19 +565,12 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     sim.enemies = @splat(.{});
     for (root.enemies, 0..) |e, i| {
         sim.enemies[i] = .{
-            .kind = e.kind,
-            .name = enemy_names[e.kind],
+            .identity = .{ .kind = e.kind, .name = enemy_names[e.kind] },
             .pos = loadPos(e.pos),
-            .hp = e.hp,
-            .hp_max = e.hp_max,
-            .attack = e.attack,
-            .armor = e.armor,
-            .speed = e.speed,
-            .range = e.range,
-            .xp = e.xp,
-            .stun_turns = e.stun_turns,
-            .slow_turns = e.slow_turns,
-            .alive = e.alive,
+            .vitals = .{ .hp = e.hp, .hp_max = e.hp_max, .alive = e.alive },
+            .combat = .{ .attack = e.attack, .armor = e.armor, .speed = e.speed, .range = e.range },
+            .status = .{ .stun_turns = e.stun_turns, .slow_turns = e.slow_turns },
+            .reward = .{ .xp = e.xp },
         };
     }
     sim.enemy_count = root.enemies.len;
@@ -712,20 +705,20 @@ fn drive(sim: *Sim, steps: usize) void {
 }
 
 fn expectSameEnemy(expected: Enemy, actual: Enemy) !void {
-    try testing.expectEqual(expected.kind, actual.kind);
-    try testing.expectEqualStrings(expected.name, actual.name);
+    try testing.expectEqual(expected.identity.kind, actual.identity.kind);
+    try testing.expectEqualStrings(expected.identity.name, actual.identity.name);
     try testing.expectEqual(expected.pos.x, actual.pos.x);
     try testing.expectEqual(expected.pos.y, actual.pos.y);
-    try testing.expectEqual(expected.hp, actual.hp);
-    try testing.expectEqual(expected.hp_max, actual.hp_max);
-    try testing.expectEqual(expected.attack, actual.attack);
-    try testing.expectEqual(expected.armor, actual.armor);
-    try testing.expectEqual(expected.speed, actual.speed);
-    try testing.expectEqual(expected.range, actual.range);
-    try testing.expectEqual(expected.xp, actual.xp);
-    try testing.expectEqual(expected.stun_turns, actual.stun_turns);
-    try testing.expectEqual(expected.slow_turns, actual.slow_turns);
-    try testing.expectEqual(expected.alive, actual.alive);
+    try testing.expectEqual(expected.vitals.hp, actual.vitals.hp);
+    try testing.expectEqual(expected.vitals.hp_max, actual.vitals.hp_max);
+    try testing.expectEqual(expected.combat.attack, actual.combat.attack);
+    try testing.expectEqual(expected.combat.armor, actual.combat.armor);
+    try testing.expectEqual(expected.combat.speed, actual.combat.speed);
+    try testing.expectEqual(expected.combat.range, actual.combat.range);
+    try testing.expectEqual(expected.reward.xp, actual.reward.xp);
+    try testing.expectEqual(expected.status.stun_turns, actual.status.stun_turns);
+    try testing.expectEqual(expected.status.slow_turns, actual.status.slow_turns);
+    try testing.expectEqual(expected.vitals.alive, actual.vitals.alive);
 }
 
 /// Compare every field the save format promises to restore, plus the rebuilt
@@ -1051,8 +1044,8 @@ test "save: enemy name table matches the simulation" {
         sim.generateFloor();
         try testing.expect(sim.enemy_count > 0);
         for (sim.enemies[0..sim.enemy_count]) |e| {
-            try testing.expect(e.kind < enemy_names.len);
-            try testing.expectEqualStrings(enemy_names[e.kind], e.name);
+            try testing.expect(e.identity.kind < enemy_names.len);
+            try testing.expectEqualStrings(enemy_names[e.identity.kind], e.identity.name);
         }
     }
 }
