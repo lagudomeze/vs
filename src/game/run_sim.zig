@@ -122,11 +122,6 @@ pub const HeroProgression = struct {
     pending_points: u8 = 0,
 };
 
-pub const HeroStatus = struct {
-    buff_turns: u16 = 0,
-    buff_pct: f32 = 0,
-};
-
 pub const TalentState = struct {
     cooldowns: [3]u16 = .{ 0, 0, 0 },
 };
@@ -147,7 +142,7 @@ pub const Hero = struct {
     resource: ResourcePool = .{},
     combat: HeroCombat = .{},
     progression: HeroProgression = .{},
-    status: HeroStatus = .{},
+    status: StatusSet = .{},
     talents: TalentState = .{},
 };
 
@@ -169,9 +164,47 @@ pub const EnemyCombat = struct {
     range: u16 = 1,
 };
 
+/// Shared per-actor status component. Durations are counted in actor turns;
+/// methods are the only place that interpret the fields, so Hero and Enemy
+/// cannot drift on can-act / damage-scale semantics.
 pub const StatusSet = struct {
     stun_turns: u16 = 0,
     slow_turns: u16 = 0,
+    buff_turns: u16 = 0,
+    buff_pct: f32 = 0,
+
+    pub fn canAct(self: StatusSet) bool {
+        return self.stun_turns == 0;
+    }
+
+    /// Returns true if this actor lost its turn; consumes one stun turn.
+    pub fn consumeStun(self: *StatusSet) bool {
+        if (self.stun_turns == 0) return false;
+        self.stun_turns -= 1;
+        return true;
+    }
+
+    pub fn consumeSlow(self: *StatusSet) void {
+        if (self.slow_turns > 0) self.slow_turns -= 1;
+    }
+
+    pub fn attackScale(self: StatusSet) f32 {
+        return if (self.buff_turns > 0) 1.0 + self.buff_pct else 1.0;
+    }
+
+    pub fn slowDamageScale(self: StatusSet) f32 {
+        return if (self.slow_turns > 0) 0.55 else 1.0;
+    }
+
+    /// Returns the percentage that just expired, or 0.
+    pub fn tickBuff(self: *StatusSet) f32 {
+        if (self.buff_turns == 0) return 0;
+        self.buff_turns -= 1;
+        if (self.buff_turns != 0) return 0;
+        const expired = self.buff_pct;
+        self.buff_pct = 0;
+        return expired;
+    }
 };
 
 pub const Reward = struct {
@@ -517,13 +550,22 @@ pub const Sim = struct {
         return false;
     }
 
+    pub fn isFinalFloor(self: *const Sim) bool {
+        return self.floor >= self.floors;
+    }
+
+    /// The final-floor boss keeps the stairs closed until it dies.
+    pub fn stairsSealed(self: *const Sim) bool {
+        return self.isFinalFloor() and self.hasLivingBoss();
+    }
+
     pub fn move(self: *Sim, dx: i32, dy: i32) bool {
         if (self.state != .playing) return false;
         if (dx == 0 and dy == 0) return false;
         const nx = self.hero.pos.x + dx;
         const ny = self.hero.pos.y + dy;
         if (self.isBlocked(nx, ny)) return false;
-        if (nx == self.stairs.x and ny == self.stairs.y and self.hasLivingBoss()) {
+        if (nx == self.stairs.x and ny == self.stairs.y and self.stairsSealed()) {
             self.pushLog("深渊守卫封印了楼梯", .{});
             return false;
         }
@@ -597,7 +639,7 @@ pub const Sim = struct {
         self.hero.resource.current = @min(self.hero.resource.max, self.hero.resource.current + self.hero.resource.max * 0.5);
         self.turn += 1;
         self.generateFloor();
-        if (self.floor == self.floors and self.hasLivingBoss()) self.pushLog("深渊守卫封印了楼梯", .{});
+        if (self.stairsSealed()) self.pushLog("深渊守卫封印了楼梯", .{});
         self.armBossAoe();
     }
 
@@ -620,10 +662,7 @@ pub const Sim = struct {
         for (&self.hero.talents.cooldowns) |*cd| {
             if (cd.* > 0) cd.* -= 1;
         }
-        if (self.hero.status.buff_turns > 0) {
-            self.hero.status.buff_turns -= 1;
-            if (self.hero.status.buff_turns == 0) self.hero.status.buff_pct = 0;
-        }
+        _ = self.hero.status.tickBuff();
         self.hero.resource.current = @min(self.hero.resource.max, self.hero.resource.current + self.hero.resource.per_turn);
         if (self.hero.vitals.hp <= 0) {
             self.state = .dead;
@@ -691,15 +730,12 @@ pub const Sim = struct {
     fn enemyAct(self: *Sim, idx: usize) void {
         const e = &self.enemies[idx];
         if (!e.vitals.alive) return;
-        if (e.status.stun_turns > 0) {
-            e.status.stun_turns -= 1;
-            return;
-        }
-        if (e.status.slow_turns > 0) e.status.slow_turns -= 1;
+        if (e.status.consumeStun()) return;
+        e.status.consumeSlow();
         if (e.identity.kind == intent_mod.boss_kind and self.aoe_armed and intent_mod.bossAoeDue(self.turn)) {
             self.aoe_armed = false;
             if (@as(f32, @floatFromInt(dist(self.hero.pos, self.aoe_target))) <= intent_mod.boss_aoe_radius) {
-                const raw = e.combat.attack * intent_mod.boss_aoe_damage_scale * (if (e.status.slow_turns > 0) intent_mod.slow_damage_scale else 1.0);
+                const raw = e.combat.attack * intent_mod.boss_aoe_damage_scale * e.status.slowDamageScale();
                 const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor }).amount;
                 self.hero.vitals.hp = @max(0, self.hero.vitals.hp - dmg);
                 self.pushLog("深渊守卫 深渊斩 -{d:.0}", .{dmg});
@@ -783,7 +819,7 @@ pub const Sim = struct {
     fn enemyAttack(self: *Sim, idx: usize) void {
         const e = self.enemies[idx];
         var raw = e.combat.attack * 0.72;
-        if (e.status.slow_turns > 0) raw *= 0.55;
+        raw *= e.status.slowDamageScale();
         const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor }).amount;
         self.hero.vitals.hp = @max(0, self.hero.vitals.hp - dmg);
         self.pushLog("{s} 造成 {d:.0} 伤害", .{ e.identity.name, dmg });
@@ -793,7 +829,7 @@ pub const Sim = struct {
         const e = &self.enemies[idx];
         if (!e.vitals.alive) return;
         var raw = self.hero.combat.attack * mult;
-        if (self.hero.status.buff_turns > 0) raw *= 1.0 + self.hero.status.buff_pct;
+        raw *= self.hero.status.attackScale();
         const crit = self.rng.random().float(f32) < self.hero.combat.crit;
         const result = combat.resolve(.{ .raw = raw, .crit = crit }, .{ .armor = e.combat.armor });
         e.vitals.hp -= result.amount;
@@ -835,7 +871,7 @@ pub const Sim = struct {
         for (self.enemies[0..self.enemy_count]) |en| {
             if (en.vitals.alive) any = true;
         }
-        if (!any and self.floor >= self.floors) self.state = .victory;
+        if (!any and self.isFinalFloor()) self.state = .victory;
     }
 
     pub fn nearestEnemy(self: *const Sim, max_range: i32) ?usize {
@@ -1052,6 +1088,28 @@ test "run sim: wall bump costs no turn" {
         try std.testing.expect(!s.move(dx, dy));
         try std.testing.expectEqual(turn, s.turn);
     }
+}
+
+test "run sim: status set interprets stun/slow/buff consistently" {
+    var st = StatusSet{};
+    try std.testing.expect(st.canAct());
+    st.stun_turns = 1;
+    try std.testing.expect(!st.canAct());
+    try std.testing.expect(st.consumeStun());
+    try std.testing.expect(st.canAct());
+    try std.testing.expect(!st.consumeStun());
+
+    st.slow_turns = 1;
+    try std.testing.expectApproxEqAbs(@as(f32, 0.55), st.slowDamageScale(), 0.0001);
+    st.consumeSlow();
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), st.slowDamageScale(), 0.0001);
+
+    st.buff_turns = 2;
+    st.buff_pct = 0.30;
+    try std.testing.expectApproxEqAbs(@as(f32, 1.3), st.attackScale(), 0.0001);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.0), st.tickBuff(), 0.0001);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.30), st.tickBuff(), 0.0001);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), st.attackScale(), 0.0001);
 }
 
 test "run sim: adjacent enemy acts on wait" {
