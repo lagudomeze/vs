@@ -1484,9 +1484,19 @@ pub const RunGame = struct {
                     const ix = std.math.clamp(x - @divTrunc(renderer.Renderer.textWidth(label, 1), 2), 2, w - 2);
                     self.renderer.drawText(ix, y + 5, label, if (intent.kind == .aoe) palette.red else palette.gold_light, 1, true);
                 }
+                const affix_label: []const u8 = switch (self.sim.enemies[i].affix) {
+                    .swift => "SWIFT",
+                    .armored => "ARM",
+                    .vampiric => "VAMP",
+                    else => "",
+                };
+                if (affix_label.len > 0) {
+                    const ax = std.math.clamp(x - renderer.Renderer.textWidth(affix_label, 1), 2, w - 2);
+                    self.renderer.drawText(ax, y + 15, affix_label, palette.cyan_light, 1, true);
+                }
                 if (self.sim.enemies[i].status.burn_turns > 0) {
                     const bx = std.math.clamp(x - renderer.Renderer.textWidth("灼", 1), 2, w - 2);
-                    self.renderer.drawText(bx, y + 15, "灼", palette.red, 1, true);
+                    self.renderer.drawText(bx, y + 24, "灼", palette.red, 1, true);
                 }
                 if (self.sim.enemies[i].status.stun_immune) {
                     const bx = std.math.clamp(x - renderer.Renderer.textWidth("BOSS", 1), 2, w - 2);
