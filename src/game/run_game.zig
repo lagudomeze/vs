@@ -1614,8 +1614,13 @@ pub const RunGame = struct {
                     self.renderer.drawText(ax, y + 15, affix_label, palette.cyan_light, 1, true);
                 }
                 if (self.sim.enemies[i].status.burn_turns > 0) {
-                    const bx = std.math.clamp(x - renderer.Renderer.textWidth("灼", 1), 2, w - 2);
-                    self.renderer.drawText(bx, y + 24, "灼", palette.red, 1, true);
+                    var burn_buf: [24]u8 = undefined;
+                    const burn_label = if (self.sim.enemies[i].status.burn_stacks > 1)
+                        std.fmt.bufPrint(&burn_buf, "灼x{d}", .{self.sim.enemies[i].status.burn_stacks}) catch "灼"
+                    else
+                        "灼";
+                    const bx = std.math.clamp(x - renderer.Renderer.textWidth(burn_label, 1), 2, w - 2);
+                    self.renderer.drawText(bx, y + 24, burn_label, palette.red, 1, true);
                 }
                 const cc_label: []const u8 = if (self.sim.enemies[i].status.stun_turns > 0)
                     "STUN"
@@ -1899,6 +1904,7 @@ pub const RunGame = struct {
             .buff_pct = self.sim.hero.status.buff_pct,
             .burn_turns = self.sim.hero.status.burn_turns,
             .burn_damage = self.sim.hero.status.burn_damage,
+            .burn_stacks = self.sim.hero.status.burn_stacks,
             .vulnerable_turns = self.sim.hero.status.vulnerable_turns,
             .class_name = sim_mod.class_names[@backingInt(self.class)],
             .level = self.sim.hero.progression.level,

@@ -135,6 +135,7 @@ const HeroSave = struct {
     buff_pct: f32,
     burn_turns: u16 = 0,
     burn_damage: f32 = 0,
+    burn_stacks: u8 = 0,
     vulnerable_turns: u16 = 0,
     vulnerable_pct: f32 = 0.20,
     guard_turns: u16 = 0,
@@ -161,6 +162,7 @@ const EnemySave = struct {
     special_cd: u8 = 0,
     burn_turns: u16 = 0,
     burn_damage: f32 = 0,
+    burn_stacks: u8 = 0,
     vulnerable_turns: u16 = 0,
     vulnerable_pct: f32 = 0.20,
     guard_turns: u16 = 0,
@@ -303,6 +305,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .special_cd = e.action.special_cd,
             .burn_turns = e.status.burn_turns,
             .burn_damage = e.status.burn_damage,
+            .burn_stacks = e.status.burn_stacks,
             .vulnerable_turns = e.status.vulnerable_turns,
             .vulnerable_pct = e.status.vulnerable_pct,
             .guard_turns = e.status.guard_turns,
@@ -391,6 +394,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .buff_pct = hero.status.buff_pct,
             .burn_turns = hero.status.burn_turns,
             .burn_damage = hero.status.burn_damage,
+            .burn_stacks = hero.status.burn_stacks,
             .vulnerable_turns = hero.status.vulnerable_turns,
             .vulnerable_pct = hero.status.vulnerable_pct,
             .guard_turns = hero.status.guard_turns,
@@ -554,6 +558,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
         if (e.range > grid_w) return error.InvalidValue;
         if (e.energy < -100 or e.energy > 200) return error.InvalidValue;
         if (e.burn_turns > 100 or !std.math.isFinite(e.burn_damage) or e.burn_damage < 0 or e.burn_damage > 10000) return error.InvalidValue;
+        if (e.burn_stacks > 3) return error.InvalidValue;
         if (e.vulnerable_turns > 100 or !std.math.isFinite(e.vulnerable_pct) or e.vulnerable_pct < 0 or e.vulnerable_pct > 10) return error.InvalidValue;
         if (e.guard_turns > 100) return error.InvalidValue;
         if (e.alive) {
@@ -599,7 +604,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
                 .speed = numeric.valueOf(numeric.Speed, @floatFromInt(h.speed)),
             },
             .progression = .{ .level = h.level, .xp = h.xp, .pending_points = h.pending_points },
-            .status = .{ .buff_turns = h.buff_turns, .buff_pct = h.buff_pct, .burn_turns = h.burn_turns, .burn_damage = h.burn_damage, .vulnerable_turns = h.vulnerable_turns, .vulnerable_pct = h.vulnerable_pct, .guard_turns = h.guard_turns },
+            .status = .{ .buff_turns = h.buff_turns, .buff_pct = h.buff_pct, .burn_turns = h.burn_turns, .burn_damage = h.burn_damage, .burn_stacks = h.burn_stacks, .vulnerable_turns = h.vulnerable_turns, .vulnerable_pct = h.vulnerable_pct, .guard_turns = h.guard_turns },
             .talents = .{ .cooldowns = h.cooldowns },
         },
     };
@@ -645,7 +650,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
                 .speed = numeric.valueOf(numeric.Speed, @floatFromInt(e.speed)),
                 .range = e.range,
             },
-            .status = .{ .stun_immune = e.kind == intent_mod.boss_kind, .stun_turns = e.stun_turns, .slow_turns = e.slow_turns, .burn_turns = e.burn_turns, .burn_damage = e.burn_damage, .vulnerable_turns = e.vulnerable_turns, .vulnerable_pct = e.vulnerable_pct, .guard_turns = e.guard_turns },
+            .status = .{ .stun_immune = e.kind == intent_mod.boss_kind, .stun_turns = e.stun_turns, .slow_turns = e.slow_turns, .burn_turns = e.burn_turns, .burn_damage = e.burn_damage, .burn_stacks = e.burn_stacks, .vulnerable_turns = e.vulnerable_turns, .vulnerable_pct = e.vulnerable_pct, .guard_turns = e.guard_turns },
             .reward = .{ .xp = e.xp },
             .action = .{ .energy = e.energy, .special_cd = e.special_cd },
         };
@@ -798,6 +803,7 @@ fn expectSameEnemy(expected: Enemy, actual: Enemy) !void {
     try testing.expectEqual(expected.status.stun_turns, actual.status.stun_turns);
     try testing.expectEqual(expected.status.slow_turns, actual.status.slow_turns);
     try testing.expectEqual(expected.status.burn_turns, actual.status.burn_turns);
+    try testing.expectEqual(expected.status.burn_stacks, actual.status.burn_stacks);
     try testing.expectEqual(expected.status.vulnerable_turns, actual.status.vulnerable_turns);
     try testing.expectApproxEqAbs(expected.status.vulnerable_pct, actual.status.vulnerable_pct, 0.0001);
     try testing.expectEqual(expected.status.guard_turns, actual.status.guard_turns);
@@ -914,6 +920,7 @@ test "save: fresh run round-trips (short log, no events)" {
     sim.enemies[0].action.special_cd = 2;
     sim.enemies[0].status.vulnerable_turns = 2;
     sim.enemies[0].status.guard_turns = 2;
+    sim.enemies[0].status.burn_stacks = 2;
     try testing.expect(sim.log_total < log_lines_max);
 
     const bytes = try saveAlloc(alloc, &sim);

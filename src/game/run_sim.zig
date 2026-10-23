@@ -226,6 +226,7 @@ pub const StatusSet = struct {
     buff_pct: f32 = 0,
     burn_turns: u16 = 0,
     burn_damage: f32 = 0,
+    burn_stacks: u8 = 0,
     vulnerable_turns: u16 = 0,
     vulnerable_pct: f32 = 0.20,
     guard_turns: u16 = 0,
@@ -296,14 +297,31 @@ pub const StatusSet = struct {
         if (turns == 0 or damage <= 0) return;
         self.burn_turns = @max(self.burn_turns, turns);
         self.burn_damage = @max(self.burn_damage, damage);
+        self.burn_stacks = @min(3, if (self.burn_stacks == 0) 1 else self.burn_stacks + 1);
     }
 
-    /// Returns this tick's burn damage and consumes one turn.
+    /// Refresh duration without adding a stack. Used for enemy-applied burn on
+    /// the hero so the player does not get a stacking attrition spiral.
+    pub fn applyBurnFresh(self: *StatusSet, turns: u16, damage: f32) void {
+        if (turns == 0 or damage <= 0) return;
+        self.burn_turns = @max(self.burn_turns, turns);
+        self.burn_damage = @max(self.burn_damage, damage);
+        self.burn_stacks = 1;
+    }
+
+    /// Returns this tick's burn damage (damage × stacks) and consumes one turn.
     pub fn tickBurn(self: *StatusSet) f32 {
-        if (self.burn_turns == 0) return 0;
-        const dmg = self.burn_damage;
+        if (self.burn_turns == 0) {
+            self.burn_stacks = 0;
+            return 0;
+        }
+        const stacks: f32 = @floatFromInt(@max(self.burn_stacks, 1));
+        const dmg = self.burn_damage * (1.0 + (stacks - 1.0) * 0.5);
         self.burn_turns -= 1;
-        if (self.burn_turns == 0) self.burn_damage = 0;
+        if (self.burn_turns == 0) {
+            self.burn_damage = 0;
+            self.burn_stacks = 0;
+        }
         return dmg;
     }
 };
@@ -1097,7 +1115,7 @@ pub const Sim = struct {
                 const raw = e.combat.attack.val * intent_mod.boss_aoe_damage_scale * e.status.slowDamageScale();
                 const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount * self.hero.status.damageTakenScale();
                 self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
-                self.hero.status.applyBurn(2, e.combat.attack.val * 0.20 * self.floor_mod.burnScale());
+                self.hero.status.applyBurnFresh(2, e.combat.attack.val * 0.20 * self.floor_mod.burnScale());
                 _ = self.hero.status.applyVulnerable(2);
                 self.pushLog("深渊守卫 深渊斩 -{d:.0}", .{dmg});
             } else {
@@ -1208,7 +1226,7 @@ pub const Sim = struct {
         self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
         if (e.affix == .vampiric and dmg > 0) e.vitals.set(e.vitals.val + dmg * 0.20);
         if (e.identity.kind == 6 and dmg > 0) {
-            self.hero.status.applyBurn(2, e.combat.attack.val * 0.10 * self.floor_mod.burnScale());
+            self.hero.status.applyBurnFresh(2, e.combat.attack.val * 0.10 * self.floor_mod.burnScale());
         }
         if (e.identity.kind == 2 and dmg > 0) {
             _ = self.hero.status.applyVulnerable(1);
@@ -1474,8 +1492,8 @@ pub const Sim = struct {
             if (d > @as(i32, @intFromFloat(radius))) continue;
             self.playerAttack(i, if (d == 0) mult else mult * 0.6);
             if (!e.life.alive) continue;
-            const burn = self.hero.combat.attack.val * 0.12 * self.floor_mod.burnScale();
-            e.status.applyBurn(2, burn);
+            const burn = self.hero.combat.attack.val * 0.10 * self.floor_mod.burnScale();
+            e.status.applyBurn(5, burn);
         }
     }
 
@@ -1559,7 +1577,11 @@ test "run sim: status set interprets stun/slow/buff consistently" {
 
     st.applyBurn(2, 5);
     try std.testing.expectApproxEqAbs(@as(f32, 5), st.tickBurn(), 0.0001);
-    try std.testing.expectApproxEqAbs(@as(f32, 5), st.tickBurn(), 0.0001);
+    st.applyBurn(2, 5);
+    st.applyBurn(2, 5);
+    try std.testing.expectEqual(@as(u8, 3), st.burn_stacks);
+    try std.testing.expectApproxEqAbs(@as(f32, 10), st.tickBurn(), 0.0001);
+    try std.testing.expectApproxEqAbs(@as(f32, 10), st.tickBurn(), 0.0001);
     try std.testing.expectApproxEqAbs(@as(f32, 0), st.tickBurn(), 0.0001);
 
     try std.testing.expectApproxEqAbs(@as(f32, 1.0), st.damageTakenScale(), 0.0001);

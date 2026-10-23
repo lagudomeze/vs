@@ -61,6 +61,7 @@ pub const State = struct {
     buff_pct: f32 = 0,
     burn_turns: u16 = 0,
     burn_damage: f32 = 0,
+    burn_stacks: u8 = 0,
     vulnerable_turns: u16 = 0,
     menu_cards: [3]ClassCard = .{ .{}, .{}, .{} },
     class_name: []const u8 = "",
@@ -291,7 +292,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     if (state.burn_turns > 0 and !state.dead and !state.victory) {
         backPanel(r, 6, 82, 160, 14);
         var fbuf: [48]u8 = undefined;
-        const burn = fmt(&fbuf, "灼烧 {d:.0}/回合  {d}回合", .{ state.burn_damage, state.burn_turns });
+        const burn = fmt(&fbuf, "灼烧 {d:.0}x{d}/回合  {d}回合", .{ state.burn_damage, state.burn_stacks, state.burn_turns });
         r.drawText(10, 85, burn, palette.red, 1, false);
     }
 

@@ -228,7 +228,7 @@ raw
 
 当前债：
 
-- StatusSet 已统一到 Hero.status / Enemy.status，方法集中 canAct / attackScale / slowDamageScale / tickBuff / applyStun / applySlow / applyBurn；火球附加 2 回合灼烧，Boss AOE 也点燃英雄；Boss 通过 stun_immune 免疫眩晕（减速/灼烧仍有效）；时空时间停止命中 Boss 时改为减速 2 + 0.5× 反噬；战士冲锋、石魔像命中、Boss 深渊斩都可附加 VULN（受伤 +20%）；
+- StatusSet 已统一到 Hero.status / Enemy.status，方法集中 canAct / attackScale / slowDamageScale / tickBuff / applyStun / applySlow / applyBurn；火球附加 5 回合灼烧并最多叠 3 层（1/1.5/2 倍），Boss AOE 也点燃英雄；Boss 通过 stun_immune 免疫眩晕（减速/灼烧仍有效）；时空时间停止命中 Boss 时改为减速 2 + 0.5× 反噬；战士冲锋、石魔像命中、Boss 深渊斩都可附加 VULN（受伤 +20%）；
 - 状态应用仍散落在 endTurn/enemyAct/useTalent（warcry、冰锥、冲锋、火球、Boss AOE）；
 - 没有通用 StatusDef、叠层、驱散；只有 Boss 的 stun_immune 特判，无法用数据扩展新状态。
 
