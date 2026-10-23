@@ -1417,6 +1417,10 @@ pub const RunGame = struct {
                     const ix = std.math.clamp(x - @divTrunc(renderer.Renderer.textWidth(label, 1), 2), 2, w - 2);
                     self.renderer.drawText(ix, y + 5, label, if (intent.kind == .aoe) palette.red else palette.gold_light, 1, true);
                 }
+                if (self.sim.enemies[i].status.burn_turns > 0) {
+                    const bx = std.math.clamp(x - renderer.Renderer.textWidth("灼", 1), 2, w - 2);
+                    self.renderer.drawText(bx, y + 15, "灼", palette.red, 1, true);
+                }
             }
             if (target != null and target.? == i) {
                 const aiming = self.aim_talent != null;
@@ -1637,6 +1641,8 @@ pub const RunGame = struct {
             .seed = self.sim.seed,
             .buff_turns = self.sim.hero.status.buff_turns,
             .buff_pct = self.sim.hero.status.buff_pct,
+            .burn_turns = self.sim.hero.status.burn_turns,
+            .burn_damage = self.sim.hero.status.burn_damage,
             .class_name = sim_mod.class_names[@backingInt(self.class)],
             .level = self.sim.hero.progression.level,
             .xp = self.sim.hero.progression.xp,

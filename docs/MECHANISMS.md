@@ -227,8 +227,8 @@ raw
 
 当前债：
 
-- StatusSet 已统一到 Hero.status / Enemy.status，方法集中 canAct / attackScale / slowDamageScale / tickBuff；
-- 状态应用仍散落在 endTurn/enemyAct/useTalent（warcry、冰锥、冲锋）；
+- StatusSet 已统一到 Hero.status / Enemy.status，方法集中 canAct / attackScale / slowDamageScale / tickBuff / applyBurn / tickBurn；火球附加 2 回合灼烧，Boss AOE 也点燃英雄；
+- 状态应用仍散落在 endTurn/enemyAct/useTalent（warcry、冰锥、冲锋、火球、Boss AOE）；
 - 没有通用 StatusDef、叠层、免疫、驱散，无法用数据扩展新状态。
 
 ### M8 成长/经济

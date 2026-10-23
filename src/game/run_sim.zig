@@ -172,6 +172,8 @@ pub const StatusSet = struct {
     slow_turns: u16 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
+    burn_turns: u16 = 0,
+    burn_damage: f32 = 0,
 
     pub fn canAct(self: StatusSet) bool {
         return self.stun_turns == 0;
@@ -204,6 +206,21 @@ pub const StatusSet = struct {
         const expired = self.buff_pct;
         self.buff_pct = 0;
         return expired;
+    }
+
+    pub fn applyBurn(self: *StatusSet, turns: u16, damage: f32) void {
+        if (turns == 0 or damage <= 0) return;
+        self.burn_turns = @max(self.burn_turns, turns);
+        self.burn_damage = @max(self.burn_damage, damage);
+    }
+
+    /// Returns this tick's burn damage and consumes one turn.
+    pub fn tickBurn(self: *StatusSet) f32 {
+        if (self.burn_turns == 0) return 0;
+        const dmg = self.burn_damage;
+        self.burn_turns -= 1;
+        if (self.burn_turns == 0) self.burn_damage = 0;
+        return dmg;
     }
 };
 
@@ -663,6 +680,30 @@ pub const Sim = struct {
         }
     }
 
+    /// Damage-over-time tick after the enemy phase. Burn ignores armor and
+    /// can kill either side; enemy deaths reuse the normal kill/reward path.
+    fn tickStatusDamage(self: *Sim) void {
+        if (self.state != .playing) return;
+        const hero_dmg = self.hero.status.tickBurn();
+        if (hero_dmg > 0) {
+            self.hero.vitals.hp = @max(0, self.hero.vitals.hp - hero_dmg);
+            self.pushLog("灼烧 -{d:.0}", .{hero_dmg});
+            if (self.hero.vitals.hp <= 0) {
+                self.state = .dead;
+                return;
+            }
+        }
+        var i: usize = 0;
+        while (i < self.enemy_count) : (i += 1) {
+            const e = &self.enemies[i];
+            if (!e.vitals.alive) continue;
+            const dmg = e.status.tickBurn();
+            if (dmg <= 0) continue;
+            e.vitals.hp -= dmg;
+            if (e.vitals.hp <= 0) self.killEnemy(i);
+        }
+    }
+
     fn endTurn(self: *Sim) void {
         if (self.state != .playing) return;
         // start of the next player turn
@@ -681,6 +722,7 @@ pub const Sim = struct {
             return;
         }
         self.enemyPhase();
+        self.tickStatusDamage();
         self.armBossAoe();
         if (self.hero.vitals.hp <= 0) self.state = .dead;
         if (self.enemy_count == 0 and self.floor >= self.floors) {
@@ -694,6 +736,7 @@ pub const Sim = struct {
         if (!self.enemy_phase_pending) return;
         self.enemy_phase_pending = false;
         self.enemyPhase();
+        self.tickStatusDamage();
         self.armBossAoe();
         if (self.hero.vitals.hp <= 0) self.state = .dead;
         if (self.enemy_count == 0 and self.floor >= self.floors and self.state == .playing) {
@@ -749,6 +792,7 @@ pub const Sim = struct {
                 const raw = e.combat.attack * intent_mod.boss_aoe_damage_scale * e.status.slowDamageScale();
                 const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor }).amount;
                 self.hero.vitals.hp = @max(0, self.hero.vitals.hp - dmg);
+                self.hero.status.applyBurn(2, e.combat.attack * 0.20);
                 self.pushLog("深渊守卫 深渊斩 -{d:.0}", .{dmg});
             } else {
                 self.pushLog("躲开深渊斩", .{});
@@ -1041,6 +1085,8 @@ pub const Sim = struct {
             if (d > @as(i32, @intFromFloat(radius))) continue;
             self.playerAttack(i, if (d == 0) mult else mult * 0.6);
             if (!e.vitals.alive) continue;
+            const burn = self.hero.combat.attack * 0.12;
+            e.status.applyBurn(2, burn);
         }
     }
 
@@ -1121,6 +1167,11 @@ test "run sim: status set interprets stun/slow/buff consistently" {
     try std.testing.expectApproxEqAbs(@as(f32, 0.0), st.tickBuff(), 0.0001);
     try std.testing.expectApproxEqAbs(@as(f32, 0.30), st.tickBuff(), 0.0001);
     try std.testing.expectApproxEqAbs(@as(f32, 1.0), st.attackScale(), 0.0001);
+
+    st.applyBurn(2, 5);
+    try std.testing.expectApproxEqAbs(@as(f32, 5), st.tickBurn(), 0.0001);
+    try std.testing.expectApproxEqAbs(@as(f32, 5), st.tickBurn(), 0.0001);
+    try std.testing.expectApproxEqAbs(@as(f32, 0), st.tickBurn(), 0.0001);
 }
 
 test "run sim: adjacent enemy acts on wait" {
@@ -1283,6 +1334,7 @@ test "run sim: boss AOE resolves on the telegraphed turn" {
     const hp = s.hero.vitals.hp;
     _ = s.wait();
     try std.testing.expect(s.hero.vitals.hp < hp);
+    try std.testing.expect(s.hero.status.burn_turns > 0);
 }
 
 test "run sim: content keeps a fast and a slow speed band" {
@@ -1318,8 +1370,8 @@ test "run sim: mage fireball can be cast on a ground cell" {
         .kind = 0,
         .name = "骷髅兵",
         .pos = c,
-        .hp = 70,
-        .hp_max = 70,
+        .hp = 300,
+        .hp_max = 300,
         .attack = 8,
         .armor = 4,
         .speed = 100,
@@ -1328,7 +1380,8 @@ test "run sim: mage fireball can be cast on a ground cell" {
     });
     const turn = s.turn;
     try std.testing.expect(s.useTalentAt(0, c));
-    try std.testing.expect(s.enemies[0].vitals.hp < 70);
+    try std.testing.expect(s.enemies[0].vitals.hp < 300);
+    try std.testing.expect(s.enemies[0].status.burn_turns > 0);
     try std.testing.expectEqual(turn + 1, s.turn);
     try std.testing.expect(s.hero.talents.cooldowns[0] > 0);
 }

@@ -49,6 +49,8 @@ pub const State = struct {
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
+    burn_turns: u16 = 0,
+    burn_damage: f32 = 0,
     menu_cards: [3]ClassCard = .{ .{}, .{}, .{} },
     class_name: []const u8 = "",
     level: u16 = 1,
@@ -253,6 +255,13 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         var bbuf: [48]u8 = undefined;
         const buff = fmt(&bbuf, "战吼 +{d:.0}%攻  {d}回合", .{ state.buff_pct * 100.0, state.buff_turns });
         r.drawText(10, 69, buff, palette.gold_light, 1, false);
+    }
+
+    if (state.burn_turns > 0 and !state.dead and !state.victory) {
+        backPanel(r, 6, 82, 160, 14);
+        var fbuf: [48]u8 = undefined;
+        const burn = fmt(&fbuf, "灼烧 {d:.0}/回合  {d}回合", .{ state.burn_damage, state.burn_turns });
+        r.drawText(10, 85, burn, palette.red, 1, false);
     }
 
     // top-right: floor / enemies / stairs / turn / initiative
