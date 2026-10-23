@@ -6,7 +6,7 @@
 //! failure is reported and that file falls back to the built-in defaults below
 //! so a bad data edit can never crash the game (CT-05/06 simplified).
 //!
-//! Turn-based v1 content, docs/RUN_V1.md: 8 items (第 8 节), 6 enemies
+//! Turn-based v1 content, docs/RUN_V1.md: 12 items, 6 enemies
 //! (第 7 节, includes elites and the boss), 9 player talents (第 6 节) plus the
 //! boss AOE skill. Cooldowns, resources and statuses are all counted in turns.
 
@@ -394,6 +394,65 @@ pub const builtin_items = [_]items.ItemDef{
             },
         } },
         .description = "封存时间的沙漏：+5 意志，+10 法力上限。",
+    },
+    .{
+        .id = "war_axe",
+        .name = "战斧",
+        .quality = .rare,
+        .drop = .{ .classes = &.{.warrior}, .weight = 0.8 },
+        .kind = .{ .equipment = .{
+            .slot = .main_hand,
+            .mods = &.{
+                .{ .stat = .attack, .flat = 8 },
+                .{ .stat = .strength, .flat = 3 },
+            },
+        } },
+        .description = "厚重的战斧：+8 攻击，+3 力量。",
+    },
+    .{
+        .id = "chrono_blade",
+        .name = "时刃",
+        .quality = .rare,
+        .drop = .{ .classes = &.{.chronomancer}, .weight = 0.8 },
+        .kind = .{ .equipment = .{
+            .slot = .main_hand,
+            .mods = &.{
+                .{ .stat = .attack, .flat = 4 },
+                .{ .stat = .perception, .flat = 3 },
+                .{ .stat = .speed, .flat = 4 },
+            },
+        } },
+        .description = "切割时间线的短刃：+4 攻击，+3 感知，+4 速度。",
+    },
+    .{
+        .id = "frost_orb",
+        .name = "霜晶球",
+        .quality = .epic,
+        .drop = .{ .classes = &.{.mage}, .weight = 0.6 },
+        .kind = .{ .equipment = .{
+            .slot = .trinket,
+            .mods = &.{
+                .{ .stat = .magic, .flat = 4 },
+                .{ .stat = .crit, .flat = 0.04 },
+                .{ .stat = .resource_max, .flat = 8 },
+            },
+        } },
+        .description = "凝结寒霜的晶球：+4 魔力，+4% 暴击，+8 法力上限。",
+    },
+    .{
+        .id = "bone_armor",
+        .name = "骨甲",
+        .quality = .rare,
+        .drop = .{ .weight = 0.7 },
+        .kind = .{ .equipment = .{
+            .slot = .body,
+            .mods = &.{
+                .{ .stat = .hp_max, .flat = 25 },
+                .{ .stat = .armor, .flat = 4 },
+                .{ .stat = .will, .flat = 1 },
+            },
+        } },
+        .description = "以兽骨拼接的护甲：+25 生命上限，+4 护甲，+1 意志。",
     },
     .{
         .id = "healing_potion",
@@ -1118,7 +1177,7 @@ test "embedded tables match the RUN v1 content plan" {
     var content = try load(std.testing.allocator);
     defer content.deinit();
 
-    try std.testing.expectEqual(@as(usize, 8), content.items.len);
+    try std.testing.expectEqual(@as(usize, 12), content.items.len);
     try std.testing.expectEqual(@as(usize, 6), content.enemies.len);
     try std.testing.expectEqual(@as(usize, 10), content.skills.len);
 

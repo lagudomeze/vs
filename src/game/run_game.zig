@@ -1600,6 +1600,9 @@ pub const RunGame = struct {
             .menu = !self.started,
             .help = self.show_help,
             .menu_seed = self.seed,
+            .seed = self.sim.seed,
+            .buff_turns = self.sim.hero.buff_turns,
+            .buff_pct = self.sim.hero.buff_pct,
             .class_name = sim_mod.class_names[@backingInt(self.class)],
             .level = self.sim.hero.level,
             .xp = self.sim.hero.xp,
@@ -2118,7 +2121,7 @@ test "run game: autosave history rotates and loads" {
     const io = std.testing.io;
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     g.started = true;
     const auto1 = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "auto1.save" });
@@ -2155,7 +2158,7 @@ test "run game: slots fall back to legacy run+gear pair" {
     const io = std.testing.io;
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     g.started = true;
     const run_path = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "legacy-run.json" });
@@ -2179,7 +2182,7 @@ test "run game: slots save metadata and load" {
     const io = std.testing.io;
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     g.started = true;
     const run_path = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "slot-run.json" });
@@ -2201,7 +2204,7 @@ test "run game: slots save metadata and load" {
 
 test "run game: initiative shows the player and fastest enemy" {
     const gpa = std.testing.allocator;
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     g.fillHudState();
     try std.testing.expectEqualStrings("玩家", g.hud_state.initiative[0]);
@@ -2223,7 +2226,7 @@ test "run game: initiative shows the player and fastest enemy" {
 
 test "run game: character panel spends a pending attribute point" {
     const gpa = std.testing.allocator;
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     g.started = true;
     g.panel = .character;
@@ -2236,7 +2239,7 @@ test "run game: character panel spends a pending attribute point" {
 
 test "run game: presentation locks input during enemy phase" {
     const gpa = std.testing.allocator;
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     g.started = true;
     g.presentation = true;
@@ -2254,7 +2257,7 @@ test "run game: presentation locks input during enemy phase" {
 
 test "run game: mouse click confirms an aimed enemy" {
     const gpa = std.testing.allocator;
-    const g = try RunGame.create(gpa, 480, 270, .warrior, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
     defer g.destroy();
     g.sim.enemy_count = 0;
     addGameEnemy(g, 1, 0, "骷髅兵");
@@ -2263,7 +2266,7 @@ test "run game: mouse click confirms an aimed enemy" {
     const e = g.sim.enemies[0];
     const center = @as(f32, @floatFromInt(sim_mod.grid_w - 1)) * 0.5;
     const world = math.Vec3.init(@as(f32, @floatFromInt(e.pos.x)) - center, 0, @as(f32, @floatFromInt(e.pos.y)) - center);
-    const p = g.camera.project(world, 480, 270) orelse return error.SkipZigTest;
+    const p = g.camera.project(world, 640, 360) orelse return error.SkipZigTest;
     const turn = g.sim.turn;
     g.update(.{ .mouse_x = p.x, .mouse_y = p.y, .click = true }, 1.0 / 60.0);
     try std.testing.expect(!g.isAiming());
@@ -2272,7 +2275,7 @@ test "run game: mouse click confirms an aimed enemy" {
 
 test "run game: mouse click casts fireball on a ground cell" {
     const gpa = std.testing.allocator;
-    const g = try RunGame.create(gpa, 480, 270, .mage, 12345);
+    const g = try RunGame.create(gpa, 640, 360, .mage, 12345);
     defer g.destroy();
     g.sim.enemy_count = 0;
     var target: ?sim_mod.GridPos = null;
@@ -2293,7 +2296,7 @@ test "run game: mouse click casts fireball on a ground cell" {
     try std.testing.expect(g.isAiming());
     const center = @as(f32, @floatFromInt(sim_mod.grid_w - 1)) * 0.5;
     const world = math.Vec3.init(@as(f32, @floatFromInt(cell.x)) - center, 0, @as(f32, @floatFromInt(cell.y)) - center);
-    const p = g.camera.project(world, 480, 270) orelse return error.SkipZigTest;
+    const p = g.camera.project(world, 640, 360) orelse return error.SkipZigTest;
     const turn = g.sim.turn;
     g.update(.{ .mouse_x = p.x, .mouse_y = p.y, .click = true }, 1.0 / 60.0);
     try std.testing.expect(!g.isAiming());
