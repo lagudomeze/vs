@@ -155,7 +155,7 @@ cells(shape, origin, dir) []Cell
 
 - Modifier 的 stacking/source 规则未统一；
 - 资源回复在 endTurn 中直接写，未经过资源系统；
-- HP 当前值已进入 Hero.vitals / Enemy.vitals；状态仍未统一为 StatusSet。
+- HP 当前值已进入 Hero.vitals / Enemy.vitals；Hero/Enemy 状态已统一为 StatusSet。
 
 ### M5 行动/目标
 
@@ -227,10 +227,9 @@ raw
 
 当前债：
 
-- Hero.status.buff_turns/buff_pct；
-- Enemy.stun_turns/slow_turns；
-- 状态判定散落在 enemyAct/endTurn；
-- 没有通用 StatusDef/StatusSet，叠加/免疫/驱散无法扩展。
+- StatusSet 已统一到 Hero.status / Enemy.status，方法集中 canAct / attackScale / slowDamageScale / tickBuff；
+- 状态应用仍散落在 endTurn/enemyAct/useTalent（warcry、冰锥、冲锋）；
+- 没有通用 StatusDef、叠层、免疫、驱散，无法用数据扩展新状态。
 
 ### M8 成长/经济
 
@@ -264,8 +263,8 @@ raw
 
 当前债：
 
-- 胜负判定散落在 killEnemy/endTurn/resolvePendingEnemyPhase/nextFloor；
-- 楼梯封印在 canMove；
+- hasLivingBoss / isFinalFloor / stairsSealed 已集中在 Sim；
+- 胜负写入仍散落在 killEnemy/endTurn/nextFloor；
 - Boss AOE 在 Sim；
 - 楼层生成直接改 Sim 全体状态。
 
@@ -404,7 +403,7 @@ M5 ActionResolved
 | Actor energy 1000 | M2 能量 | 现在 100 + 偶数回合特判 |
 | DamageType + projector | M6 类型/管线 | 只有物理，公式三处重复 |
 | Talents 数据 + function | M5 + M12 | 玩家天赋硬编码，skills.json 未生效 |
-| Effects 表 | M7 | stun/slow/buff 三个裸字段 |
+| Effects 表 | M7 | StatusSet 已统一；仍无 StatusDef/叠层 |
 | Actor stats/combat | M4 | 已单表化，仍有 HP 当前值散落 |
 | Zone/level generator | M9 | 31x31 单层 + 固定 3 层 |
 | FOV | M10 | 暂无战争迷雾 |
@@ -421,8 +420,8 @@ M5 ActionResolved
 ### P1：行为重构
 
 4. M2 能量调度替代 turn%2（会改变 QA 胜率，需要单独平衡）。
-5. M7 StatusSet 替代 stun/slow/buff 字段。
-6. M9 胜负/楼梯封印谓词集中。
+5. ✅ M7 StatusSet 替代 stun/slow/buff 字段。
+6. ✅ M9 楼梯封印/最终层谓词集中；胜负写入仍待事件化。
 7. M8 XP/掉落/装备事件化。
 
 ### P2：内容扩展
