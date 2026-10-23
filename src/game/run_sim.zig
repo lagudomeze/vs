@@ -160,6 +160,8 @@ pub const EnemyCombat = struct {
 /// methods are the only place that interpret the fields, so Hero and Enemy
 /// cannot drift on can-act / damage-scale semantics.
 pub const StatusSet = struct {
+    /// Bosses ignore hard control (stun); slow and damage-over-time still work.
+    stun_immune: bool = false,
     stun_turns: u16 = 0,
     slow_turns: u16 = 0,
     buff_turns: u16 = 0,
@@ -198,6 +200,18 @@ pub const StatusSet = struct {
         const expired = self.buff_pct;
         self.buff_pct = 0;
         return expired;
+    }
+
+    pub fn applyStun(self: *StatusSet, turns: u16) bool {
+        if (self.stun_immune or turns == 0) return false;
+        self.stun_turns = @max(self.stun_turns, turns);
+        return true;
+    }
+
+    pub fn applySlow(self: *StatusSet, turns: u16) bool {
+        if (turns == 0) return false;
+        self.slow_turns = @max(self.slow_turns, turns);
+        return true;
     }
 
     pub fn applyBurn(self: *StatusSet, turns: u16, damage: f32) void {
@@ -254,6 +268,7 @@ pub fn enemyFromParts(parts: anytype) Enemy {
             .range = if (@hasField(T, "range")) parts.range else 1,
         },
         .status = .{
+            .stun_immune = if (@hasField(T, "kind")) parts.kind == intent_mod.boss_kind else false,
             .stun_turns = if (@hasField(T, "stun_turns")) parts.stun_turns else 0,
             .slow_turns = if (@hasField(T, "slow_turns")) parts.slow_turns else 0,
         },
@@ -543,6 +558,7 @@ pub const Sim = struct {
                 .range = def.combat.attack_range,
             },
             .reward = .{ .xp = def.loot.xp },
+            .status = .{ .stun_immune = def.ai.kind == intent_mod.boss_kind },
         };
         self.enemy_count += 1;
     }
@@ -1025,7 +1041,7 @@ pub const Sim = struct {
                     self.aoeAttack(idx, 2.5, 1.5);
                 } else {
                     self.playerAttack(idx, 1.8);
-                    self.enemies[idx].status.slow_turns = 2;
+                    if (!self.enemies[idx].status.applySlow(2)) self.pushLog("Boss 免疫减速", .{});
                 }
                 self.endTurn();
                 return true;
@@ -1044,10 +1060,10 @@ pub const Sim = struct {
                 self.hero.talents.cooldowns[i] = self.talentCooldown(i);
                 if (i == 0) {
                     self.playerAttack(idx, 2.0);
-                    if (self.enemies[idx].life.alive) self.enemies[idx].status.slow_turns = 2;
+                    if (self.enemies[idx].life.alive and !self.enemies[idx].status.applySlow(2)) self.pushLog("Boss 免疫减速", .{});
                 } else {
                     self.playerAttack(idx, 1.2);
-                    self.enemies[idx].status.stun_turns = 2;
+                    if (!self.enemies[idx].status.applyStun(2)) self.pushLog("Boss 免疫眩晕", .{});
                 }
                 self.endTurn();
                 return true;
@@ -1158,6 +1174,14 @@ test "run sim: status set interprets stun/slow/buff consistently" {
     try std.testing.expectApproxEqAbs(@as(f32, 5), st.tickBurn(), 0.0001);
     try std.testing.expectApproxEqAbs(@as(f32, 5), st.tickBurn(), 0.0001);
     try std.testing.expectApproxEqAbs(@as(f32, 0), st.tickBurn(), 0.0001);
+
+    var boss = StatusSet{ .stun_immune = true };
+    try std.testing.expect(!boss.applyStun(2));
+    try std.testing.expect(boss.applySlow(2));
+    try std.testing.expectEqual(@as(u16, 2), boss.slow_turns);
+    boss.applyBurn(3, 9);
+    try std.testing.expectEqual(@as(u16, 3), boss.burn_turns);
+    try std.testing.expectApproxEqAbs(@as(f32, 9), boss.tickBurn(), 0.0001);
 }
 
 test "run sim: adjacent enemy acts on wait" {
@@ -1209,6 +1233,27 @@ test "run sim: stepping on stairs advances the floor" {
         _ = s.move(0, 1);
         try std.testing.expect(s.floor >= 2);
     }
+}
+
+test "run sim: boss is immune to stun and slow" {
+    var s = Sim.init(21, .chronomancer);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{
+        .kind = 5,
+        .name = "深渊守卫",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 420,
+        .hp_max = 420,
+        .attack = 16,
+        .armor = 15,
+        .speed = 90,
+        .range = 1,
+        .xp = 200,
+    });
+    try std.testing.expect(s.enemies[0].status.stun_immune);
+    s.hero.resource.val = 100;
+    try std.testing.expect(s.useTalent(1));
+    try std.testing.expectEqual(@as(u16, 0), s.enemies[0].status.stun_turns);
 }
 
 test "run sim: killing the last boss wins" {

@@ -42,6 +42,7 @@
 //! disk untouched for inspection.
 const std = @import("std");
 const sim_mod = @import("run_sim.zig");
+const intent_mod = @import("intent.zig");
 const dungeon_mod = @import("dungeon.zig");
 const numeric = @import("numeric.zig");
 
@@ -592,7 +593,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
                 .speed = numeric.valueOf(numeric.Speed, @floatFromInt(e.speed)),
                 .range = e.range,
             },
-            .status = .{ .stun_turns = e.stun_turns, .slow_turns = e.slow_turns, .burn_turns = e.burn_turns, .burn_damage = e.burn_damage },
+            .status = .{ .stun_immune = e.kind == intent_mod.boss_kind, .stun_turns = e.stun_turns, .slow_turns = e.slow_turns, .burn_turns = e.burn_turns, .burn_damage = e.burn_damage },
             .reward = .{ .xp = e.xp },
             .action = .{ .energy = e.energy },
         };
@@ -740,6 +741,7 @@ fn expectSameEnemy(expected: Enemy, actual: Enemy) !void {
     try testing.expectEqual(expected.combat.speed.val, actual.combat.speed.val);
     try testing.expectEqual(expected.combat.range, actual.combat.range);
     try testing.expectEqual(expected.reward.xp, actual.reward.xp);
+    try testing.expectEqual(expected.status.stun_immune, actual.status.stun_immune);
     try testing.expectEqual(expected.status.stun_turns, actual.status.stun_turns);
     try testing.expectEqual(expected.status.slow_turns, actual.status.slow_turns);
     try testing.expectEqual(expected.status.burn_turns, actual.status.burn_turns);
