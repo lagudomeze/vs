@@ -287,6 +287,7 @@ pub const RunGame = struct {
             2 => 1.55,
             3 => 1.25,
             4 => 1.38,
+            6 => 1.34,
             else => 1.95,
         };
     }
@@ -1386,8 +1387,8 @@ pub const RunGame = struct {
     }
 
     fn enemyModel(self: *RunGame, kind: u8) *const model_mod.Model {
-        const names = [_][]const u8{ "skeleton", "wraith", "golem", "elite_skeleton", "elite_wraith", "abyss_guard" };
-        const fallback = [_][]const u8{ "skeleton", "wraith", "golem", "skeleton", "wraith", "abyss_guard" };
+        const names = [_][]const u8{ "skeleton", "wraith", "golem", "elite_skeleton", "elite_wraith", "abyss_guard", "wraith" };
+        const fallback = [_][]const u8{ "skeleton", "wraith", "golem", "skeleton", "wraith", "abyss_guard", "wraith" };
         const name = names[@min(kind, names.len - 1)];
         if (self.models.indexOf(name)) |i| return self.models.at(i);
         return self.models.at(self.models.indexOf(fallback[@min(kind, fallback.len - 1)]) orelse 0);

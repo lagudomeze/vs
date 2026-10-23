@@ -544,6 +544,16 @@ pub const builtin_enemies = [_]EnemyDef{
         .loot = .{ .xp = 50 },
         .spawn = .{ .min_layer = 2, .max_layer = 3 },
     },
+    .{
+        .id = "abyss_wraith",
+        .name = "深渊幽魂",
+        .model = "wraith",
+        .scale = 1.34,
+        .combat = .{ .hp = 60, .damage = 8, .armor = 2, .speed = 100, .attack_range = 4, .attack_cooldown_turns = 2 },
+        .ai = .{ .kind = 6 },
+        .loot = .{ .xp = 45 },
+        .spawn = .{ .min_layer = 2, .max_layer = 3 },
+    },
 };
 
 /// assets/data/skills.json 的镜像：9 个玩家天赋（每职业 3 个）+ Boss AOE。
@@ -1178,7 +1188,7 @@ test "embedded tables match the RUN v1 content plan" {
     defer content.deinit();
 
     try std.testing.expectEqual(@as(usize, 12), content.items.len);
-    try std.testing.expectEqual(@as(usize, 6), content.enemies.len);
+    try std.testing.expectEqual(@as(usize, 7), content.enemies.len);
     try std.testing.expectEqual(@as(usize, 10), content.skills.len);
 
     const sword = content.item("iron_sword") orelse return error.MissingItem;
@@ -1291,8 +1301,9 @@ test "enemy kinds stay canonical and unique" {
         .{ .id = "elite_skeleton", .kind = 3, .speed = 110, .range = 1 },
         .{ .id = "elite_wraith", .kind = 4, .speed = 150, .range = 4 },
         .{ .id = "abyss_guard", .kind = 5, .speed = 90, .range = 1 },
+        .{ .id = "abyss_wraith", .kind = 6, .speed = 100, .range = 4 },
     };
-    var seen: [6]bool = @splat(false);
+    var seen: [7]bool = @splat(false);
     for (expected) |want| {
         const def = for (builtin_enemies) |candidate| {
             if (std.mem.eql(u8, candidate.id, want.id)) break candidate;

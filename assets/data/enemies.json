@@ -100,6 +100,22 @@
       "min_layer": 2,
       "max_layer": 3,
       "elite": true
+    },
+    {
+      "id": "abyss_wraith",
+      "name": "深渊幽魂",
+      "model": "wraith",
+      "kind": 6,
+      "hp": 60,
+      "damage": 8,
+      "armor": 2,
+      "speed": 100,
+      "attack_range": 4,
+      "attack_cooldown_turns": 2,
+      "scale": 1.34,
+      "xp": 45,
+      "min_layer": 2,
+      "max_layer": 3
     }
   ]
 }

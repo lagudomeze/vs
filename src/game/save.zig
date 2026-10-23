@@ -206,6 +206,7 @@ const enemy_names = [_][]const u8{
     "精英骷髅",
     "精英幽魂",
     "深渊守卫",
+    "深渊幽魂",
 };
 
 fn savePos(p: anytype) GridPosSave {
