@@ -69,7 +69,7 @@ pub const Difficulty = enum(u8) {
     pub fn hpScale(self: Difficulty) f32 {
         return switch (self) {
             .normal => 1.0,
-            .hard => 1.20,
+            .hard => 1.15,
             .easy => 0.80,
         };
     }
@@ -77,7 +77,7 @@ pub const Difficulty = enum(u8) {
     pub fn damageScale(self: Difficulty) f32 {
         return switch (self) {
             .normal => 1.0,
-            .hard => 1.10,
+            .hard => 1.08,
             .easy => 0.90,
         };
     }
@@ -1989,8 +1989,8 @@ test "run sim: hard difficulty scales enemy hp and damage" {
     var hard = Sim.initWithDifficulty(77, .warrior, .hard);
     try std.testing.expectEqual(normal.enemy_count, hard.enemy_count);
     for (normal.enemies[0..normal.enemy_count], hard.enemies[0..hard.enemy_count]) |a, b| {
-        try std.testing.expectApproxEqAbs(a.vitals.full * 1.20, b.vitals.full, 0.01);
-        try std.testing.expectApproxEqAbs(a.combat.attack.val * 1.10, b.combat.attack.val, 0.01);
+        try std.testing.expectApproxEqAbs(a.vitals.full * 1.15, b.vitals.full, 0.01);
+        try std.testing.expectApproxEqAbs(a.combat.attack.val * 1.08, b.combat.attack.val, 0.01);
     }
 }
 
