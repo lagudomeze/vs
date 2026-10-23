@@ -374,7 +374,7 @@ pub const RunGame = struct {
         return std.fmt.bufPrint(
             &self.slot_bufs[i],
             "{s} 第{d}层 {d}级 回合{d}",
-            .{ sim_mod.class_names[@backingInt(loaded.class)], loaded.floor, loaded.hero.level, loaded.turn },
+            .{ sim_mod.class_names[@backingInt(loaded.class)], loaded.floor, loaded.hero.progression.level, loaded.turn },
         ) catch "有效存档";
     }
 
@@ -576,7 +576,7 @@ pub const RunGame = struct {
         }
         self.chest_loot_seen = loaded.chest_loot_events;
         self.kill_loot_seen = loaded.kill_loot_events;
-        self.last_level = loaded.hero.level;
+        self.last_level = loaded.hero.progression.level;
         self.selected = null;
         self.aim_talent = null;
         self.aim_cell = null;
@@ -622,7 +622,7 @@ pub const RunGame = struct {
         self.sim.resolvePendingEnemyPhase();
         self.sim.auto_allocate = true;
         defer self.sim.auto_allocate = false;
-        while (self.sim.hero.pending_points > 0) {
+        while (self.sim.hero.progression.pending_points > 0) {
             if (!self.sim.spendPoint(self.sim.mainStatIndex())) break;
         }
         self.rebuildMods();
@@ -661,19 +661,19 @@ pub const RunGame = struct {
         }
 
         // low health and no immediate threat: rest a turn
-        if (self.sim.hero.hp < self.sim.hero.hp_max * 0.35 and self.sim.nearestEnemy(4) == null) {
+        if (self.sim.hero.vitals.hp < self.sim.hero.vitals.hp_max * 0.35 and self.sim.nearestEnemy(4) == null) {
             _ = self.sim.wait();
             return;
         }
 
         // a nearby enemy is a good talent target; use the whole kit
         if (self.sim.nearestEnemy(5) != null) {
-            if (self.class == .warrior and self.sim.hero.buff_turns == 0 and self.sim.hero.cooldowns[2] == 0 and self.sim.hero.resource >= 20) {
+            if (self.class == .warrior and self.sim.hero.status.buff_turns == 0 and self.sim.hero.talents.cooldowns[2] == 0 and self.sim.hero.resource.current >= 20) {
                 if (self.sim.useTalent(2)) return;
             }
             if (self.sim.useTalent(0)) return;
             if (self.sim.useTalent(1)) return;
-            if (self.sim.hero.hp < self.sim.hero.hp_max * 0.4 and self.sim.useTalent(2)) return;
+            if (self.sim.hero.vitals.hp < self.sim.hero.vitals.hp_max * 0.4 and self.sim.useTalent(2)) return;
         }
 
         // Boss floor: stairs are sealed, so walk/fight toward the boss.
@@ -754,7 +754,7 @@ pub const RunGame = struct {
             const use = def.use() orelse continue;
             if (use.heal <= 0) continue;
             if (!self.inventory.remove(id)) continue;
-            self.sim.hero.hp = @min(self.sim.hero.hp_max, self.sim.hero.hp + use.heal);
+            self.sim.hero.vitals.hp = @min(self.sim.hero.vitals.hp_max, self.sim.hero.vitals.hp + use.heal);
             self.sim.pushLog("使用 {s}：恢复 {d:.0} 生命", .{ def.name, use.heal });
             _ = self.sim.wait();
             return true;
@@ -906,7 +906,7 @@ pub const RunGame = struct {
         }
 
         var used_potion = false;
-        if (self.panel == .none and self.sim.state == .playing and self.sim.hero.hp < self.sim.hero.hp_max * 0.35) {
+        if (self.panel == .none and self.sim.state == .playing and self.sim.hero.vitals.hp < self.sim.hero.vitals.hp_max * 0.35) {
             used_potion = self.usePotion();
         }
 
@@ -916,7 +916,7 @@ pub const RunGame = struct {
                 // cancel itself; the step below costs its usual turn).
                 self.clearAim();
                 self.step_cooldown = 0.30;
-                const before_hero = self.sim.hero.hp;
+                const before_hero = self.sim.hero.vitals.hp;
                 var before: [sim_mod.max_enemies]f32 = undefined;
                 var bi: usize = 0;
                 while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].vitals.hp;
@@ -944,8 +944,8 @@ pub const RunGame = struct {
         }
 
         self.processLoot();
-        if (self.sim.hero.level != self.last_level) {
-            self.last_level = self.sim.hero.level;
+        if (self.sim.hero.progression.level != self.last_level) {
+            self.last_level = self.sim.hero.progression.level;
             self.rebuildMods();
         }
 
@@ -1084,8 +1084,8 @@ pub const RunGame = struct {
     fn groundAimVerdict(self: *const RunGame, talent: usize, cell: sim_mod.GridPos) target_mod.Verdict {
         if (!(self.class == .mage and talent == 0)) return .not_targetable;
         if (self.sim.state != .playing) return .not_playing;
-        if (self.sim.hero.cooldowns[talent] > 0) return .cooldown;
-        if (self.sim.hero.resource < @as(f32, @floatFromInt(self.sim.talentCost(talent)))) return .no_resource;
+        if (self.sim.hero.talents.cooldowns[talent] > 0) return .cooldown;
+        if (self.sim.hero.resource.current < @as(f32, @floatFromInt(self.sim.talentCost(talent)))) return .no_resource;
         if (self.sim.isBlocked(cell.x, cell.y)) return .blocked_cell;
         if (target_mod.distance(self.sim.hero.pos, cell) > 5) return .out_of_range;
         if (!self.sim.map.lineOfSightTo(
@@ -1098,11 +1098,11 @@ pub const RunGame = struct {
 
     fn beginAim(self: *RunGame, talent: usize) void {
         const name = self.sim.talentName(talent);
-        if (self.sim.hero.cooldowns[talent] > 0) {
+        if (self.sim.hero.talents.cooldowns[talent] > 0) {
             self.sim.pushLog("{s} 冷却中", .{name});
             return;
         }
-        if (self.sim.hero.resource < @as(f32, @floatFromInt(self.sim.talentCost(talent)))) {
+        if (self.sim.hero.resource.current < @as(f32, @floatFromInt(self.sim.talentCost(talent)))) {
             self.sim.pushLog("{s} 缺资源", .{name});
             return;
         }
@@ -1142,7 +1142,7 @@ pub const RunGame = struct {
     }
 
     fn castTalentAt(self: *RunGame, talent: usize, target: ?usize) bool {
-        const before_hero = self.sim.hero.hp;
+        const before_hero = self.sim.hero.vitals.hp;
         var before: [sim_mod.max_enemies]f32 = undefined;
         var bi: usize = 0;
         while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].vitals.hp;
@@ -1155,7 +1155,7 @@ pub const RunGame = struct {
     }
 
     fn castTalentAtCell(self: *RunGame, talent: usize, cell: sim_mod.GridPos) bool {
-        const before_hero = self.sim.hero.hp;
+        const before_hero = self.sim.hero.vitals.hp;
         var before: [sim_mod.max_enemies]f32 = undefined;
         var bi: usize = 0;
         while (bi < self.sim.enemy_count) : (bi += 1) before[bi] = self.sim.enemies[bi].vitals.hp;
@@ -1216,7 +1216,7 @@ pub const RunGame = struct {
     }
 
     fn flashAfter(self: *RunGame, hero_before: f32, enemies_before: []const f32) void {
-        const hero_loss = hero_before - self.sim.hero.hp;
+        const hero_loss = hero_before - self.sim.hero.vitals.hp;
         if (hero_loss > 0.5) {
             self.hero_vis.flash = 0.22;
             self.spawnFloat(self.hero_vis.pos, -@as(i32, @intFromFloat(hero_loss)), palette.red);
@@ -1619,16 +1619,16 @@ pub const RunGame = struct {
             .help = self.show_help,
             .menu_seed = self.seed,
             .seed = self.sim.seed,
-            .buff_turns = self.sim.hero.buff_turns,
-            .buff_pct = self.sim.hero.buff_pct,
+            .buff_turns = self.sim.hero.status.buff_turns,
+            .buff_pct = self.sim.hero.status.buff_pct,
             .class_name = sim_mod.class_names[@backingInt(self.class)],
-            .level = self.sim.hero.level,
-            .xp = self.sim.hero.xp,
-            .xp_next = 100 * self.sim.hero.level,
-            .hp = self.sim.hero.hp,
-            .hp_max = self.sim.hero.hp_max,
-            .resource = self.sim.hero.resource,
-            .resource_max = self.sim.hero.resource_max,
+            .level = self.sim.hero.progression.level,
+            .xp = self.sim.hero.progression.xp,
+            .xp_next = 100 * self.sim.hero.progression.level,
+            .hp = self.sim.hero.vitals.hp,
+            .hp_max = self.sim.hero.vitals.hp_max,
+            .resource = self.sim.hero.resource.current,
+            .resource_max = self.sim.hero.resource.max,
             .resource_label = sim_mod.resource_names[@backingInt(self.class)],
             .turn = self.sim.turn,
             .floor = self.sim.floor,
@@ -1672,13 +1672,13 @@ pub const RunGame = struct {
         var i: usize = 0;
         while (i < 3) : (i += 1) {
             const cost = self.sim.talentCost(i);
-            const affordable = self.sim.hero.resource >= @as(f32, @floatFromInt(cost));
+            const affordable = self.sim.hero.resource.current >= @as(f32, @floatFromInt(cost));
             self.hud_state.hotbar[i] = .{
                 .name = self.sim.talentName(i),
                 .cost = cost,
-                .cooldown = self.sim.hero.cooldowns[i],
+                .cooldown = self.sim.hero.talents.cooldowns[i],
                 .cooldown_max = self.sim.talentCooldown(i),
-                .ready = self.sim.state == .playing and self.sim.hero.cooldowns[i] == 0 and affordable,
+                .ready = self.sim.state == .playing and self.sim.hero.talents.cooldowns[i] == 0 and affordable,
                 .affordable = affordable,
             };
             self.hud_state.talent_descs[i] = self.sim.talentDesc(i);
@@ -1729,20 +1729,20 @@ pub const RunGame = struct {
             }
         }
         const attrs = [_]i32{
-            @intFromFloat(self.sim.hero.eff_stats[0]),
-            @intFromFloat(self.sim.hero.eff_stats[1]),
-            @intFromFloat(self.sim.hero.eff_stats[2]),
-            @intFromFloat(self.sim.hero.eff_stats[3]),
-            @intFromFloat(self.sim.hero.eff_stats[4]),
-            @intFromFloat(self.sim.hero.eff_stats[5]),
+            @intFromFloat(self.sim.hero.sheet.eff_stats[0]),
+            @intFromFloat(self.sim.hero.sheet.eff_stats[1]),
+            @intFromFloat(self.sim.hero.sheet.eff_stats[2]),
+            @intFromFloat(self.sim.hero.sheet.eff_stats[3]),
+            @intFromFloat(self.sim.hero.sheet.eff_stats[4]),
+            @intFromFloat(self.sim.hero.sheet.eff_stats[5]),
         };
         self.hud_state.attrs = attrs;
-        self.hud_state.pending_points = self.sim.hero.pending_points;
-        self.hud_state.attack = self.sim.hero.attack;
-        self.hud_state.armor = self.sim.hero.armor;
-        self.hud_state.crit = self.sim.hero.crit;
-        self.hud_state.speed = @floatFromInt(self.sim.hero.speed);
-        self.hud_state.res_per_turn = self.sim.hero.res_per_turn;
+        self.hud_state.pending_points = self.sim.hero.progression.pending_points;
+        self.hud_state.attack = self.sim.hero.combat.attack;
+        self.hud_state.armor = self.sim.hero.combat.armor;
+        self.hud_state.crit = self.sim.hero.combat.crit;
+        self.hud_state.speed = @floatFromInt(self.sim.hero.combat.speed);
+        self.hud_state.res_per_turn = self.sim.hero.resource.per_turn;
         const slots = [_]items_mod.Slot{ .main_hand, .body, .trinket };
         for (slots, 0..) |slot, si| {
             self.hud_state.equip[si] = "";
@@ -1868,11 +1868,11 @@ test "run game: aiming waits for confirmation and spends one turn" {
     addGameEnemy(g, 1, 0, "骷髅兵");
 
     const turn = g.sim.turn;
-    const res = g.sim.hero.resource;
+    const res = g.sim.hero.resource.current;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expect(g.isAiming());
     try std.testing.expectEqual(turn, g.sim.turn);
-    try std.testing.expectEqual(res, g.sim.hero.resource);
+    try std.testing.expectEqual(res, g.sim.hero.resource.current);
     try std.testing.expect(g.hud_state.aim.active);
     try std.testing.expect(g.hud_state.aim.valid);
     try std.testing.expectEqualStrings("重击", g.hud_state.aim.talent);
@@ -1885,18 +1885,18 @@ test "run game: aiming waits for confirmation and spends one turn" {
     try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(@as(?usize, null), g.aim_talent);
     try std.testing.expectEqual(turn + 1, g.sim.turn);
-    try std.testing.expect(g.sim.hero.resource < res);
-    try std.testing.expect(g.sim.hero.cooldowns[0] > 0);
+    try std.testing.expect(g.sim.hero.resource.current < res);
+    try std.testing.expect(g.sim.hero.talents.cooldowns[0] > 0);
     try std.testing.expect(!g.hud_state.aim.active);
 
     // Re-aiming during cooldown is refused up front; no aim, turn or resource.
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expect(!g.isAiming());
     const turn_after = g.sim.turn;
-    const res_after = g.sim.hero.resource;
+    const res_after = g.sim.hero.resource.current;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expectEqual(turn_after, g.sim.turn);
-    try std.testing.expectEqual(res_after, g.sim.hero.resource);
+    try std.testing.expectEqual(res_after, g.sim.hero.resource.current);
     try std.testing.expect(!g.isAiming());
 }
 
@@ -1912,13 +1912,13 @@ test "run game: space confirms, switch key changes aim, self talent releases" {
     try std.testing.expect(g.isAiming());
     try std.testing.expectEqual(turn, g.sim.turn);
     try std.testing.expectEqualStrings("冲锋", g.hud_state.aim.talent);
-    try std.testing.expectEqual(@as(u16, 0), g.sim.hero.cooldowns[1]);
+    try std.testing.expectEqual(@as(u16, 0), g.sim.hero.talents.cooldowns[1]);
 
     g.update(.{ .confirm = true }, 1.0 / 60.0); // SPACE confirms
     try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(turn + 1, g.sim.turn);
-    try std.testing.expect(g.sim.hero.cooldowns[1] > 0);
-    try std.testing.expectEqual(@as(u16, 0), g.sim.hero.cooldowns[0]);
+    try std.testing.expect(g.sim.hero.talents.cooldowns[1] > 0);
+    try std.testing.expectEqual(@as(u16, 0), g.sim.hero.talents.cooldowns[0]);
 
     // 战吼 is not targeted: pressed while aiming it releases immediately.
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
@@ -1927,7 +1927,7 @@ test "run game: space confirms, switch key changes aim, self talent releases" {
     g.update(.{ .talent = 2 }, 1.0 / 60.0);
     try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(turn2 + 1, g.sim.turn);
-    try std.testing.expect(g.sim.hero.cooldowns[2] > 0);
+    try std.testing.expect(g.sim.hero.talents.cooldowns[2] > 0);
 }
 
 test "run game: tab cycles the aim target without spending a turn" {
@@ -1958,17 +1958,17 @@ test "run game: cancel and invalid confirms never spend a turn or resource" {
     try std.testing.expect(!g.hud_state.aim.valid);
     try std.testing.expectEqualStrings("无效目标", g.hud_state.aim.reason);
     const t0 = g.sim.turn;
-    const r0 = g.sim.hero.resource;
+    const r0 = g.sim.hero.resource.current;
     g.update(.{ .confirm = true }, 1.0 / 60.0);
     try std.testing.expectEqual(t0, g.sim.turn);
-    try std.testing.expectEqual(r0, g.sim.hero.resource);
+    try std.testing.expectEqual(r0, g.sim.hero.resource.current);
     try std.testing.expect(g.isAiming());
 
     // Esc path: consume the aim, spend nothing, stay in the run.
     try std.testing.expect(g.cancelAim());
     try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(t0, g.sim.turn);
-    try std.testing.expectEqual(r0, g.sim.hero.resource);
+    try std.testing.expectEqual(r0, g.sim.hero.resource.current);
     try std.testing.expect(!g.cancelAim());
     try std.testing.expectEqual(sim_mod.State.playing, g.sim.state);
     g.update(.{}, 1.0 / 60.0);
@@ -1993,10 +1993,10 @@ test "run game: cancel and invalid confirms never spend a turn or resource" {
     try std.testing.expect(!g.hud_state.aim.valid);
     try std.testing.expectEqualStrings("超出范围", g.hud_state.aim.reason);
     var turn = g.sim.turn;
-    var res = g.sim.hero.resource;
+    var res = g.sim.hero.resource.current;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expectEqual(turn, g.sim.turn);
-    try std.testing.expectEqual(res, g.sim.hero.resource);
+    try std.testing.expectEqual(res, g.sim.hero.resource.current);
     try std.testing.expect(g.isAiming());
 
     // Wall between hero and target: LOS blocks confirmation.
@@ -2018,10 +2018,10 @@ test "run game: cancel and invalid confirms never spend a turn or resource" {
     try std.testing.expect(!g.hud_state.aim.valid);
     try std.testing.expectEqualStrings("视线受阻", g.hud_state.aim.reason);
     turn = g.sim.turn;
-    res = g.sim.hero.resource;
+    res = g.sim.hero.resource.current;
     g.update(.{ .talent = 1 }, 1.0 / 60.0);
     try std.testing.expectEqual(turn, g.sim.turn);
-    try std.testing.expectEqual(res, g.sim.hero.resource);
+    try std.testing.expectEqual(res, g.sim.hero.resource.current);
 
     // Insufficient resource: refuse to enter aim at all.
     g.restart();
@@ -2031,14 +2031,14 @@ test "run game: cancel and invalid confirms never spend a turn or resource" {
         if (g.sim.isBlocked(p.x, p.y)) continue;
         if (placeGameEnemyAt(g, p, "骷髅兵")) break;
     }
-    g.sim.hero.resource = 0;
+    g.sim.hero.resource.current = 0;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expect(!g.isAiming());
     turn = g.sim.turn;
-    res = g.sim.hero.resource;
+    res = g.sim.hero.resource.current;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expectEqual(turn, g.sim.turn);
-    try std.testing.expectEqual(res, g.sim.hero.resource);
+    try std.testing.expectEqual(res, g.sim.hero.resource.current);
 }
 
 test "run game: untargeted talents still release immediately without aim" {
@@ -2051,8 +2051,8 @@ test "run game: untargeted talents still release immediately without aim" {
     g.update(.{ .talent = 2 }, 1.0 / 60.0);
     try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(turn + 1, g.sim.turn);
-    try std.testing.expect(g.sim.hero.cooldowns[2] > 0);
-    try std.testing.expect(g.sim.hero.buff_turns > 0);
+    try std.testing.expect(g.sim.hero.talents.cooldowns[2] > 0);
+    try std.testing.expect(g.sim.hero.status.buff_turns > 0);
 }
 
 test "run game: save/load round-trips the sim and gear" {
@@ -2069,17 +2069,17 @@ test "run game: save/load round-trips the sim and gear" {
     defer g.destroy();
     g.started = true;
     _ = g.sim.wait();
-    g.sim.hero.hp = 77;
+    g.sim.hero.vitals.hp = 77;
     if (g.content.items.len == 0) return error.SkipZigTest;
     if (!g.inventory.pickup(0)) return error.SkipZigTest;
     const turn = g.sim.turn;
     const rng_state = g.loot_rng.s;
     g.saveRun(io, sim_path, gear_path);
 
-    g.sim.hero.hp = 1;
+    g.sim.hero.vitals.hp = 1;
     g.inventory = items_mod.Inventory.init();
     g.loadRun(io, sim_path, gear_path);
-    try std.testing.expectEqual(@as(f32, 77), g.sim.hero.hp);
+    try std.testing.expectEqual(@as(f32, 77), g.sim.hero.vitals.hp);
     try std.testing.expectEqual(turn, g.sim.turn);
     try std.testing.expectEqual(@as(usize, 1), g.inventory.len);
     try std.testing.expect(std.meta.eql(rng_state, g.loot_rng.s));
@@ -2126,11 +2126,11 @@ test "run game: aim refuses cooldown/resource-blocked talents" {
     const gpa = std.testing.allocator;
     const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
     defer g.destroy();
-    g.sim.hero.cooldowns[0] = 2;
+    g.sim.hero.talents.cooldowns[0] = 2;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expect(!g.isAiming());
-    g.sim.hero.cooldowns[0] = 0;
-    g.sim.hero.resource = 0;
+    g.sim.hero.talents.cooldowns[0] = 0;
+    g.sim.hero.resource.current = 0;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expect(!g.isAiming());
 }
@@ -2176,20 +2176,20 @@ test "run game: autosave history rotates and loads" {
     defer gpa.free(auto_tmp);
     g.auto_files = .{ auto1, auto2, auto3 };
     g.auto_tmp_file = auto_tmp;
-    const hp0 = g.sim.hero.hp;
+    const hp0 = g.sim.hero.vitals.hp;
     g.autosave_pending = true;
     g.flushAutosave(io);
-    g.sim.hero.hp = hp0 - 10;
+    g.sim.hero.vitals.hp = hp0 - 10;
     g.autosave_pending = true;
     g.flushAutosave(io);
-    g.sim.hero.hp = hp0 - 20;
+    g.sim.hero.vitals.hp = hp0 - 20;
     g.autosave_pending = true;
     g.flushAutosave(io);
-    g.sim.hero.hp = 1;
+    g.sim.hero.vitals.hp = 1;
     g.loadAutoSlot(io, 0);
-    try std.testing.expectApproxEqAbs(hp0 - 20, g.sim.hero.hp, 0.01);
+    try std.testing.expectApproxEqAbs(hp0 - 20, g.sim.hero.vitals.hp, 0.01);
     g.loadAutoSlot(io, 2);
-    try std.testing.expectApproxEqAbs(hp0, g.sim.hero.hp, 0.01);
+    try std.testing.expectApproxEqAbs(hp0, g.sim.hero.vitals.hp, 0.01);
     g.openAutoMenu(io);
     try std.testing.expect(!std.mem.eql(u8, g.slot_labels[0], "空"));
     try std.testing.expect(!std.mem.eql(u8, g.slot_labels[2], "空"));
@@ -2212,11 +2212,11 @@ test "run game: slots fall back to legacy run+gear pair" {
     g.slot_runs[0] = run_path;
     g.slot_gears[0] = gear_path;
     g.slot_files[0] = missing;
-    const hp = g.sim.hero.hp;
+    const hp = g.sim.hero.vitals.hp;
     g.saveRun(io, run_path, gear_path);
-    g.sim.hero.hp = 1;
+    g.sim.hero.vitals.hp = 1;
     g.loadSlot(io, 0);
-    try std.testing.expectApproxEqAbs(hp, g.sim.hero.hp, 0.01);
+    try std.testing.expectApproxEqAbs(hp, g.sim.hero.vitals.hp, 0.01);
 }
 
 test "run game: slots save metadata and load" {
@@ -2236,12 +2236,12 @@ test "run game: slots save metadata and load" {
     g.slot_runs[0] = run_path;
     g.slot_gears[0] = gear_path;
     g.slot_files[0] = bundle_path;
-    const hp = g.sim.hero.hp;
+    const hp = g.sim.hero.vitals.hp;
     g.saveSlot(io, 0);
     try std.testing.expect(!std.mem.eql(u8, g.slot_labels[0], "空"));
-    g.sim.hero.hp = 1;
+    g.sim.hero.vitals.hp = 1;
     g.loadSlot(io, 0);
-    try std.testing.expectApproxEqAbs(hp, g.sim.hero.hp, 0.01);
+    try std.testing.expectApproxEqAbs(hp, g.sim.hero.vitals.hp, 0.01);
 }
 
 test "run game: initiative shows the player and fastest enemy" {
@@ -2272,11 +2272,11 @@ test "run game: character panel spends a pending attribute point" {
     defer g.destroy();
     g.started = true;
     g.panel = .character;
-    g.sim.hero.pending_points = 1;
-    const str = g.sim.hero.stats.strength;
+    g.sim.hero.progression.pending_points = 1;
+    const str = g.sim.hero.sheet.stats.strength;
     g.update(.{ .stat = 0 }, 1.0 / 60.0);
-    try std.testing.expectEqual(str + 1, g.sim.hero.stats.strength);
-    try std.testing.expectEqual(@as(u8, 0), g.sim.hero.pending_points);
+    try std.testing.expectEqual(str + 1, g.sim.hero.sheet.stats.strength);
+    try std.testing.expectEqual(@as(u8, 0), g.sim.hero.progression.pending_points);
 }
 
 test "run game: presentation locks input during enemy phase" {
@@ -2343,5 +2343,5 @@ test "run game: mouse click casts fireball on a ground cell" {
     g.update(.{ .mouse_x = p.x, .mouse_y = p.y, .click = true }, 1.0 / 60.0);
     try std.testing.expect(!g.isAiming());
     try std.testing.expectEqual(turn + 1, g.sim.turn);
-    try std.testing.expect(g.sim.hero.cooldowns[0] > 0);
+    try std.testing.expect(g.sim.hero.talents.cooldowns[0] > 0);
 }

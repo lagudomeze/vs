@@ -185,8 +185,8 @@ fn snapshot(s: *const run.Sim) Snapshot {
         .turn = s.turn,
         .floor = s.floor,
         .state = s.state,
-        .hp = s.hero.hp,
-        .resource = s.hero.resource,
+        .hp = s.hero.vitals.hp,
+        .resource = s.hero.resource.current,
         .pos = s.hero.pos,
         .enemy_count = s.enemy_count,
         .first_enemy = first,
@@ -199,10 +199,10 @@ fn checkAfterAction(s: *const run.Sim, before: Snapshot) !void {
     if (s.turn < before.turn) return error.TurnWentBackwards;
     if (s.floor < before.floor) return error.FloorWentBackwards;
     if (s.floor > before.floor + 1) return error.FloorSkipped;
-    if (s.hero.hp < 0) return error.NegativeHp;
-    if (s.hero.hp > s.hero.hp_max + 0.001) return error.HpAboveMax;
-    if (s.hero.resource < -0.001) return error.NegativeResource;
-    if (s.hero.resource > s.hero.resource_max + 0.001) return error.ResourceAboveMax;
+    if (s.hero.vitals.hp < 0) return error.NegativeHp;
+    if (s.hero.vitals.hp > s.hero.vitals.hp_max + 0.001) return error.HpAboveMax;
+    if (s.hero.resource.current < -0.001) return error.NegativeResource;
+    if (s.hero.resource.current > s.hero.resource.max + 0.001) return error.ResourceAboveMax;
     try checkEnemies(s);
 
     switch (s.state) {
@@ -211,13 +211,13 @@ fn checkAfterAction(s: *const run.Sim, before: Snapshot) !void {
             if (s.turn != before.turn + 1) return error.TurnDidNotAdvance;
         },
         .dead => {
-            if (s.hero.hp > 0) return error.DeadWithPositiveHp;
+            if (s.hero.vitals.hp > 0) return error.DeadWithPositiveHp;
             // A trap can kill during the move itself, before endTurn advances
             // the counter; terminal actions may therefore leave the turn alone.
             if (s.turn != before.turn and s.turn != before.turn + 1) return error.DeadTurnNotAdvanced;
         },
         .victory => {
-            if (s.hero.hp <= 0) return error.VictoryWhileDead;
+            if (s.hero.vitals.hp <= 0) return error.VictoryWhileDead;
             if (s.floor < 3) return error.VictoryBelowFloor3;
             // Victory can be triggered by a kill (turn unchanged) or by the
             // floor-3 stairs transition (nextFloor also leaves turn alone).
@@ -233,7 +233,7 @@ const Action = enum { bump, wait, talent, move };
 fn autoStep(s: *run.Sim) Action {
     s.auto_allocate = true;
     defer s.auto_allocate = false;
-    while (s.hero.pending_points > 0) {
+    while (s.hero.progression.pending_points > 0) {
         if (!s.spendPoint(s.mainStatIndex())) break;
     }
     const hero = s.hero.pos;
@@ -263,19 +263,19 @@ fn autoStep(s: *run.Sim) Action {
         }
     }
 
-    if (s.hero.hp < s.hero.hp_max * 0.35 and s.nearestEnemy(4) == null) {
+    if (s.hero.vitals.hp < s.hero.vitals.hp_max * 0.35 and s.nearestEnemy(4) == null) {
         if (s.wait()) return .wait;
     }
 
     if (s.nearestEnemy(5) != null) {
-        if (s.class == .warrior and s.hero.buff_turns == 0 and
-            s.hero.cooldowns[2] == 0 and s.hero.resource >= 20)
+        if (s.class == .warrior and s.hero.status.buff_turns == 0 and
+            s.hero.talents.cooldowns[2] == 0 and s.hero.resource.current >= 20)
         {
             if (s.useTalent(2)) return .talent;
         }
         if (s.useTalent(0)) return .talent;
         if (s.useTalent(1)) return .talent;
-        if (s.hero.hp < s.hero.hp_max * 0.4 and s.useTalent(2)) return .talent;
+        if (s.hero.vitals.hp < s.hero.vitals.hp_max * 0.4 and s.useTalent(2)) return .talent;
     }
 
     if (s.map.astarToOccupiedGoal(
@@ -452,8 +452,8 @@ pub fn runAuto(
             &equipment_equipped,
         );
         // Equipping can change hp_max and clamp hp; state/turn never change.
-        if (s.hero.hp < 0 or s.hero.hp > s.hero.hp_max + 0.001) return error.HpOutOfRangeAfterLoot;
-        if (s.hero.resource < -0.001 or s.hero.resource > s.hero.resource_max + 0.001) {
+        if (s.hero.vitals.hp < 0 or s.hero.vitals.hp > s.hero.vitals.hp_max + 0.001) return error.HpOutOfRangeAfterLoot;
+        if (s.hero.resource.current < -0.001 or s.hero.resource.current > s.hero.resource.max + 0.001) {
             return error.ResourceOutOfRangeAfterLoot;
         }
     }
@@ -471,9 +471,9 @@ pub fn runAuto(
         .items_dropped = items_dropped,
         .equipment_dropped = equipment_dropped,
         .equipment_equipped = equipment_equipped,
-        .hp = s.hero.hp,
-        .hp_max = s.hero.hp_max,
-        .level = s.hero.level,
+        .hp = s.hero.vitals.hp,
+        .hp_max = s.hero.vitals.hp_max,
+        .level = s.hero.progression.level,
         .timed_out = s.state == .playing,
         .victory_by_stairs = s.state == .victory and s.floor >= 4,
         .final_pos = s.hero.pos,
@@ -680,7 +680,7 @@ test "qa2: illegal moves never consume a turn or run the enemy phase" {
         try std.testing.expect(!s.move(0, 1000));
         try std.testing.expect(!s.move(0, 0));
         try std.testing.expectEqual(before.turn, s.turn);
-        try std.testing.expectEqual(before.hp, s.hero.hp);
+        try std.testing.expectEqual(before.hp, s.hero.vitals.hp);
         try std.testing.expectEqual(before.state, s.state);
         try std.testing.expect(samePos(before.pos, s.hero.pos));
         try std.testing.expect(std.meta.eql(before.first_enemy, firstAliveEnemy(&s)));
@@ -689,12 +689,12 @@ test "qa2: illegal moves never consume a turn or run the enemy phase" {
         var wall_bumped = false;
         for (dirs4) |d| {
             if (s.isBlocked(hero.x + d[0], hero.y + d[1])) {
-                const hp = s.hero.hp;
+                const hp = s.hero.vitals.hp;
                 const turn = s.turn;
                 const enemy = firstAliveEnemy(&s);
                 try std.testing.expect(!s.move(d[0], d[1]));
                 try std.testing.expectEqual(turn, s.turn);
-                try std.testing.expectEqual(hp, s.hero.hp);
+                try std.testing.expectEqual(hp, s.hero.vitals.hp);
                 try std.testing.expect(std.meta.eql(enemy, firstAliveEnemy(&s)));
                 wall_bumped = true;
                 break;
@@ -705,12 +705,12 @@ test "qa2: illegal moves never consume a turn or run the enemy phase" {
         // Terminal states reject every action without spending a turn.
         s.state = .victory;
         const vt = s.turn;
-        const vhp = s.hero.hp;
+        const vhp = s.hero.vitals.hp;
         try std.testing.expect(!s.move(1, 0));
         try std.testing.expect(!s.wait());
         try std.testing.expect(!s.useTalent(0));
         try std.testing.expectEqual(vt, s.turn);
-        try std.testing.expectEqual(vhp, s.hero.hp);
+        try std.testing.expectEqual(vhp, s.hero.vitals.hp);
         s.state = .dead;
         try std.testing.expect(!s.move(1, 0));
         try std.testing.expect(!s.wait());

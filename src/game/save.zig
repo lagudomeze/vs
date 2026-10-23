@@ -274,18 +274,18 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
     }
 
     const hero = sim.hero;
-    if (!std.math.isFinite(hero.hp) or !std.math.isFinite(hero.hp_max) or
-        !std.math.isFinite(hero.resource) or !std.math.isFinite(hero.resource_max) or
-        !std.math.isFinite(hero.attack) or !std.math.isFinite(hero.armor) or
-        !std.math.isFinite(hero.crit) or !std.math.isFinite(hero.res_per_turn) or
-        !std.math.isFinite(hero.buff_pct) or !allFinite(&hero.eff_stats) or
+    if (!std.math.isFinite(hero.vitals.hp) or !std.math.isFinite(hero.vitals.hp_max) or
+        !std.math.isFinite(hero.resource.current) or !std.math.isFinite(hero.resource.max) or
+        !std.math.isFinite(hero.combat.attack) or !std.math.isFinite(hero.combat.armor) or
+        !std.math.isFinite(hero.combat.crit) or !std.math.isFinite(hero.resource.per_turn) or
+        !std.math.isFinite(hero.status.buff_pct) or !allFinite(&hero.sheet.eff_stats) or
         !statsFinite(.{
-            .strength = hero.stats.strength,
-            .agility = hero.stats.agility,
-            .constitution = hero.stats.constitution,
-            .perception = hero.stats.perception,
-            .magic = hero.stats.magic,
-            .will = hero.stats.will,
+            .strength = hero.sheet.stats.strength,
+            .agility = hero.sheet.stats.agility,
+            .constitution = hero.sheet.stats.constitution,
+            .perception = hero.sheet.stats.perception,
+            .magic = hero.sheet.stats.magic,
+            .will = hero.sheet.stats.will,
         }))
     {
         return error.InvalidState;
@@ -330,29 +330,29 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .pos = savePos(hero.pos),
             .last_pos = savePos(hero.last_pos),
             .stats = .{
-                .strength = hero.stats.strength,
-                .agility = hero.stats.agility,
-                .constitution = hero.stats.constitution,
-                .perception = hero.stats.perception,
-                .magic = hero.stats.magic,
-                .will = hero.stats.will,
+                .strength = hero.sheet.stats.strength,
+                .agility = hero.sheet.stats.agility,
+                .constitution = hero.sheet.stats.constitution,
+                .perception = hero.sheet.stats.perception,
+                .magic = hero.sheet.stats.magic,
+                .will = hero.sheet.stats.will,
             },
-            .hp = hero.hp,
-            .hp_max = hero.hp_max,
-            .resource = hero.resource,
-            .resource_max = hero.resource_max,
-            .attack = hero.attack,
-            .armor = hero.armor,
-            .crit = hero.crit,
-            .speed = hero.speed,
-            .res_per_turn = hero.res_per_turn,
-            .level = hero.level,
-            .xp = hero.xp,
-            .pending_points = hero.pending_points,
-            .cooldowns = hero.cooldowns,
-            .buff_turns = hero.buff_turns,
-            .buff_pct = hero.buff_pct,
-            .eff_stats = hero.eff_stats,
+            .hp = hero.vitals.hp,
+            .hp_max = hero.vitals.hp_max,
+            .resource = hero.resource.current,
+            .resource_max = hero.resource.max,
+            .attack = hero.combat.attack,
+            .armor = hero.combat.armor,
+            .crit = hero.combat.crit,
+            .speed = hero.combat.speed,
+            .res_per_turn = hero.resource.per_turn,
+            .level = hero.progression.level,
+            .xp = hero.progression.xp,
+            .pending_points = hero.progression.pending_points,
+            .cooldowns = hero.talents.cooldowns,
+            .buff_turns = hero.status.buff_turns,
+            .buff_pct = hero.status.buff_pct,
+            .eff_stats = hero.sheet.eff_stats,
         },
         .enemies = enemy_buf[0..sim.enemy_count],
         .map = .{
@@ -518,30 +518,23 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
             .class = root.class,
             .pos = loadPos(h.pos),
             .last_pos = loadPos(h.last_pos),
-            .stats = .{
-                .strength = h.stats.strength,
-                .agility = h.stats.agility,
-                .constitution = h.stats.constitution,
-                .perception = h.stats.perception,
-                .magic = h.stats.magic,
-                .will = h.stats.will,
+            .sheet = .{
+                .stats = .{
+                    .strength = h.stats.strength,
+                    .agility = h.stats.agility,
+                    .constitution = h.stats.constitution,
+                    .perception = h.stats.perception,
+                    .magic = h.stats.magic,
+                    .will = h.stats.will,
+                },
+                .eff_stats = h.eff_stats,
             },
-            .hp = h.hp,
-            .hp_max = h.hp_max,
-            .resource = h.resource,
-            .resource_max = h.resource_max,
-            .attack = h.attack,
-            .armor = h.armor,
-            .crit = h.crit,
-            .speed = h.speed,
-            .res_per_turn = h.res_per_turn,
-            .level = h.level,
-            .xp = h.xp,
-            .pending_points = h.pending_points,
-            .cooldowns = h.cooldowns,
-            .buff_turns = h.buff_turns,
-            .buff_pct = h.buff_pct,
-            .eff_stats = h.eff_stats,
+            .vitals = .{ .hp = h.hp, .hp_max = h.hp_max },
+            .resource = .{ .current = h.resource, .max = h.resource_max, .per_turn = h.res_per_turn },
+            .combat = .{ .attack = h.attack, .armor = h.armor, .crit = h.crit, .speed = h.speed },
+            .progression = .{ .level = h.level, .xp = h.xp, .pending_points = h.pending_points },
+            .status = .{ .buff_turns = h.buff_turns, .buff_pct = h.buff_pct },
+            .talents = .{ .cooldowns = h.cooldowns },
         },
     };
     sim.floor = root.floor;
@@ -809,7 +802,7 @@ fn patchedSave(alloc: std.mem.Allocator, bytes: []const u8, patch: anytype) ![]u
 test "save: fresh run round-trips (short log, no events)" {
     const alloc = testing.allocator;
     var sim = Sim.init(4242, .warrior);
-    sim.hero.pending_points = 2;
+    sim.hero.progression.pending_points = 2;
     try testing.expect(sim.log_total < log_lines_max);
 
     const bytes = try saveAlloc(alloc, &sim);
@@ -1055,7 +1048,7 @@ test "save: dead run with no enemies round-trips" {
     var sim = Sim.init(8080, .chronomancer);
     sim.enemy_count = 0;
     sim.enemies = @splat(.{});
-    sim.hero.hp = 0;
+    sim.hero.vitals.hp = 0;
     sim.state = .dead;
     sim.aoe_armed = false;
 

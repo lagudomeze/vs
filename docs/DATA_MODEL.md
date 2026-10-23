@@ -19,8 +19,8 @@
 1. 一个 ItemDef 同时表达装备/消耗品/任务物品，靠 null 字段区分。
 2. SkillDef 同时表达伤害/增益/闪现/眩晕/回溯，17 个字段里大部分只对一种效果有意义。
 3. EnemyDef 混合身份、战斗、AI、掉落、生成规则。
-4. Hero/Enemy 是 20/13 个字段的聚合，不是组件。
-5. zflecs 的 Hero/Enemy 组件同样是 20/12 个字段的聚合，只是把聚合放进了 ECS。
+4. ~~Hero/Enemy 是 20/13 个字段的聚合~~；两者已拆为组件聚合（Hero: Sheet/Vitals/Resource/Combat/Progression/Status/Talents，Enemy: Identity/Vitals/Combat/Status/Reward）。
+5. zflecs 的渲染 Hero/Enemy 组件仍是 20/12 字段聚合，只是把聚合放进了 ECS；Sim 侧已组件化。
 
 ## 2. 逐项审计
 
@@ -176,14 +176,19 @@ pub const EnemyDef = struct {
 
 ### Hero / Enemy（运行态）
 
-run_sim.Hero 有 20 个字段：
+run_sim.Hero 已改为组件聚合（class/pos 仍为身份与位置）：
 
 ~~~text
-class, pos, last_pos, stats,
-hp, hp_max, resource, resource_max,
-attack, armor, crit, speed, res_per_turn,
-level, xp, pending_points,
-cooldowns, buff_turns, buff_pct, eff_stats
+Hero {
+    class, pos, last_pos,
+    sheet:       { stats[6], eff_stats[6] },
+    vitals:      { hp, hp_max },
+    resource:    { current, max, per_turn },
+    combat:      { attack, armor, crit, speed },
+    progression: { level, xp, pending_points },
+    status:      { buff_turns, buff_pct },
+    talents:     { cooldowns[3] },
+}
 ~~~
 
 run_sim.Enemy 已改为组件聚合（Identity / Position / Vitals / Combat / Status / Reward）；旧 13 字段视图只作历史说明：
@@ -280,14 +285,14 @@ ECS 组件是“每个实体都有一份”的状态。ItemDef/SkillDef/EnemyDef
 
 ### Phase 2：Actor 组件化（行为不变）
 
-5. Hero -> 组件结构（待做）；Sim 保留 Hero 聚合作为兼容视图。
+5. ✅ Hero -> 组件结构（Sheet/Vitals/Resource/Combat/Progression/Status/Talents）；位置与职业保留。
 6. ✅ Enemy -> 组件结构（Identity/Vitals/Combat/Status/Reward）；Sim 使用 content registry。
 7. recompute/damage/status/AI 系统改为接收组件指针。
 
 ### Phase 3：实例与 ECS
 
 8. 只有需要词缀/耐久/附魔时，才引入 ItemInstance { def_id, affixes, durability }；Inventory 从 ItemId[] 改为 ItemInstance[]。
-9. 渲染 ECS 拆分 Hero/Enemy 聚合；Transform/Renderable/Light 由 Sim 投影。
+9. 渲染 ECS 拆分 Hero/Enemy 聚合（仍待做）；Transform/Renderable/Light 由 Sim 投影。
 10. 如果 Sim 出现多系统查询需求，再加 zflecs adapter；否则保持纯组件数组。
 
 ## 7. 验收标准
