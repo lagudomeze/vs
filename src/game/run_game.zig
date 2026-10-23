@@ -1809,9 +1809,13 @@ pub const RunGame = struct {
             if (!self.sim.chest_alive[i]) continue;
             const name = if (self.models.indexOf("dungeon_chest")) |_| "dungeon_chest" else "chest";
             if (self.models.indexOf(name)) |ci| {
-                self.renderer.drawModel(self.models.at(ci), null, math.Mat4.compose(tilePos(self.sim.chests[i].x, self.sim.chests[i].y), 0, 0, 0, 0.72), .{ .tint = 0xffffff, .id = @intCast(60 + i) });
+                const tint: u32 = if (self.sim.chest_cursed[i]) 0xe05a5a else 0xffffff;
+                self.renderer.drawModel(self.models.at(ci), null, math.Mat4.compose(tilePos(self.sim.chests[i].x, self.sim.chests[i].y), 0, 0, 0, 0.72), .{ .tint = tint, .id = @intCast(60 + i) });
             } else {
                 self.renderer.drawGlow(tilePos(self.sim.chests[i].x, self.sim.chests[i].y).add(math.Vec3.init(0, 0.2, 0)), 0.25, palette.gold_light, 0.8);
+            }
+            if (self.sim.chest_cursed[i]) {
+                self.renderer.drawGlow(tilePos(self.sim.chests[i].x, self.sim.chests[i].y).add(math.Vec3.init(0, 0.25, 0)), 0.35, palette.red, 0.55);
             }
         }
         // traps
@@ -2107,7 +2111,7 @@ pub const RunGame = struct {
         while (ci < self.sim.chests.len) : (ci += 1) {
             if (!self.sim.chest_alive[ci]) continue;
             const cp = self.sim.chests[ci];
-            self.plotMinimap(cp.x, cp.y, 3);
+            self.plotMinimap(cp.x, cp.y, if (self.sim.chest_cursed[ci]) 7 else 3);
         }
         var ei: usize = 0;
         while (ei < self.sim.enemy_count) : (ei += 1) {

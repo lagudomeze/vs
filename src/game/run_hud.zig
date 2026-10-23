@@ -346,6 +346,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                     4 => palette.cream,
                     5 => palette.red,
                     6 => palette.cyan_light,
+                    7 => palette.red,
                     else => palette.deep,
                 };
                 r.fillRect(mx0 + @as(i32, @intCast(mx)) * 2, my0 + @as(i32, @intCast(my)) * 2, 2, 2, c);
