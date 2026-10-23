@@ -1336,8 +1336,9 @@ pub const TomeGame = struct {
                 var ibuf: [24]u8 = undefined;
                 const label = switch (intent.kind) {
                     .aoe => std.fmt.bufPrint(&ibuf, "深渊斩 -{d:.0}", .{intent.damage_preview}) catch "",
-                    .melee, .ranged => std.fmt.bufPrint(&ibuf, "-{d:.0}", .{intent.damage_preview}) catch "",
-                    .chase => "!",
+                    .melee => std.fmt.bufPrint(&ibuf, "攻击 -{d:.0}", .{intent.damage_preview}) catch "",
+                    .ranged => std.fmt.bufPrint(&ibuf, "远程 -{d:.0}", .{intent.damage_preview}) catch "",
+                    .chase => "追击",
                     .wait => "晕",
                 };
                 if (label.len > 0) {
@@ -1522,18 +1523,33 @@ pub const TomeGame = struct {
         }
     }
 
-    fn fastestEnemyName(self: *const TomeGame) []const u8 {
-        var best: ?usize = null;
+    fn shortEnemyName(name: []const u8) []const u8 {
+        if (name.len >= 6) return name[0..6];
+        return name;
+    }
+
+    fn initiativeNames(self: *const TomeGame) [3][]const u8 {
+        var names = [3][]const u8{ "玩家", "", "" };
+        var first: ?usize = null;
+        var second: ?usize = null;
         var i: usize = 0;
         while (i < self.sim.enemy_count) : (i += 1) {
             const e = self.sim.enemies[i];
             if (!e.alive) continue;
-            if (best == null or e.speed > self.sim.enemies[best.?].speed) best = i;
+            if (first == null or e.speed > self.sim.enemies[first.?].speed) {
+                second = first;
+                first = i;
+            } else if (second == null or e.speed > self.sim.enemies[second.?].speed) {
+                second = i;
+            }
         }
-        return if (best) |idx| self.sim.enemies[idx].name else "";
+        if (first) |idx| names[1] = shortEnemyName(self.sim.enemies[idx].name);
+        if (second) |idx| names[2] = shortEnemyName(self.sim.enemies[idx].name);
+        return names;
     }
 
     fn fillHudState(self: *TomeGame) void {
+        const initiative = self.initiativeNames();
         self.hud_state = .{
             .menu = !self.started,
             .help = self.show_help,
@@ -1553,8 +1569,8 @@ pub const TomeGame = struct {
             .enemy_phase = self.sim.enemy_phase_pending,
             .slot_mode = @backingInt(self.slot_menu),
             .slot_labels = self.slot_labels,
-            .initiative = .{ "玩家", self.fastestEnemyName() },
-            .initiative_count = if (self.fastestEnemyName().len > 0) 2 else 1,
+            .initiative = initiative,
+            .initiative_count = if (initiative[2].len > 0) 3 else if (initiative[1].len > 0) 2 else 1,
             .kills = self.sim.kills,
             .enemies_left = @intCast(self.sim.enemy_count - blk: {
                 var n: u32 = 0;
@@ -2109,15 +2125,17 @@ test "tome game: initiative shows the player and fastest enemy" {
     defer g.destroy();
     g.fillHudState();
     try std.testing.expectEqualStrings("玩家", g.hud_state.initiative[0]);
-    var best: ?usize = null;
+    var alive: usize = 0;
     var i: usize = 0;
     while (i < g.sim.enemy_count) : (i += 1) {
-        if (!g.sim.enemies[i].alive) continue;
-        if (best == null or g.sim.enemies[i].speed > g.sim.enemies[best.?].speed) best = i;
+        if (g.sim.enemies[i].alive) alive += 1;
     }
-    if (best) |idx| {
+    if (alive >= 2) {
+        try std.testing.expectEqual(@as(u8, 3), g.hud_state.initiative_count);
+        try std.testing.expect(g.hud_state.initiative[1].len > 0);
+        try std.testing.expect(g.hud_state.initiative[2].len > 0);
+    } else if (alive == 1) {
         try std.testing.expectEqual(@as(u8, 2), g.hud_state.initiative_count);
-        try std.testing.expectEqualStrings(g.sim.enemies[idx].name, g.hud_state.initiative[1]);
     } else {
         try std.testing.expectEqual(@as(u8, 1), g.hud_state.initiative_count);
     }
