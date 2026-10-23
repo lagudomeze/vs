@@ -21,11 +21,13 @@ pub const Affix = enum(u8) { none, swift, armored, vampiric };
 pub const Difficulty = enum(u8) {
     normal,
     hard,
+    easy,
 
     pub fn label(self: Difficulty) []const u8 {
         return switch (self) {
             .normal => "普通",
             .hard => "困难",
+            .easy => "简单",
         };
     }
 
@@ -33,6 +35,7 @@ pub const Difficulty = enum(u8) {
         return switch (self) {
             .normal => 1.0,
             .hard => 1.20,
+            .easy => 0.80,
         };
     }
 
@@ -40,6 +43,15 @@ pub const Difficulty = enum(u8) {
         return switch (self) {
             .normal => 1.0,
             .hard => 1.10,
+            .easy => 0.90,
+        };
+    }
+
+    pub fn next(self: Difficulty) Difficulty {
+        return switch (self) {
+            .normal => .hard,
+            .hard => .easy,
+            .easy => .normal,
         };
     }
 };

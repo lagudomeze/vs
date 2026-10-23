@@ -379,7 +379,7 @@ pub const RunGame = struct {
     }
 
     pub fn toggleDifficulty(self: *RunGame) void {
-        self.setDifficulty(if (self.difficulty == .normal) .hard else .normal);
+        self.setDifficulty(self.difficulty.next());
     }
 
     fn classOf(self: *const RunGame) attributes.Class {
@@ -1946,6 +1946,9 @@ test "run game: menu toggles difficulty and restarts the preview" {
     try std.testing.expectEqual(sim_mod.Difficulty.hard, g.difficulty);
     try std.testing.expectEqual(@as(u8, 1), g.hud_state.difficulty);
     try std.testing.expectEqual(sim_mod.Difficulty.hard, g.sim.difficulty);
+    g.update(.{ .difficulty = true }, 1.0 / 60.0);
+    try std.testing.expectEqual(sim_mod.Difficulty.easy, g.difficulty);
+    try std.testing.expectEqual(@as(u8, 2), g.hud_state.difficulty);
 }
 
 test "run game: shrine panel consumes a choice once" {
