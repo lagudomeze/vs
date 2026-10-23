@@ -1439,6 +1439,10 @@ pub const RunGame = struct {
                     const bx = std.math.clamp(x - renderer.Renderer.textWidth("灼", 1), 2, w - 2);
                     self.renderer.drawText(bx, y + 15, "灼", palette.red, 1, true);
                 }
+                if (self.sim.enemies[i].status.stun_immune) {
+                    const bx = std.math.clamp(x - renderer.Renderer.textWidth("BOSS", 1), 2, w - 2);
+                    self.renderer.drawText(bx, y + 15, "BOSS", palette.red, 1, true);
+                }
             }
             if (target != null and target.? == i) {
                 const aiming = self.aim_talent != null;
