@@ -1,4 +1,4 @@
-# 存档模块（RunState v1）
+# 存档模块（RunState v2）
 
 纯逻辑的 ToME 存档/读档，位于 `src/game/save.zig`；窗口已接入 **F5 存档 / F9 读档槽位**（`TomeGame.saveSlot/loadSlot`），装备侧车在 `src/game/gear_save.zig`。
 
@@ -45,7 +45,7 @@ var from_disk = try save.loadFile(io, alloc, "saves/tome.json");
 
 - `format` / `version` 必须匹配；JSON 之后不允许再有 token（TrailingData）。
 - 枚举（class、state）由 `std.json` 按 tag 名校验；未知 tag = `InvalidEnumTag`。
-- 所有坐标必须在 13×13 内；hero、敌人、stairs、entrance、活着的宝箱/陷阱必须落在可行走格。
+- 所有坐标必须在 31×31 内；hero、敌人、stairs、entrance、活着的宝箱/陷阱必须落在可行走格。
 - 地图外圈必须封闭；活着的宝箱/陷阱不能重叠、不能压楼梯/入口；敌人 kind 与 name 必须成对匹配。
 - 数值范围：hp∈[0,hp_max]、resource∈[0,resource_max]、crit∈[0,1]、level∈[1,50]、speed∈[1,1000]；所有浮点必须有限。
 - 长度：敌人 ≤ 12、日志 ≤ 6 条且每行 ≤ 64 字节、输入 ≤ 256 KB。
@@ -72,7 +72,7 @@ var from_disk = try save.loadFile(io, alloc, "saves/tome.json");
 - **F5**：打开存档槽位面板；按 1/2/3 保存到对应槽，Esc 取消。
 - **F10**：打开自动档面板，1/2/3 读取最近 3 个楼层备份；下到新楼层时写入 saves/autosave1.save 并轮换 1→2→3，失败只写日志。
 - **F9**：打开读档槽位面板；按 1/2/3 读取；Esc 取消。坏档/未知物品/版本不符/空 gear 对象只写日志并保留当前局。读档后重建 mesh、视觉、HUD，清空瞄准。
-- 三个槽位：1=saves/tome-slot1.json，2=saves/slot2.save，3=saves/slot3.save；每个文件是 vx-tome-slot 容器，内含 run JSON + gear JSON，一次原子 replace。旧 tome-run/tome-gear 双文件仍可回退读取。
+- 三个槽位：1=saves/tome-slot1.json，2=saves/slot2.save，3=saves/slot3.save；每个文件是 vx-tome-slot 容器，内含 run JSON + gear JSON，一次原子 replace。旧 tome-run/tome-gear 双文件仍可回退读取，但 v1（13×13）run 会被版本校验拒绝。
 - 职业菜单底部提示 **F9 读档槽**；没有 gear 文件时按空背包读取，装备 sidecar 缺失不会阻断 Sim。
 
 实现入口：TomeGame.saveSlot/loadSlot 选槽，内部仍调用 saveRun/loadRun；src/game/gear_save.zig 有 saveFile/loadFile。

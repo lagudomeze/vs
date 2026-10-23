@@ -295,10 +295,10 @@ pub fn buildDungeon(
             const idx = row * width + col;
             if (blocked[idx]) {
                 const h = color.hashU32(@as(u32, @intCast(idx)) * 97 + 13);
-                const top = stoneColor(@intCast(h % 1000 + 17));
-                const side = color.pack(74, 79, 92);
-                try b.box(.{ .x = x, .y = 0.30, .z = z }, math.Vec3.init(0.5, 0.30, 0.5), top, side, color.pack(45, 52, 68));
-                try b.box(.{ .x = x, .y = 0.62, .z = z }, math.Vec3.init(0.5, 0.04, 0.5), color.pack(112, 120, 138), side, side);
+                const top = color.pack(52 + @as(u8, @intCast(h % 7)), 58 + @as(u8, @intCast(h % 5)), 72 + @as(u8, @intCast(h % 6)));
+                const side = color.pack(38, 43, 55);
+                try b.box(.{ .x = x, .y = 0.55, .z = z }, math.Vec3.init(0.5, 0.55, 0.5), top, side, color.pack(25, 29, 39));
+                try b.box(.{ .x = x, .y = 1.13, .z = z }, math.Vec3.init(0.5, 0.03, 0.5), color.pack(78, 88, 108), side, side);
             } else {
                 if (stairs_cell) |sc| {
                     if (col == @as(usize, @intCast(sc[0])) and row == @as(usize, @intCast(sc[1]))) continue;
@@ -324,7 +324,7 @@ pub fn buildDungeon(
             }
         }
     }
-    // grid seams: make the 13x13 cells readable under the 3D models
+    // grid seams: make the cells readable under the 3D models
     const gx0: f32 = -@as(f32, @floatFromInt(width)) * 0.5;
     const gz0: f32 = -@as(f32, @floatFromInt(height)) * 0.5;
     var gi: usize = 0;

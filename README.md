@@ -2,7 +2,7 @@
 
 **ToME4 风格回合制 Roguelike + 真 3D 模型 + 像素画风 + 固定俯视可旋转相机**
 
-选一个职业，在 13×13 的 3D 像素地牢里一格一格推进。玩家行动一次，敌人行动一次；用天赋、装备、等级和地形击败楼层守卫。画面保留真实 3D 网格、480×270 软件光栅化、64 色量化和 Bayer 抖动；玩法转向 ToME4 的回合制、格子、职业/天赋、掉落/装备和楼层推进。
+选一个职业，在 31×31 的 3D 像素地牢里一格一格推进；相机跟随主角，屏幕只显示地图局部。玩家行动一次，敌人行动一次；用天赋、装备、等级和地形击败楼层守卫。画面保留真实 3D 网格、480×270 软件光栅化、64 色量化和 Bayer 抖动；玩法转向 ToME4 的回合制、格子、职业/天赋、掉落/装备和楼层推进。
 
 ![to-me](docs/screenshots/tome_start.png)
 
@@ -11,7 +11,7 @@
 - **回合制**：玩家移动/普攻/天赋/等待后，敌人按速度依次行动；冷却、资源、状态按回合结算，不按秒。
 - **单角色 + 3 职业**：狂战士（精力）、元素法师（法力）、时空法师（悖论），每职业 3 个天赋。
 - **开局职业菜单**：窗口启动先看三张职业卡（资源、生命、定位、3 个天赋及一行效果）；按 1/2/3 选职业并进入该 seed 的地牢。`--hero` 直接开局，headless 默认跳过菜单。
-- **格子与地牢**：13×13 网格；墙/柱子/水域阻挡；撞墙不消耗回合，撞敌人 = 普攻；3 层，楼梯下一层，第 3 层 Boss；Boss 存活时楼梯被封印。
+- **格子与地牢**：31×31 网格，大于屏幕；相机跟随主角并在地图边缘夹取；墙/柱子/水域阻挡；撞墙不消耗回合，撞敌人 = 普攻；3 层，楼梯下一层，第 3 层 Boss；Boss 存活时楼梯被封印。
 - **确定性关卡**：同一 seed 生成同一层；入口、楼梯、宝箱、陷阱、敌人出生点由连通性校验；敌人用 A* 绕墙追击，远程用 LOS。
 - **升级加点**：升级获得 1 点，C 面板按 1-6 加力量/敏捷/体质/感知/魔力/意志；自动跑局自动加主属性。
 - **属性/装备/掉落**：六属性、HP/资源、攻击/护甲/暴击/速度；宝箱和击杀产出版本内物品，空槽自动装备，装备即时改变面板数值。
@@ -24,6 +24,8 @@
 - **无窗口验证**：headless 截图；自动跑局用于 QA。
 
 ![select](docs/screenshots/tome_select.png)
+
+![large map](docs/screenshots/tome_large_map.png)
 
 ![aim](docs/screenshots/tome_aim.png)
 
@@ -46,7 +48,7 @@ zig build run                  # 默认 ToME 回合制（先选职业）
 zig build test                 # 单元 + 集成测试
 zig build run -- --headless --start-menu --frames 2 --out shots/tome-select.png
 zig build run -- --headless --frames 2 --out shots/tome.png
-zig build run -- --headless --auto --frames 5000 --out shots/tome-auto.png
+zig build run -- --headless --auto --frames 30000 --out shots/tome-auto.png
 zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照）
 ~~~
 
@@ -137,8 +139,8 @@ src/
     tome_sim.zig     纯回合制模拟（无 SDL/渲染）
     tome_game.zig    3D 场景、输入、相机、动画
     tome_hud.zig     角色/楼层/目标/日志/天赋/面板
-    dungeon.zig      13×13 确定性关卡、连通性、A*、LOS
-    save.zig         RunState 存档/读档（纯逻辑，JSON v1）
+    dungeon.zig      31×31 确定性关卡、连通性、A*、LOS
+    save.zig         RunState 存档/读档（纯逻辑，JSON v2）
     attributes.zig   六属性/派生/XP
     items.zig        装备/背包/修正
     content.zig      内嵌 JSON 内容加载/校验/掉落
@@ -158,8 +160,8 @@ docs/           TOME_V1 / SAVE / ART_PASS / UX_REVIEW_TOME / screenshots
 - zig build / zig build test：13/13 steps、146/146 tests。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/tome_select.png`。
 - 职业菜单显示的 SEED 就是本局真实 seed；选择职业只按同一 seed 重开，R 重开保持职业和 seed。
-- 自动跑局（seed 12345）：三职业均可通关；狂战士约第 100 回合剩 66 HP，元素法师第 75 回合、时空法师第 84 回合。
-- QA 批量（100 seed × 3 职业，纯逻辑 bot）：通关率约 64%；狂战士 45%、元素法师 82%、时空法师 66%，0 超时/不变量违规；test-qa 80/80。
+- 大图 QA（100 seed × 3 职业，纯逻辑 bot）：通关率 62.3%（187/300）；狂战士 42%、元素法师 81%、时空法师 64%，0 超时/不变量违规；test-qa 80/80。
+- auto 是演示/巡检 bot，不保证通关；31×31 + 楼层 Boss 下可能停在 Boss 层，实际 QA 以 test-qa 为准。
 - Boss 深渊斩每 3 个敌方回合预警一次，半径 0.9 格；走出标记格即可躲开；Boss 存活时第 3 层楼梯封印。
 - 速度机制已启用：精英幽魂 150（每 2 回合多一次行动），石魔像 70（每 2 回合跳过行动）。
 - 天赋瞄准/确认、F5/F9 存档读档均有单元测试；存档格式见 [docs/SAVE.md](docs/SAVE.md)。

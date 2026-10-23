@@ -5,8 +5,8 @@ const dungeon_mod = @import("dungeon.zig");
 const attributes = @import("attributes.zig");
 const intent_mod = @import("intent.zig");
 
-pub const grid_w = 13;
-pub const grid_h = 13;
+pub const grid_w = dungeon_mod.size;
+pub const grid_h = dungeon_mod.size;
 pub const max_enemies = 12;
 
 pub const Class = enum(u8) { warrior, mage, chronomancer };
@@ -376,7 +376,7 @@ pub const Sim = struct {
 
     pub fn isBlocked(self: *const Sim, x: i32, y: i32) bool {
         if (x < 0 or y < 0 or x >= grid_w or y >= grid_h) return true;
-        return self.blocked[@intCast(y * grid_w + x)];
+        return self.blocked[@as(usize, @intCast(y)) * grid_w + @as(usize, @intCast(x))];
     }
 
     fn isFree(self: *const Sim, x: i32, y: i32) bool {
@@ -398,7 +398,7 @@ pub const Sim = struct {
             var x: i32 = 0;
             while (x < grid_w) : (x += 1) {
                 const p = dungeon_mod.GridPos{ .x = x, .y = y };
-                self.blocked[@intCast(y * grid_w + x)] = !self.map.isWalkable(p);
+                self.blocked[@as(usize, @intCast(y)) * grid_w + @as(usize, @intCast(x))] = !self.map.isWalkable(p);
             }
         }
 
@@ -430,11 +430,7 @@ pub const Sim = struct {
             2 => &.{ 3, 0, 1, 2, 4, 1, 0, 3 },
             else => &.{ 5, 3, 4, 0, 1, 2, 3, 4 },
         };
-        const max_spawns: usize = switch (self.floor) {
-            1 => 4,
-            2 => 4,
-            else => 4,
-        };
+        const max_spawns: usize = dungeon_mod.spawnsForFloor(self.floor);
         for (self.map.spawnSlice(), 0..) |p, i| {
             if (i >= max_spawns) break;
             self.spawnEnemyAt(kinds[i % kinds.len], .{ .x = p.x, .y = p.y });

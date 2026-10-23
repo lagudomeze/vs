@@ -474,7 +474,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
     if (options.enemy_phase_shot) game.presentation = true;
     game.camera.yaw = options.yaw;
     game.camera.pitch = options.pitch;
-    game.camera.distance = @max(options.dist, 12.0);
+    game.camera.distance = @max(options.dist, 15.2);
     game.show_help = options.help_screen;
 
     // Window play starts on the class cards; headless QA keeps its old

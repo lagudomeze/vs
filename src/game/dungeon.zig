@@ -1,4 +1,4 @@
-//! Headless 13x13 dungeon grid: tiles, deterministic generation, occupancy,
+//! Headless 31x31 dungeon grid: tiles, deterministic generation, occupancy,
 //! line of sight and A* pathfinding.
 //!
 //! The module only depends on std. The renderer, ECS and turn system are
@@ -8,7 +8,7 @@
 //! Coordinates
 //! -----------
 //! * x grows east, y grows south (towards +Z in world space).
-//! * the board is 13x13; cell (6, 6) is the board origin.
+//! * the board is 31x31; cell (15, 15) is the board origin.
 //! * a cell centre maps to ((x - 6) * 1.0, (y - 6) * 1.0) on the world
 //!   (X, Z) plane, matching engine/arena_mesh.zig (tile_half = 6,
 //!   tile_size = 1.0).
@@ -23,7 +23,7 @@
 const std = @import("std");
 
 /// Board width/height in cells.
-pub const size: usize = 13;
+pub const size: usize = 31;
 pub const width: usize = size;
 pub const height: usize = size;
 pub const cell_count: usize = size * size;
@@ -35,18 +35,18 @@ const interior_max: i32 = span - 2;
 /// World distance between cell centres. Mirrors arena_mesh.tile_size.
 pub const tile_size: f32 = 1.0;
 /// World-space offset of cell (0, 0). Mirrors arena_mesh.tile_half.
-pub const world_center: f32 = 6.0;
+pub const world_center: f32 = @as(f32, @floatFromInt(size - 1)) * 0.5;
 
 pub const min_chests: usize = 2;
 pub const max_chests: usize = 4;
-pub const min_spawns: usize = 4;
-pub const max_spawns: usize = 8;
+pub const min_spawns: usize = 6;
+pub const max_spawns: usize = 12;
 pub const max_traps: usize = 4;
 
 /// Minimum Manhattan distance kept between entrance and stairs.
-pub const min_entrance_stairs_distance: u32 = 8;
+pub const min_entrance_stairs_distance: u32 = 20;
 
-/// A cell on the 13x13 board. Out-of-board coordinates are representable and
+/// A cell on the 31x31 board. Out-of-board coordinates are representable and
 /// are treated as solid by every Dungeon query.
 pub const GridPos = struct {
     x: i32 = 0,
@@ -64,7 +64,7 @@ pub const GridPos = struct {
         return self.x >= 0 and self.y >= 0 and self.x < span and self.y < span;
     }
 
-    /// Row-major index: y * 13 + x.
+    /// Row-major index: y * 31 + x.
     pub fn index(self: GridPos) usize {
         return @as(usize, @intCast(self.y)) * size + @as(usize, @intCast(self.x));
     }
@@ -353,7 +353,7 @@ pub const Dungeon = struct {
         return n;
     }
 
-    /// Debug/QA map dump. Each row is 13 glyphs + '\n' (182 bytes total).
+    /// Debug/QA map dump. Each row is 31 glyphs + '\n' (992 bytes total).
     pub fn renderAscii(self: *const Dungeon, buf: []u8) []const u8 {
         const needed = cell_count + size;
         if (buf.len < needed) return buf[0..0];
@@ -427,6 +427,7 @@ pub const Dungeon = struct {
         builder.addMidRoom(bend);
         builder.addCenterRoom(bend);
         builder.addVault(bend);
+        builder.addRandomRooms(8);
 
         builder.decorate();
         builder.computeDistances();
@@ -563,8 +564,12 @@ pub fn chestsForFloor(floor: u8) usize {
 }
 
 pub fn spawnsForFloor(floor: u8) usize {
-    const f: usize = @max(1, @as(usize, floor));
-    return @min(max_spawns, min_spawns + 2 * (f - 1));
+    // Boss floors get fewer adds so the AOE telegraph stays readable.
+    return switch (@max(1, floor)) {
+        1 => 8,
+        2 => 9,
+        else => 6,
+    };
 }
 
 pub fn trapsForFloor(floor: u8) usize {
@@ -910,7 +915,7 @@ const Builder = struct {
     d: *Dungeon,
     rng: std.Random,
     spine: [cell_count]bool = @splat(false),
-    rooms: [5]Rect = @splat(.{}),
+    rooms: [20]Rect = @splat(.{}),
     room_count: usize = 0,
     dist: [cell_count]u16 = @splat(std.math.maxInt(u16)),
 
@@ -924,20 +929,26 @@ const Builder = struct {
     fn placeEntranceAndStairs(b: *Builder, side: Side) void {
         switch (side) {
             .bottom => {
-                const ex = b.rng.intRangeAtMost(i32, 2, 10);
-                const sx = farIndex(b.rng, 2, 10, ex, 4);
+                const lo = interior_min + 1;
+                const hi = interior_max - 1;
+                const ex = b.rng.intRangeAtMost(i32, lo, hi);
+                const sx = farIndex(b.rng, lo, hi, ex, @divTrunc(span, 2));
                 b.d.entrance = .{ .x = ex, .y = interior_max };
                 b.d.stairs = .{ .x = sx, .y = interior_min };
             },
             .left => {
-                const ey = b.rng.intRangeAtMost(i32, 2, 10);
-                const sy = farIndex(b.rng, 2, 10, ey, 4);
+                const lo = interior_min + 1;
+                const hi = interior_max - 1;
+                const ey = b.rng.intRangeAtMost(i32, lo, hi);
+                const sy = farIndex(b.rng, lo, hi, ey, @divTrunc(span, 2));
                 b.d.entrance = .{ .x = interior_min, .y = ey };
                 b.d.stairs = .{ .x = interior_max, .y = sy };
             },
             .right => {
-                const ey = b.rng.intRangeAtMost(i32, 2, 10);
-                const sy = farIndex(b.rng, 2, 10, ey, 4);
+                const lo = interior_min + 1;
+                const hi = interior_max - 1;
+                const ey = b.rng.intRangeAtMost(i32, lo, hi);
+                const sy = farIndex(b.rng, lo, hi, ey, @divTrunc(span, 2));
                 b.d.entrance = .{ .x = interior_max, .y = ey };
                 b.d.stairs = .{ .x = interior_min, .y = sy };
             },
@@ -988,7 +999,7 @@ const Builder = struct {
         if (b.room_count >= b.rooms.len) return;
         const w = b.rng.intRangeAtMost(i32, 3, 5);
         const h = b.rng.intRangeAtMost(i32, 3, 5);
-        const r = roomAround(6, 6, w, h);
+        const r = roomAround(@divTrunc(span, 2), @divTrunc(span, 2), w, h);
         b.addRoom(r);
         b.carveLine(r.center(), bend);
     }
@@ -996,11 +1007,13 @@ const Builder = struct {
     fn addVault(b: *Builder, bend: GridPos) void {
         if (b.room_count >= b.rooms.len) return;
         if (b.rng.uintLessThan(u8, 100) >= 70) return;
+        const c1 = interior_min + 1;
+        const c2 = interior_max - 1;
         const candidates = [_]GridPos{
-            .{ .x = 2, .y = 2 },
-            .{ .x = 10, .y = 2 },
-            .{ .x = 2, .y = 10 },
-            .{ .x = 10, .y = 10 },
+            .{ .x = c1, .y = c1 },
+            .{ .x = c2, .y = c1 },
+            .{ .x = c1, .y = c2 },
+            .{ .x = c2, .y = c2 },
         };
         var eligible: [4]GridPos = undefined;
         var n: usize = 0;
@@ -1015,6 +1028,39 @@ const Builder = struct {
         const r = roomAround(pick.x, pick.y, 3, 3);
         b.addRoom(r);
         b.carveLine(bend, r.center());
+    }
+
+    fn addRandomRooms(b: *Builder, target_rooms: usize) void {
+        var added: usize = 0;
+        var attempts: usize = 0;
+        while (added < target_rooms and attempts < 80 and b.room_count < b.rooms.len) : (attempts += 1) {
+            const w = b.rng.intRangeAtMost(i32, 4, 7);
+            const h = b.rng.intRangeAtMost(i32, 4, 7);
+            const x0 = b.rng.intRangeAtMost(i32, interior_min + 1, interior_max - w);
+            const y0 = b.rng.intRangeAtMost(i32, interior_min + 1, interior_max - h);
+            const r = Rect{ .x0 = x0, .y0 = y0, .x1 = x0 + w - 1, .y1 = y0 + h - 1 };
+            var overlaps = false;
+            for (b.rooms[0..b.room_count]) |q| {
+                if (r.x0 - 1 <= q.x1 and r.x1 + 1 >= q.x0 and r.y0 - 1 <= q.y1 and r.y1 + 1 >= q.y0) {
+                    overlaps = true;
+                    break;
+                }
+            }
+            if (overlaps) continue;
+            b.addRoom(r);
+            added += 1;
+            var nearest = b.rooms[0].center();
+            var best_d: i32 = 1 << 30;
+            for (b.rooms[0 .. b.room_count - 1]) |q| {
+                const c = q.center();
+                const d: i32 = @intCast(@abs(c.x - r.center().x) + @abs(c.y - r.center().y));
+                if (d < best_d) {
+                    best_d = d;
+                    nearest = c;
+                }
+            }
+            b.carveLine(r.center(), nearest);
+        }
     }
 
     fn carveLine(b: *Builder, from: GridPos, to: GridPos) void {
@@ -1436,10 +1482,10 @@ test "floor budgets scale with depth" {
     try testing.expectEqual(@as(usize, 4), chestsForFloor(3));
     try testing.expectEqual(@as(usize, 4), chestsForFloor(9));
 
-    try testing.expectEqual(@as(usize, 4), spawnsForFloor(1));
-    try testing.expectEqual(@as(usize, 6), spawnsForFloor(2));
-    try testing.expectEqual(@as(usize, 8), spawnsForFloor(3));
-    try testing.expectEqual(@as(usize, 8), spawnsForFloor(9));
+    try testing.expectEqual(@as(usize, 8), spawnsForFloor(1));
+    try testing.expectEqual(@as(usize, 9), spawnsForFloor(2));
+    try testing.expectEqual(@as(usize, 6), spawnsForFloor(3));
+    try testing.expectEqual(@as(usize, 6), spawnsForFloor(9));
 }
 
 test "astar routes around a wall" {
@@ -1528,23 +1574,23 @@ test "astar can path onto an occupied goal" {
     try testing.expect(d.astarToOccupiedGoal(.{ .x = 2, .y = 6 }, goal, &occ) == null);
 }
 
-test "13x13 bounds and neighbour counts" {
-    try testing.expectEqual(@as(usize, 13), size);
-    try testing.expectEqual(@as(usize, 169), cell_count);
+test "board bounds and neighbour counts" {
+    try testing.expectEqual(@as(usize, 31), size);
+    try testing.expectEqual(@as(usize, 961), cell_count);
 
     const d = Dungeon.generate(7, 1);
     try testing.expectEqual(Tile.wall, d.tileAt(.{ .x = 0, .y = 0 }));
-    try testing.expectEqual(Tile.wall, d.tileAt(.{ .x = 12, .y = 12 }));
-    try testing.expect(!d.isWalkable(.{ .x = -1, .y = 6 }));
-    try testing.expect(!d.isWalkable(.{ .x = 13, .y = 6 }));
-    try testing.expect(d.isBlocked(.{ .x = 13, .y = 6 }, null));
+    try testing.expectEqual(Tile.wall, d.tileAt(.{ .x = 30, .y = 30 }));
+    try testing.expect(!d.isWalkable(.{ .x = -1, .y = 15 }));
+    try testing.expect(!d.isWalkable(.{ .x = 31, .y = 15 }));
+    try testing.expect(d.isBlocked(.{ .x = 31, .y = 15 }, null));
 
     var out4: [4]GridPos = undefined;
     var out8: [8]GridPos = undefined;
     try testing.expectEqual(@as(usize, 2), neighbors4(.{ .x = 0, .y = 0 }, &out4));
-    try testing.expectEqual(@as(usize, 4), neighbors4(.{ .x = 6, .y = 6 }, &out4));
+    try testing.expectEqual(@as(usize, 4), neighbors4(.{ .x = 15, .y = 15 }, &out4));
     try testing.expectEqual(@as(usize, 3), neighbors8(.{ .x = 0, .y = 0 }, &out8));
-    try testing.expectEqual(@as(usize, 8), neighbors8(.{ .x = 6, .y = 6 }, &out8));
+    try testing.expectEqual(@as(usize, 8), neighbors8(.{ .x = 15, .y = 15 }, &out8));
 
     var i: usize = 0;
     while (i < cell_count) : (i += 1) {
@@ -1555,21 +1601,23 @@ test "13x13 bounds and neighbour counts" {
 }
 
 test "grid and world coordinates round-trip" {
-    const center = (GridPos{ .x = 6, .y = 6 }).toWorld();
+    const mid: i32 = @intCast(size / 2);
+    const center = (GridPos{ .x = mid, .y = mid }).toWorld();
     try testing.expectEqual(@as(f32, 0.0), center.x);
     try testing.expectEqual(@as(f32, 0.0), center.z);
 
-    const corner = (GridPos{ .x = 0, .y = 12 }).toWorld();
-    try testing.expectEqual(@as(f32, -6.0), corner.x);
-    try testing.expectEqual(@as(f32, 6.0), corner.z);
-    try testing.expect(GridPos.fromWorld(-6.4, 6.4).?.eql(.{ .x = 0, .y = 12 }));
-    try testing.expect(GridPos.fromWorld(7.0, 0.0) == null);
-    try testing.expect(GridPos.fromWorld(0.0, 7.0) == null);
+    const edge = @as(f32, @floatFromInt(mid));
+    const corner = (GridPos{ .x = 0, .y = @intCast(size - 1) }).toWorld();
+    try testing.expectEqual(-edge, corner.x);
+    try testing.expectEqual(edge, corner.z);
+    try testing.expect(GridPos.fromWorld(-edge + 0.4, edge - 0.4).?.eql(.{ .x = 0, .y = @intCast(size - 1) }));
+    try testing.expect(GridPos.fromWorld(edge + 1.0, 0.0) == null);
+    try testing.expect(GridPos.fromWorld(0.0, edge + 1.0) == null);
 
     var y: i32 = 0;
-    while (y < 13) : (y += 1) {
+    while (y < size) : (y += 1) {
         var x: i32 = 0;
-        while (x < 13) : (x += 1) {
+        while (x < size) : (x += 1) {
             const p = GridPos{ .x = x, .y = y };
             const world = p.toWorld();
             const back = GridPos.fromWorld(world.x, world.z) orelse return error.RoundTrip;

@@ -201,8 +201,8 @@ pub const TomeGame = struct {
         self.camera = .{
             .target = math.Vec3.init(0, 0.55, 0),
             .yaw = -0.35,
-            .pitch = 0.78,
-            .distance = 12.3,
+            .pitch = 0.72,
+            .distance = 15.2,
             .fov = 0.76,
         };
         self.camera_target = self.camera.target;
@@ -229,7 +229,8 @@ pub const TomeGame = struct {
     }
 
     fn tilePos(x: i32, y: i32) math.Vec3 {
-        return math.Vec3.init(@as(f32, @floatFromInt(x)) - 6.0, 0, @as(f32, @floatFromInt(y)) - 6.0);
+        const center = @as(f32, @floatFromInt(sim_mod.grid_w - 1)) * 0.5;
+        return math.Vec3.init(@as(f32, @floatFromInt(x)) - center, 0, @as(f32, @floatFromInt(y)) - center);
     }
 
     fn resetVisuals(self: *TomeGame) void {
@@ -654,6 +655,37 @@ pub const TomeGame = struct {
             if (self.sim.hero.hp < self.sim.hero.hp_max * 0.4 and self.sim.useTalent(2)) return;
         }
 
+        // Boss floor: stairs are sealed, so walk/fight toward the boss.
+        if (self.sim.floor >= self.sim.floors) {
+            var bi: ?usize = null;
+            var ei: usize = 0;
+            while (ei < self.sim.enemy_count) : (ei += 1) {
+                const e = self.sim.enemies[ei];
+                if (e.alive and e.kind == 5) {
+                    bi = ei;
+                    break;
+                }
+            }
+            if (bi) |idx| {
+                const bp = self.sim.enemies[idx].pos;
+                const bd: i32 = @intCast(@abs(bp.x - hero.x) + @abs(bp.y - hero.y));
+                if (bd <= 5) {
+                    if (self.sim.useTalentOn(0, idx)) return;
+                    if (self.sim.useTalentOn(1, idx)) return;
+                }
+                if (self.sim.map.astarToOccupiedGoal(
+                    .{ .x = hero.x, .y = hero.y },
+                    .{ .x = bp.x, .y = bp.y },
+                    null,
+                )) |path| {
+                    if (path.len > 1) {
+                        const n = path.slice()[1];
+                        if (self.sim.move(n.x - hero.x, n.y - hero.y)) return;
+                    }
+                }
+            }
+        }
+
         // otherwise walk the A* path toward the stairs
         if (self.sim.map.astarToOccupiedGoal(
             .{ .x = hero.x, .y = hero.y },
@@ -751,7 +783,7 @@ pub const TomeGame = struct {
         self.fps = if (dt > 0) 1.0 / dt else 60.0;
 
         self.camera.yaw += input.yaw_delta;
-        self.camera.distance = std.math.clamp(self.camera.distance - input.zoom_delta * 0.35, 6.0, 13.0);
+        self.camera.distance = std.math.clamp(self.camera.distance - input.zoom_delta * 0.35, 7.0, 18.0);
         self.step_cooldown = @max(0, self.step_cooldown - dt);
 
         if (!self.started) {
@@ -914,8 +946,10 @@ pub const TomeGame = struct {
     /// Keep the whole room on screen while still following the hero: clamp the
     /// look-at point to the middle band and bias it toward the hero.
     fn followCamera(self: *TomeGame) void {
-        self.camera.target.x = std.math.clamp(self.hero_vis.pos.x * 0.65, -2.8, 2.8);
-        self.camera.target.z = std.math.clamp(self.hero_vis.pos.z * 0.65, -2.8, 2.8);
+        const half_extent = @as(f32, @floatFromInt(sim_mod.grid_w - 1)) * 0.5;
+        const margin = 3.0;
+        self.camera.target.x = std.math.clamp(self.hero_vis.pos.x, -half_extent + margin, half_extent - margin);
+        self.camera.target.z = std.math.clamp(self.hero_vis.pos.z, -half_extent + margin, half_extent - margin);
         self.camera.target.y = 0.35;
         self.camera_target = self.camera.target;
     }
@@ -946,8 +980,9 @@ pub const TomeGame = struct {
     /// intersection. Used by mouse aiming.
     fn pickCell(self: *const TomeGame, sx: f32, sy: f32) ?sim_mod.GridPos {
         const p = self.camera.pickGround(sx, sy, self.renderer.width, self.renderer.height) orelse return null;
-        const gx: i32 = @intFromFloat(@round(p.x + 6.0));
-        const gy: i32 = @intFromFloat(@round(p.z + 6.0));
+        const center = @as(f32, @floatFromInt(sim_mod.grid_w - 1)) * 0.5;
+        const gx: i32 = @intFromFloat(@round(p.x + center));
+        const gy: i32 = @intFromFloat(@round(p.z + center));
         if (gx < 0 or gy < 0 or gx >= sim_mod.grid_w or gy >= sim_mod.grid_h) return null;
         return .{ .x = gx, .y = gy };
     }
@@ -1548,6 +1583,14 @@ pub const TomeGame = struct {
         return names;
     }
 
+    fn plotMinimap(self: *TomeGame, gx: i32, gy: i32, value: u8) void {
+        const mm: i32 = 13;
+        if (gx < 0 or gy < 0 or gx >= sim_mod.grid_w or gy >= sim_mod.grid_h) return;
+        const mx = @min(mm - 1, @divTrunc(gx * mm, @as(i32, @intCast(sim_mod.grid_w))));
+        const my = @min(mm - 1, @divTrunc(gy * mm, @as(i32, @intCast(sim_mod.grid_h))));
+        self.hud_state.minimap[@as(usize, @intCast(my)) * 13 + @as(usize, @intCast(mx))] = value;
+    }
+
     fn fillHudState(self: *TomeGame) void {
         const initiative = self.initiativeNames();
         self.hud_state = .{
@@ -1698,27 +1741,30 @@ pub const TomeGame = struct {
         }
         self.hud_state.has_minimap = true;
         self.hud_state.minimap = @splat(0);
+        const mm = 13;
         var my: usize = 0;
-        while (my < sim_mod.grid_h) : (my += 1) {
+        while (my < mm) : (my += 1) {
             var mx: usize = 0;
-            while (mx < sim_mod.grid_w) : (mx += 1) {
-                self.hud_state.minimap[my * sim_mod.grid_w + mx] = if (self.sim.blocked[my * sim_mod.grid_w + mx]) 1 else 0;
+            while (mx < mm) : (mx += 1) {
+                const gx = @min(sim_mod.grid_w - 1, mx * sim_mod.grid_w / mm);
+                const gy = @min(sim_mod.grid_h - 1, my * sim_mod.grid_h / mm);
+                self.hud_state.minimap[my * mm + mx] = if (self.sim.blocked[gy * sim_mod.grid_w + gx]) 1 else 0;
             }
         }
-        self.hud_state.minimap[@as(usize, @intCast(self.sim.stairs.y)) * sim_mod.grid_w + @as(usize, @intCast(self.sim.stairs.x))] = 2;
+        self.plotMinimap(self.sim.stairs.x, self.sim.stairs.y, 2);
         var ci: usize = 0;
         while (ci < self.sim.chests.len) : (ci += 1) {
             if (!self.sim.chest_alive[ci]) continue;
             const cp = self.sim.chests[ci];
-            self.hud_state.minimap[@as(usize, @intCast(cp.y)) * sim_mod.grid_w + @as(usize, @intCast(cp.x))] = 3;
+            self.plotMinimap(cp.x, cp.y, 3);
         }
         var ei: usize = 0;
         while (ei < self.sim.enemy_count) : (ei += 1) {
             const e = self.sim.enemies[ei];
             if (!e.alive) continue;
-            self.hud_state.minimap[@as(usize, @intCast(e.pos.y)) * sim_mod.grid_w + @as(usize, @intCast(e.pos.x))] = 5;
+            self.plotMinimap(e.pos.x, e.pos.y, 5);
         }
-        self.hud_state.minimap[@as(usize, @intCast(self.sim.hero.pos.y)) * sim_mod.grid_w + @as(usize, @intCast(self.sim.hero.pos.x))] = 4;
+        self.plotMinimap(self.sim.hero.pos.x, self.sim.hero.pos.y, 4);
         self.hud_state.log_count = @min(self.sim.log_total, 4);
         i = 0;
         while (i < self.hud_state.log_count) : (i += 1) {
@@ -1776,6 +1822,13 @@ fn setGameEnemy(g: *TomeGame, index: usize, pos: sim_mod.GridPos, name: []const 
         .range = 1,
         .xp = 20,
     };
+}
+
+fn placeGameEnemyAt(g: *TomeGame, p: sim_mod.GridPos, name: []const u8) bool {
+    if (g.sim.isBlocked(p.x, p.y) or g.sim.enemyAt(p.x, p.y) != null) return false;
+    setGameEnemy(g, g.sim.enemy_count, p, name, 999);
+    g.sim.enemy_count += 1;
+    return true;
 }
 
 fn addGameEnemy(g: *TomeGame, dx: i32, dy: i32, name: []const u8) void {
@@ -1897,11 +1950,21 @@ test "tome game: cancel and invalid confirms never spend a turn or resource" {
     g.update(.{}, 1.0 / 60.0);
     try std.testing.expect(!g.hud_state.aim.active);
 
-    // Out of range (5 cells for 重击).
+    // Out of range (5 cells for 重击); pick a free ray so map holes do not
+    // turn this into a no-target test.
     g.restart();
-    const hero = g.sim.hero.pos;
-    const far_dx: i32 = if (hero.x + 5 < sim_mod.grid_w) 5 else -5;
-    addGameEnemy(g, far_dx, 0, "骷髅兵");
+    g.sim.enemy_count = 0;
+    const dirs = [_][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
+    var placed = false;
+    for (dirs) |d| {
+        const p = sim_mod.GridPos{ .x = g.sim.hero.pos.x + d[0] * 5, .y = g.sim.hero.pos.y + d[1] * 5 };
+        if (g.sim.isBlocked(p.x, p.y)) continue;
+        if (placeGameEnemyAt(g, p, "骷髅兵")) {
+            placed = true;
+            break;
+        }
+    }
+    if (!placed) return error.SkipZigTest;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expect(!g.hud_state.aim.valid);
     try std.testing.expectEqualStrings("超出范围", g.hud_state.aim.reason);
@@ -1912,12 +1975,21 @@ test "tome game: cancel and invalid confirms never spend a turn or resource" {
     try std.testing.expectEqual(res, g.sim.hero.resource);
     try std.testing.expect(g.isAiming());
 
-    // Wall between hero and target: LOS blocks confirmation. 冲锋 has enough
-    // range to reach the cell, so line of sight is the failing check.
+    // Wall between hero and target: LOS blocks confirmation.
     g.restart();
-    addGameEnemy(g, 2, 0, "骷髅兵");
-    const wall_x = g.sim.hero.pos.x + 1;
-    g.sim.blocked[@as(usize, @intCast(g.sim.hero.pos.y)) * sim_mod.grid_w + @as(usize, @intCast(wall_x))] = true;
+    g.sim.enemy_count = 0;
+    placed = false;
+    for (dirs) |d| {
+        const mid = sim_mod.GridPos{ .x = g.sim.hero.pos.x + d[0], .y = g.sim.hero.pos.y + d[1] };
+        const p = sim_mod.GridPos{ .x = g.sim.hero.pos.x + d[0] * 2, .y = g.sim.hero.pos.y + d[1] * 2 };
+        if (g.sim.isBlocked(mid.x, mid.y) or g.sim.isBlocked(p.x, p.y)) continue;
+        if (placeGameEnemyAt(g, p, "骷髅兵")) {
+            g.sim.blocked[@as(usize, @intCast(mid.y)) * sim_mod.grid_w + @as(usize, @intCast(mid.x))] = true;
+            placed = true;
+            break;
+        }
+    }
+    if (!placed) return error.SkipZigTest;
     g.update(.{ .talent = 1 }, 1.0 / 60.0);
     try std.testing.expect(!g.hud_state.aim.valid);
     try std.testing.expectEqualStrings("视线受阻", g.hud_state.aim.reason);
@@ -1929,7 +2001,12 @@ test "tome game: cancel and invalid confirms never spend a turn or resource" {
 
     // Insufficient resource: refuse to enter aim at all.
     g.restart();
-    addGameEnemy(g, 1, 0, "骷髅兵");
+    g.sim.enemy_count = 0;
+    for (dirs) |d| {
+        const p = sim_mod.GridPos{ .x = g.sim.hero.pos.x + d[0], .y = g.sim.hero.pos.y + d[1] };
+        if (g.sim.isBlocked(p.x, p.y)) continue;
+        if (placeGameEnemyAt(g, p, "骷髅兵")) break;
+    }
     g.sim.hero.resource = 0;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expect(!g.isAiming());
@@ -2181,7 +2258,8 @@ test "tome game: mouse click confirms an aimed enemy" {
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expect(g.isAiming());
     const e = g.sim.enemies[0];
-    const world = math.Vec3.init(@as(f32, @floatFromInt(e.pos.x)) - 6.0, 0, @as(f32, @floatFromInt(e.pos.y)) - 6.0);
+    const center = @as(f32, @floatFromInt(sim_mod.grid_w - 1)) * 0.5;
+    const world = math.Vec3.init(@as(f32, @floatFromInt(e.pos.x)) - center, 0, @as(f32, @floatFromInt(e.pos.y)) - center);
     const p = g.camera.project(world, 480, 270) orelse return error.SkipZigTest;
     const turn = g.sim.turn;
     g.update(.{ .mouse_x = p.x, .mouse_y = p.y, .click = true }, 1.0 / 60.0);
@@ -2210,7 +2288,8 @@ test "tome game: mouse click casts fireball on a ground cell" {
     const cell = target orelse return error.SkipZigTest;
     g.update(.{ .talent = 0 }, 1.0 / 60.0);
     try std.testing.expect(g.isAiming());
-    const world = math.Vec3.init(@as(f32, @floatFromInt(cell.x)) - 6.0, 0, @as(f32, @floatFromInt(cell.y)) - 6.0);
+    const center = @as(f32, @floatFromInt(sim_mod.grid_w - 1)) * 0.5;
+    const world = math.Vec3.init(@as(f32, @floatFromInt(cell.x)) - center, 0, @as(f32, @floatFromInt(cell.y)) - center);
     const p = g.camera.project(world, 480, 270) orelse return error.SkipZigTest;
     const turn = g.sim.turn;
     g.update(.{ .mouse_x = p.x, .mouse_y = p.y, .click = true }, 1.0 / 60.0);
