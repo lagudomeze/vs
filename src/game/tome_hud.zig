@@ -182,15 +182,15 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     }
 
     const fw = renderer.Renderer.textWidth(menu_footer, 1);
-    r.drawText(@divTrunc(w, 2) - @divTrunc(fw, 2), 252, menu_footer, palette.muted, 1, false);
+    r.drawText(@divTrunc(w, 2) - @divTrunc(fw, 2), h - 18, menu_footer, palette.muted, 1, false);
 }
 
 fn drawHelp(r: *renderer.Renderer, w: i32, h: i32) void {
     r.fillRect(0, 0, w, h, palette.deep);
     const px: i32 = 32;
-    const py: i32 = 16;
     const pw: i32 = w - 64;
-    const ph: i32 = h - 32;
+    const ph: i32 = @min(h - 32, 242);
+    const py: i32 = @divTrunc(h - ph, 2);
     backPanel(r, px, py, pw, ph);
     const tw = renderer.Renderer.textWidth(help_title, 2);
     r.drawText(px + @divTrunc(pw - tw, 2), py + 8, help_title, palette.gold, 2, true);
@@ -555,8 +555,8 @@ test "tome hud: hint strings have embedded CJK glyphs" {
     }
 }
 
-test "tome hud: default panels stay under 30 percent" {
+test "tome hud: default panels stay under 30 percent at 640x360" {
     const area = 160 * 58 + 154 * 60 + 150 * 40 + 265 * 54;
-    const screen = 480 * 270;
+    const screen = 640 * 360;
     try std.testing.expect(area * 100 <= screen * 30);
 }
