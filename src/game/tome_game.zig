@@ -19,6 +19,7 @@ const items_mod = @import("items.zig");
 const attributes = @import("attributes.zig");
 const save_mod = @import("save.zig");
 const gear_save = @import("gear_save.zig");
+const slot_bundle = @import("slot_bundle.zig");
 
 fn detailAppend(buf: []u8, off: *usize, comptime f: []const u8, args: anytype) void {
     const written = std.fmt.bufPrint(buf[off.*..], f, args) catch return;
@@ -136,6 +137,11 @@ pub const TomeGame = struct {
         "saves/tome-gear.json",
         "saves/slot2-gear.json",
         "saves/slot3-gear.json",
+    },
+    slot_files: [3][]const u8 = .{
+        "saves/tome-slot1.json",
+        "saves/slot2.save",
+        "saves/slot3.save",
     },
     save_ok: bool = true,
     /// Window play presents a short "敌人行动" phase; tests/bots leave this
@@ -335,32 +341,69 @@ pub const TomeGame = struct {
 
     fn refreshSlotLabels(self: *TomeGame, io: std.Io) void {
         var i: usize = 0;
-        while (i < self.slot_runs.len) : (i += 1) {
+        while (i < self.slot_files.len) : (i += 1) {
             self.slot_labels[i] = "空";
-            const loaded = save_mod.loadFile(io, self.gpa, self.slot_runs[i]) catch |err| {
-                if (err != error.FileNotFound) self.slot_labels[i] = "坏档";
+            const loaded = slot_bundle.loadFile(io, self.gpa, self.slot_files[i]) catch |err| {
+                if (err == error.FileNotFound) {
+                    const legacy = save_mod.loadFile(io, self.gpa, self.slot_runs[i]) catch |old_err| {
+                        if (old_err != error.FileNotFound) self.slot_labels[i] = "坏档";
+                        continue;
+                    };
+                    self.slot_labels[i] = self.formatSlotLabel(i, &legacy);
+                } else {
+                    self.slot_labels[i] = "坏档";
+                }
                 continue;
             };
-            self.slot_labels[i] = std.fmt.bufPrint(
-                &self.slot_bufs[i],
-                "{s} 第{d}层 {d}级 回合{d}",
-                .{ sim_mod.class_names[@backingInt(loaded.class)], loaded.floor, loaded.hero.level, loaded.turn },
-            ) catch "有效存档";
+            self.slot_labels[i] = self.formatSlotLabel(i, &loaded.sim);
         }
     }
 
+    fn formatSlotLabel(self: *TomeGame, i: usize, loaded: *const sim_mod.Sim) []const u8 {
+        return std.fmt.bufPrint(
+            &self.slot_bufs[i],
+            "{s} 第{d}层 {d}级 回合{d}",
+            .{ sim_mod.class_names[@backingInt(loaded.class)], loaded.floor, loaded.hero.level, loaded.turn },
+        ) catch "有效存档";
+    }
+
     pub fn saveSlot(self: *TomeGame, io: std.Io, slot: usize) void {
-        if (slot >= self.slot_runs.len) return;
-        self.saveRun(io, self.slot_runs[slot], self.slot_gears[slot]);
+        if (slot >= self.slot_files.len) return;
+        if (self.sim.enemy_phase_pending) {
+            self.sim.resolvePendingEnemyPhase();
+            self.syncVisuals(false);
+        }
+        if (std.fs.path.dirname(self.slot_files[slot])) |dir| {
+            std.Io.Dir.cwd().createDirPath(io, dir) catch {};
+        }
+        slot_bundle.saveFileAtomic(io, self.gpa, self.slot_files[slot], &self.sim, &self.inventory, &self.loot_rng) catch |err| {
+            self.sim.pushLog("存档失败 {s}", .{@errorName(err)});
+            self.save_ok = false;
+            self.slot_menu = .none;
+            self.fillHudState();
+            return;
+        };
+        self.save_ok = true;
         self.slot_menu = .none;
         self.refreshSlotLabels(io);
-        if (self.save_ok) self.sim.pushLog("已保存到槽 {d}", .{slot + 1});
+        self.sim.pushLog("已保存到槽 {d}", .{slot + 1});
         self.fillHudState();
     }
 
     pub fn loadSlot(self: *TomeGame, io: std.Io, slot: usize) void {
-        if (slot >= self.slot_runs.len) return;
-        self.loadRun(io, self.slot_runs[slot], self.slot_gears[slot]);
+        if (slot >= self.slot_files.len) return;
+        const loaded = slot_bundle.loadFile(io, self.gpa, self.slot_files[slot]) catch |err| {
+            if (err == error.FileNotFound) {
+                self.loadRun(io, self.slot_runs[slot], self.slot_gears[slot]);
+            } else {
+                self.sim.pushLog("读档失败：{s}", .{@errorName(err)});
+            }
+            self.slot_menu = .none;
+            self.refreshSlotLabels(io);
+            self.fillHudState();
+            return;
+        };
+        self.applyLoaded(loaded.sim, loaded.gear);
         self.slot_menu = .none;
         self.refreshSlotLabels(io);
         self.fillHudState();
@@ -397,11 +440,15 @@ pub const TomeGame = struct {
             self.sim.pushLog("读档失败：{s}", .{msg});
             return;
         };
-        var gear = gear_save.loadFile(io, self.gpa, gear_path) catch |err| blk: {
+        const gear = gear_save.loadFile(io, self.gpa, gear_path) catch |err| blk: {
             if (err == error.FileNotFound) break :blk gear_save.GearSave{};
             self.sim.pushLog("装备读档失败：{s}", .{@errorName(err)});
             return;
         };
+        self.applyLoaded(loaded, gear);
+    }
+
+    fn applyLoaded(self: *TomeGame, loaded: sim_mod.Sim, gear: gear_save.GearSave) void {
         for (gear.items[0..@as(usize, gear.len)]) |id| {
             if (id >= self.content.items.len) {
                 self.sim.pushLog("读档失败：未知物品", .{});
@@ -1896,6 +1943,30 @@ test "tome game: held repeat is throttled to one step per 0.3s" {
     try std.testing.expect(g.sim.turn >= turn);
 }
 
+test "tome game: slots fall back to legacy run+gear pair" {
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const g = try TomeGame.create(gpa, 480, 270, .warrior, 12345);
+    defer g.destroy();
+    g.started = true;
+    const run_path = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "legacy-run.json" });
+    defer gpa.free(run_path);
+    const gear_path = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "legacy-gear.json" });
+    defer gpa.free(gear_path);
+    const missing = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "missing.save" });
+    defer gpa.free(missing);
+    g.slot_runs[0] = run_path;
+    g.slot_gears[0] = gear_path;
+    g.slot_files[0] = missing;
+    const hp = g.sim.hero.hp;
+    g.saveRun(io, run_path, gear_path);
+    g.sim.hero.hp = 1;
+    g.loadSlot(io, 0);
+    try std.testing.expectApproxEqAbs(hp, g.sim.hero.hp, 0.01);
+}
+
 test "tome game: slots save metadata and load" {
     const gpa = std.testing.allocator;
     const io = std.testing.io;
@@ -1908,8 +1979,11 @@ test "tome game: slots save metadata and load" {
     defer gpa.free(run_path);
     const gear_path = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "slot-gear.json" });
     defer gpa.free(gear_path);
+    const bundle_path = try std.fs.path.join(gpa, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "slot.save" });
+    defer gpa.free(bundle_path);
     g.slot_runs[0] = run_path;
     g.slot_gears[0] = gear_path;
+    g.slot_files[0] = bundle_path;
     const hp = g.sim.hero.hp;
     g.saveSlot(io, 0);
     try std.testing.expect(!std.mem.eql(u8, g.slot_labels[0], "空"));
