@@ -16,6 +16,11 @@ pub const Class = attributes.Class;
 
 pub const ShrineChoice = enum(u8) { main_stat, constitution, will, risk };
 
+pub const ShopChoice = enum(u8) { heal, power, vitality };
+pub const shop_heal_cost: u32 = 25;
+pub const shop_power_cost: u32 = 60;
+pub const shop_vitality_cost: u32 = 60;
+
 pub const Affix = enum(u8) { none, swift, armored, vampiric };
 
 pub const FloorMod = enum(u8) {
@@ -390,6 +395,10 @@ pub const Sim = struct {
     shrine: GridPos = .{ .x = 0, .y = 0 },
     shrine_active: bool = false,
     shrine_used: bool = false,
+    gold: u32 = 0,
+    shop: GridPos = .{ .x = 0, .y = 0 },
+    shop_active: bool = false,
+    shop_used: bool = false,
     log_buf: [6]LogLine = .{ .{}, .{}, .{}, .{}, .{}, .{} },
     log_head: usize = 0,
     log_total: usize = 0,
@@ -424,6 +433,9 @@ pub const Sim = struct {
         self.boss_enraged = false;
         self.shrine_active = false;
         self.shrine_used = false;
+        self.gold = 0;
+        self.shop_active = false;
+        self.shop_used = false;
         self.state = .playing;
         self.enemy_phase_pending = false;
         self.defer_enemies = false;
@@ -638,6 +650,67 @@ pub const Sim = struct {
         return true;
     }
 
+    fn chooseShop(self: *Sim) void {
+        self.shop_active = false;
+        const entry = GridPos{ .x = self.map.entrance.x, .y = self.map.entrance.y };
+        const stairs = GridPos{ .x = self.map.stairs.x, .y = self.map.stairs.y };
+        self.shop_used = false;
+        var candidates: [grid_w * grid_h]GridPos = undefined;
+        var n: usize = 0;
+        var y: i32 = 0;
+        while (y < grid_h) : (y += 1) {
+            var x: i32 = 0;
+            while (x < grid_w) : (x += 1) {
+                const p = GridPos{ .x = x, .y = y };
+                if (self.isBlocked(x, y)) continue;
+                if (p.eql(entry) or p.eql(stairs)) continue;
+                if (self.shrine_active and p.eql(self.shrine)) continue;
+                if (dist(p, self.hero.pos) < 4) continue;
+                if (self.featureAt(p)) continue;
+                candidates[n] = p;
+                n += 1;
+            }
+        }
+        if (n == 0) return;
+        var srng = std.Random.DefaultPrng.init(self.seed ^ (@as(u64, self.floor) *% 0xbf58476d1ce4e5b9) ^ 0x517cc1b727220a95);
+        self.shop = candidates[srng.random().intRangeLessThan(usize, 0, n)];
+        self.shop_active = true;
+    }
+
+    pub fn atShop(self: *const Sim) bool {
+        return self.shop_active and !self.shop_used and self.hero.pos.eql(self.shop);
+    }
+
+    pub fn useShop(self: *Sim, choice: ShopChoice) bool {
+        if (!self.atShop()) return false;
+        const cost: u32 = switch (choice) {
+            .heal => shop_heal_cost,
+            .power => shop_power_cost,
+            .vitality => shop_vitality_cost,
+        };
+        if (self.gold < cost) return false;
+        switch (choice) {
+            .heal => {
+                self.hero.vitals.val = @min(self.hero.vitals.full, self.hero.vitals.val + 40);
+                self.hero.resource.val = @min(self.hero.resource.full, self.hero.resource.val + 30);
+                self.pushLog("SHOP 治疗", .{});
+            },
+            .power => {
+                self.hero.sheet.stats.add(attributes.profile(self.class).main_stat, 2);
+                self.recomputeHero();
+                self.pushLog("SHOP 主属性 +2", .{});
+            },
+            .vitality => {
+                self.hero.sheet.stats.add(.constitution, 2);
+                self.recomputeHero();
+                self.pushLog("SHOP 体质 +2", .{});
+            },
+        }
+        self.gold -= cost;
+        self.shop_used = true;
+        return true;
+    }
+
     pub fn generateFloor(self: *Sim) void {
         self.enemy_count = 0;
         self.aoe_armed = false;
@@ -688,6 +761,7 @@ pub const Sim = struct {
             self.spawnEnemyAt(kinds[i % kinds.len], .{ .x = p.x, .y = p.y });
         }
         self.chooseShrine();
+        self.chooseShop();
         self.pushLog("第 {d} 层：{d} 个敌人", .{ self.floor, self.enemy_count });
         if (self.floor_mod != .none) self.pushLog("MOD {s}", .{self.floor_mod.label()});
     }
@@ -822,6 +896,7 @@ pub const Sim = struct {
             const heal = @min(self.hero.vitals.full - self.hero.vitals.val, 25);
             self.hero.vitals.val += heal;
             self.chest_loot_events += 1;
+            self.gold +|= 10;
             self.pushLog("打开宝箱：恢复 {d:.0} 生命", .{heal});
             return;
         }
@@ -1124,6 +1199,7 @@ pub const Sim = struct {
         e.vitals.val = 0;
         if (e.identity.kind == intent_mod.boss_kind) self.aoe_armed = false;
         self.kills += 1;
+        self.gold +|= 5 + @as(u32, e.identity.kind) * 2 + @as(u32, self.floor) * 3;
         self.kill_loot_events += 1;
         self.pushLog("击杀 {s} +{d}XP", .{ e.identity.name, e.reward.xp });
         self.hero.progression.xp += e.reward.xp;
@@ -1572,6 +1648,28 @@ test "run sim: warrior charge applies vulnerable" {
     s.hero.resource.val = 100;
     try std.testing.expect(s.useTalent(1));
     try std.testing.expect(s.enemies[0].status.vulnerable_turns > 0);
+}
+
+test "run sim: shop buys healing and permanent power" {
+    var s = Sim.init(91, .warrior);
+    try std.testing.expect(s.shop_active);
+    s.hero.pos = s.shop;
+    s.gold = 100;
+    s.hero.vitals.val = 20;
+    try std.testing.expect(s.useShop(.heal));
+    try std.testing.expect(s.hero.vitals.val > 20);
+    try std.testing.expectEqual(@as(u32, 75), s.gold);
+    try std.testing.expect(s.shop_used);
+    try std.testing.expect(!s.useShop(.power));
+
+    var p = Sim.init(92, .mage);
+    p.hero.pos = p.shop;
+    p.gold = 60;
+    const magic = p.hero.sheet.stats.magic.val;
+    try std.testing.expect(p.useShop(.power));
+    try std.testing.expectApproxEqAbs(magic + 2, p.hero.sheet.stats.magic.val, 0.001);
+    try std.testing.expectEqual(@as(u32, 0), p.gold);
+    try std.testing.expect(!p.useShop(.heal));
 }
 
 test "run sim: shrine grants one permanent stat choice" {

@@ -178,6 +178,10 @@ const MapSave = struct {
     shrine_active: bool = false,
     shrine_used: bool = false,
     floor_mod: u8 = 0,
+    gold: u32 = 0,
+    shop: GridPosSave = .{ .x = 0, .y = 0 },
+    shop_active: bool = false,
+    shop_used: bool = false,
 };
 
 const SaveRoot = struct {
@@ -401,6 +405,10 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .shrine_active = sim.shrine_active,
             .shrine_used = sim.shrine_used,
             .floor_mod = @backingInt(sim.floor_mod),
+            .gold = sim.gold,
+            .shop = savePos(sim.shop),
+            .shop_active = sim.shop_active,
+            .shop_used = sim.shop_used,
         },
         .log = log_buf[0..sim.log_total],
     };
@@ -470,7 +478,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     if (h.level == 0 or h.level > 50) return error.InvalidValue;
 
     const map = &root.map;
-    if (!inBounds(map.entrance) or !inBounds(map.stairs) or !inBounds(map.aoe_target) or !inBounds(map.shrine)) {
+    if (!inBounds(map.entrance) or !inBounds(map.stairs) or !inBounds(map.aoe_target) or !inBounds(map.shrine) or !inBounds(map.shop)) {
         return error.InvalidCoordinate;
     }
     if (!rngNonZero(root.rng)) return error.InvalidRng;
@@ -600,6 +608,10 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     sim.shrine_active = map.shrine_active;
     sim.shrine_used = map.shrine_used;
     sim.floor_mod = @fromBackingInt(@intCast(map.floor_mod));
+    sim.gold = map.gold;
+    sim.shop = loadPos(map.shop);
+    sim.shop_active = map.shop_active;
+    sim.shop_used = map.shop_used;
     sim.blocked = map.blocked;
     sim.stairs = loadPos(map.stairs);
     for (map.chests, 0..) |p, i| sim.chests[i] = loadPos(p);
@@ -804,6 +816,11 @@ fn expectSameRun(expected: *const Sim, actual: *const Sim) !void {
     try testing.expectEqual(expected.shrine_active, actual.shrine_active);
     try testing.expectEqual(expected.shrine_used, actual.shrine_used);
     try testing.expectEqual(expected.floor_mod, actual.floor_mod);
+    try testing.expectEqual(expected.gold, actual.gold);
+    try testing.expectEqual(expected.shop_active, actual.shop_active);
+    try testing.expectEqual(expected.shop_used, actual.shop_used);
+    try testing.expectEqual(expected.shop.x, actual.shop.x);
+    try testing.expectEqual(expected.shop.y, actual.shop.y);
     try testing.expectEqual(expected.shrine.x, actual.shrine.x);
     try testing.expectEqual(expected.shrine.y, actual.shrine.y);
     try testing.expectEqual(expected.aoe_target.x, actual.aoe_target.x);
