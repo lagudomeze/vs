@@ -648,12 +648,12 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
             "按 R 重开 同职业";
         const cause = if (state.log_count > 0) state.log_lines[state.log_count - 1] else "";
         var sbuf: [96]u8 = undefined;
-        const summary = fmt(&sbuf, "第 {d}/{d} 层 · 回合 {d} · 击杀 {d} · 种子 {d}", .{
-            state.floor, state.floors, state.turn, state.kills, state.seed,
+        const summary = fmt(&sbuf, "F{d}/{d}  T{d}  KILL {d}  GOLD {d}  SEED {d}", .{
+            state.floor, state.floors, state.turn, state.kills, state.gold, state.seed,
         });
-        r.fillRect(0, @divTrunc(h, 2) - 28, w, 70, palette.panel);
+        r.fillRect(0, @divTrunc(h, 2) - 28, w, 76, palette.panel);
         r.fillRect(0, @divTrunc(h, 2) - 29, w, 1, palette.gold);
-        r.fillRect(0, @divTrunc(h, 2) + 41, w, 1, palette.gold);
+        r.fillRect(0, @divTrunc(h, 2) + 47, w, 1, palette.gold);
         const tw = renderer.Renderer.textWidth(title, 2);
         const tx = @divTrunc(w, 2) - @divTrunc(tw, 2);
         r.drawIcon(if (state.victory) .hero else .skull, tx - 18, @divTrunc(h, 2) - 22, if (state.victory) palette.gold_light else palette.red, 1);
@@ -666,6 +666,9 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         }
         const sw = renderer.Renderer.textWidth(sub, 1);
         r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), @divTrunc(h, 2) + 26, sub, palette.muted, 1, true);
+        const hint = "F4 COPY DIAGNOSTICS";
+        const hw = renderer.Renderer.textWidth(hint, 1);
+        r.drawText(@divTrunc(w, 2) - @divTrunc(hw, 2), @divTrunc(h, 2) + 35, hint, palette.gold, 1, true);
     }
 
     if (state.shrine_open) drawShrine(r, state, w, h);
