@@ -61,3 +61,16 @@ The Chinese HUD uses a subset of **Ark Pixel Font 12px** by TakWolf
 SIL Open Font License 1.1. The license text is in assets/fonts/OFL.txt.
 Only glyph bitmaps for characters used by the game are embedded;
 the source BDF is not required at runtime.
+
+## Kenney UI icons
+
+The HUD 12x12 1-bit icons are derived from free Kenney packs
+(CC0 1.0 Universal, public domain):
+
+- https://kenney.nl/assets/board-game-icons
+- https://kenney.nl/assets/game-icons
+
+Sources are in assets/icons/board and assets/icons/game; license
+texts are in assets/icons/License-board.txt and License-game.txt.
+The generated atlas is src/engine/icons.zig, built by
+tools/gen_icons.py.
