@@ -326,6 +326,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         fmt(&floor_buf, "第{d}/{d}层 {s}{d}", .{ state.floor, state.floors, dir, state.stairs_dist })
     else
         fmt(&floor_buf, "第 {d}/{d} 层", .{ state.floor, state.floors });
+    r.drawIcon(.stairs, w - 168, 8, palette.gold_light, 1);
     r.drawText(w - 154, 9, floor, palette.gold_light, 1, false);
     const enemies = if (state.floor_mod_label.len > 0)
         fmt(&buf, "敌人 {d}  {s}  G{d}", .{ state.enemies_left, state.floor_mod_label, state.gold })
@@ -424,6 +425,12 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         const aiming = state.aim.active and state.aim.talent_index == i;
         r.fillRect(sx, sy, 82, 38, palette.deep);
         r.strokeRect(sx, sy, 82, 38, if (aiming) palette.gold else if (slot.ready) palette.border else palette.muted);
+        const talent_icon: renderer.icons.Icon = switch (i) {
+            0 => .sword,
+            1 => .fire,
+            else => .time,
+        };
+        r.drawIcon(talent_icon, sx + 66, sy + 2, if (slot.ready) palette.cream else palette.muted, 1);
         const key = fmt(&buf, "{d}", .{i + 1});
         r.drawText(sx + 4, sy + 3, key, palette.gold, 1, false);
         r.drawText(sx + 18, sy + 3, slot.name, if (slot.ready) palette.cream else palette.muted, 1, false);
@@ -595,7 +602,8 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
             2 => "从槽位读取",
             else => "自动档备份",
         };
-        r.drawText(px + 16, py + 12, title, palette.gold, 1, true);
+        r.drawIcon(.save, px + 14, py + 6, palette.gold, 1);
+        r.drawText(px + 32, py + 12, title, palette.gold, 1, true);
         var i: usize = 0;
         while (i < 3) : (i += 1) {
             const y = py + 42 + @as(i32, @intCast(i)) * 30;

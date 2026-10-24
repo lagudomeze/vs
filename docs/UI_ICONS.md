@@ -2,8 +2,10 @@
 
 ## 来源
 
-- Kenney Board Game Icons（CC0）：bag/pouch、hero/crown、coin/dollar、sword、shield、potion/flask、time/hourglass、fire/campfire、skull、heart
+- Kenney Board Game Icons（CC0）：bag/pouch、hero/crown、coin/dollar、sword、shield、potion/flask、time/hourglass、fire/campfire、skull、heart、save/notepad、stairs/direction_n
 - Kenney Game Icons（CC0）：gear
+
+共 13 个图标。
 
 原始 64px PNG 在 assets/icons/board 与 assets/icons/game；许可见同目录 License-*.txt。
 
@@ -31,6 +33,9 @@ r.drawIcon(.coin, x, y, palette.gold, 1);
 - 商店 GOLD：coin 2×
 - 设置标题：gear 2×
 - 死亡/胜利标题：skull/hero 1×
+- 楼层卡：stairs 1×
+- 天赋栏：sword/fire/time 1×
+- 存档槽位标题：save 1×
 
 ## 截图
 
@@ -38,8 +43,12 @@ r.drawIcon(.coin, x, y, palette.gold, 1);
 
 ![Inventory icons](screenshots/icons_inventory.png)
 
+![Save slots](screenshots/icons_slots.png)
+
 ## 验收
 
 - 640×360：标题图标 2× 不裁切、不糊，不抢文字。
-- 480×270：HUD 本身仍会裁切（见 docs/RENDERING.md），图标不是新增瓶颈。
+- 480×270：图标本身不裁切，但 HUD 布局仍会裁切（见 docs/RENDERING.md）；图标不是新增瓶颈。
+
+![480 icons](screenshots/icons_480.png)
 - 图标只做辅助，关键状态仍保留中文/ASCII 文字。

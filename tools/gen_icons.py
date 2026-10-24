@@ -30,6 +30,8 @@ ICONS = [
     ("fire", BOARD / "campfire.png"),
     ("skull", BOARD / "skull.png"),
     ("heart", BOARD / "suit_hearts.png"),
+    ("save", BOARD / "notepad.png"),
+    ("stairs", BOARD / "direction_n.png"),
     ("gear", GAME / "gear.png"),
 ]
 
