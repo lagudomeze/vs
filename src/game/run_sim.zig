@@ -34,6 +34,7 @@ pub const FloorMod = enum(u8) {
     ember,
     frost,
     miasma,
+    gilded,
 
     pub fn label(self: FloorMod) []const u8 {
         return switch (self) {
@@ -41,6 +42,7 @@ pub const FloorMod = enum(u8) {
             .ember => "EMBER",
             .frost => "FROST",
             .miasma => "MIASMA",
+            .gilded => "GILDED",
         };
     }
 
@@ -54,6 +56,10 @@ pub const FloorMod = enum(u8) {
 
     pub fn resourceScale(self: FloorMod) f32 {
         return if (self == .miasma) 0.5 else 1.0;
+    }
+
+    pub fn goldScale(self: FloorMod) f32 {
+        return if (self == .gilded) 1.5 else 1.0;
     }
 };
 
@@ -654,14 +660,20 @@ pub const Sim = struct {
         return @intCast(@abs(a.x - b.x) + @abs(a.y - b.y));
     }
 
+    fn grantGold(self: *Sim, base: u32) void {
+        const scaled: u32 = @intFromFloat(@as(f32, @floatFromInt(base)) * self.floor_mod.goldScale());
+        self.gold +|= scaled;
+    }
+
     fn rollFloorMod(seed: u64, floor: u8) FloorMod {
         if (floor < 2) return .none;
         const h = seed ^ (@as(u64, floor) *% 0x94d049bb133111eb) ^ 0x9e3779b97f4a7c15;
         var rng = std.Random.DefaultPrng.init(h);
         const roll = rng.random().float(f32);
-        if (roll < 0.34) return .ember;
-        if (roll < 0.67) return .frost;
-        return .miasma;
+        if (roll < 0.25) return .ember;
+        if (roll < 0.50) return .frost;
+        if (roll < 0.75) return .miasma;
+        return .gilded;
     }
 
     fn chooseShrine(self: *Sim) void {
@@ -1062,7 +1074,7 @@ pub const Sim = struct {
         if (first_visit) {
             self.hero.vitals.val = @min(self.hero.vitals.full, self.hero.vitals.val + self.hero.vitals.full * 0.20);
             self.hero.resource.val = @min(self.hero.resource.full, self.hero.resource.val + self.hero.resource.full * 0.20);
-            self.gold += 25;
+            self.grantGold(25);
             self.notice = "CHUNK CACHE +25G";
             self.pushLog("CHUNK CACHE +25G", .{});
         }
@@ -1246,7 +1258,7 @@ pub const Sim = struct {
                 const dmg = self.hero.vitals.full * 0.20;
                 self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
                 _ = self.hero.status.applyVulnerable(1);
-                self.gold +|= 25;
+                self.grantGold(25);
                 self.chest_loot_events += 1;
                 self.pushLog("诅咒宝箱 -{d:.0}", .{dmg});
                 return;
@@ -1254,7 +1266,7 @@ pub const Sim = struct {
             const heal = @min(self.hero.vitals.full - self.hero.vitals.val, 25);
             self.hero.vitals.val += heal;
             self.chest_loot_events += 1;
-            self.gold +|= 10;
+            self.grantGold(10);
             self.pushLog("打开宝箱：恢复 {d:.0} 生命", .{heal});
             return;
         }
@@ -1660,7 +1672,7 @@ pub const Sim = struct {
             if (self.enemies[i].life.alive) return;
         }
         self.cleared_chunks[self.chunk] = true;
-        self.gold += 30;
+        self.grantGold(30);
         self.notice = "CHUNK CLEAR +30G";
         self.pushLog("CHUNK CLEAR +30G", .{});
     }
@@ -1683,7 +1695,7 @@ pub const Sim = struct {
         e.vitals.val = 0;
         if (e.identity.kind == intent_mod.boss_kind) self.aoe_armed = false;
         self.kills += 1;
-        self.gold +|= 5 + @as(u32, e.identity.kind) * 2 + @as(u32, self.floor) * 3;
+        self.grantGold(5 + @as(u32, e.identity.kind) * 2 + @as(u32, self.floor) * 3);
         self.kill_loot_events += 1;
         if (e.affix == .split and self.enemy_count < max_enemies and self.state == .playing) {
             const dirs = [_]GridPos{
@@ -2098,6 +2110,7 @@ test "run sim: floor modifiers are deterministic and scale the right knobs" {
     try std.testing.expectApproxEqAbs(@as(f32, 1.5), FloorMod.ember.burnScale(), 0.001);
     try std.testing.expectApproxEqAbs(@as(f32, 0.90), FloorMod.frost.enemySpeedScale(), 0.001);
     try std.testing.expectApproxEqAbs(@as(f32, 0.5), FloorMod.miasma.resourceScale(), 0.001);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.5), FloorMod.gilded.goldScale(), 0.001);
 }
 
 test "run sim: abyss wraith ranged hit applies burn" {
@@ -2435,6 +2448,16 @@ test "run sim: warrior charge applies vulnerable" {
     s.hero.resource.val = 100;
     try std.testing.expect(s.useTalent(1));
     try std.testing.expect(s.enemies[0].status.vulnerable_turns > 0);
+}
+
+test "run sim: gilded floor pays 1.5x kill gold" {
+    var s = Sim.init(96, .warrior);
+    s.floor_mod = .gilded;
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{ .kind = 0, .name = "骷髅兵", .pos = .{ .x = 10, .y = 10 }, .hp = 1, .hp_max = 1, .attack = 1, .armor = 0, .speed = 100, .range = 1, .xp = 1 });
+    const gold = s.gold;
+    s.killEnemy(0);
+    try std.testing.expectEqual(gold + 12, s.gold);
 }
 
 test "run sim: cursed chest damages and pays more gold" {
