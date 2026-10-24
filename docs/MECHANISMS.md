@@ -266,6 +266,7 @@ raw
 - 输入：击杀、普通宝箱、诅咒宝箱发金币；玩家在 SHOP 面板选择 1-6。
 - 状态：gold、shop、shop_active、shop_used；每层一个 SHOP，购买一次后消失。
 - BOMB 补给：40G，Sim 扣款、置 shop_used 并 hero.bombs += 1；不占背包。
+- BOMB 掉落：精英击杀 20%（确定性 hash），hero.bombs 上限 99。
 - 结算：治疗/主属性/体质/净化由 Sim.useShop 结算；LOOT 只扣款并置 shop_used，物品 roll 留在 RunGame/内容层。
 - 边界：金币不是经验，不触发升级；商店不写 M9 楼层胜负；存档保存 gold/shop/shop_used。
 - 不做：定向商品库存、价格随楼层浮动。
