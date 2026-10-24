@@ -39,6 +39,7 @@ pwsh -File tools/demo_pack.ps1
 - 不要把正式版 AppID 写进 Demo
 - Demo 存档独立；正式版不读取 demo 目录
 - Demo 内不显示完整版成就/记录
+- Demo 禁用 3×3（F2 第9项无效）
 
 ## 验收
 
