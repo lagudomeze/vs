@@ -15,6 +15,17 @@ pub const Sound = enum(u8) { step, hit, cast, pickup, death, ui };
 
 pub const Ambience = enum { explore, danger, shop, death, victory };
 
+pub const Bindings = struct {
+    confirm: u32 = 44,
+    potion: u32 = 19,
+    bomb: u32 = 5,
+    inventory: u32 = 12,
+    character: u32 = 6,
+    talent1: u32 = 30,
+    talent2: u32 = 31,
+    talent3: u32 = 32,
+};
+
 pub const FrameInput = struct {
     quit: bool = false,
     escape: bool = false,
@@ -71,6 +82,7 @@ pub const Platform = struct {
     pad_dir: u8 = 0,
     pad_swap: bool = false,
     esdf: bool = false,
+    bindings: Bindings = .{},
     audio_volume: f32 = 0.55,
     ambient: bool = true,
     ambient_phase: f32 = 0,
@@ -223,6 +235,10 @@ pub const Platform = struct {
     pub fn toggleFullscreen(self: *Platform) bool {
         self.setFullscreen(!self.fullscreen);
         return self.fullscreen;
+    }
+
+    pub fn setBindings(self: *Platform, bindings: Bindings) void {
+        self.bindings = bindings;
     }
 
     pub fn setEsdf(self: *Platform, enabled: bool) void {
@@ -418,7 +434,7 @@ pub const Platform = struct {
                     const sc = ev.key.scancode;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_ESCAPE))) input.escape = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_TAB))) input.toggle_hero = true;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_SPACE))) {
+                    if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.confirm))) {
                         input.cast = true;
                         input.wait = true;
                     }
@@ -430,24 +446,18 @@ pub const Platform = struct {
                         4 => input.step_e = true,
                         else => {},
                     }
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_1))) {
-                        input.talent_1 = true;
-                        input.stat = 0;
-                    }
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_2))) {
-                        input.talent_2 = true;
-                        input.stat = 1;
-                    }
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_3))) {
-                        input.talent_3 = true;
-                        input.stat = 2;
-                    }
+                    if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.talent1))) input.talent_1 = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.talent2))) input.talent_2 = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.talent3))) input.talent_3 = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_1))) input.stat = 0;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_2))) input.stat = 1;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_3))) input.stat = 2;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_4))) input.stat = 3;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_5))) input.stat = 4;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_6))) input.stat = 5;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_C))) input.character = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.character))) input.character = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F))) input.interrupt = true;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_I))) input.inventory = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.inventory))) input.inventory = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_R))) input.reset = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F1))) input.toggle_debug = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F2))) input.settings = true;
@@ -459,8 +469,8 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F10))) input.load_auto = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_H))) input.help = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_D))) input.difficulty = true;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_P))) input.use_item = true;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_B))) input.use_bomb = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.potion))) input.use_item = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.bomb))) input.use_bomb = true;
                 }
             } else if (t == @as(u32, @intCast(c.SDL_EVENT_MOUSE_WHEEL))) {
                 input.zoom_delta += ev.wheel.y * 0.55;

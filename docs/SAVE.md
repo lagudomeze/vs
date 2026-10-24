@@ -82,7 +82,7 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 
 ## 设置文件
 
-- saves/settings.json：fullscreen/scale/vsync/volume/ambient/pad_swap/esdf；与 run 存档分开，坏档不影响读档。
+- saves/settings.json：fullscreen/scale/vsync/volume/ambient/pad_swap/esdf/keys；与 run 存档分开，坏档不影响读档。
 
 ## 战绩文件
 
