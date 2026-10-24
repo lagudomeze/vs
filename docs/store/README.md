@@ -41,8 +41,8 @@ python tools/pixel_logo.py
 
 | 文件 | 尺寸 | 用途 |
 | --- | --- | --- |
-| screenshot_1920x1080.png | 1920×1080 | 旧版单图，保留兼容 |
-| header_capsule_920x430.png | 920×430 | Header Capsule |
+| screenshot_1920x1080.png | 1920×1080 | 由 01_combat 生成的单图预览 |
+| header_capsule_920x430.png | 920×430 | Header Capsule（像素 logo 版） |
 | small_capsule_462x174.png | 462×174 | Small Capsule |
 | main_capsule_1232x706.png | 1232×706 | Main Capsule |
 | vertical_capsule_748x1084.png | 748×1084 | Vertical Capsule |
@@ -53,7 +53,7 @@ python tools/pixel_logo.py
 ## 上架前替换
 
 - 标题字体/Logo 换成正式 logo；当前用 bahnschrift 占位。
-- Capsule 底图换成专门构图，不再直接使用游戏截图。
+- Capsule 已统一使用像素 logo；正式版换成专门手绘构图。
 - 5 张截图已覆盖战斗/角色/瞄准/商店/地图；正式版可替换为更精细构图。
 - 预告片 30–60 秒。
 - 检查中文在 920×430 下仍可读；小尺寸只保留标题。

@@ -12,8 +12,9 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "docs" / "screenshots" / "icons_hud.png"
+SRC = ROOT / "docs" / "store" / "screenshots" / "01_combat.png"
 CAPSULE_SRC = ROOT / "docs" / "screenshots" / "store_clean.png"
+LOGO = ROOT / "docs" / "store" / "logo_920x430.png"
 OUT = ROOT / "docs" / "store"
 FONT_BOLD = Path("C:/Windows/Fonts/bahnschrift.ttf")
 FONT_SUB = Path("C:/Windows/Fonts/consola.ttf")
@@ -67,8 +68,14 @@ def draw_mark(draw: ImageDraw.ImageDraw, box: tuple[int, int], title_size: int, 
 
 def capsule(src: Image.Image, name: str, size: tuple[int, int], box: tuple[int, int], title_size: int, sub_size: int, tag_size: int, dark: float = 0.50) -> None:
     image = backdrop(src, size, dark)
-    draw = ImageDraw.Draw(image)
-    draw_mark(draw, box, title_size, sub_size, tag_size)
+    logo = Image.open(LOGO).convert("RGBA")
+    w, h = size
+    lw = int(w * (0.62 if h > w else 0.55))
+    lh = int(lw * logo.height / logo.width)
+    logo = logo.resize((lw, lh), Image.LANCZOS)
+    x = int((w - lw) * 0.08)
+    y = int((h - lh) * (0.70 if h > w else 0.46))
+    image.paste(logo, (x, y), logo)
     path = OUT / name
     image.save(path, optimize=True)
     print(f"{name}: {size[0]}x{size[1]} {path.stat().st_size // 1024} KB")
@@ -77,9 +84,6 @@ def capsule(src: Image.Image, name: str, size: tuple[int, int], box: tuple[int, 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     src = Image.open(SRC).convert("RGB")
-    if src.size != (640, 360):
-        raise SystemExit(f"expected 640x360 source, got {src.size}")
-
     shot = src.resize((1920, 1080), Image.NEAREST)
     shot.save(OUT / "screenshot_1920x1080.png", optimize=True)
     print("screenshot_1920x1080.png")
