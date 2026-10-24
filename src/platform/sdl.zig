@@ -70,6 +70,7 @@ pub const Platform = struct {
     pad_prev: u32 = 0,
     pad_dir: u8 = 0,
     pad_swap: bool = false,
+    esdf: bool = false,
     audio_volume: f32 = 0.55,
     ambient: bool = true,
     ambient_phase: f32 = 0,
@@ -224,6 +225,10 @@ pub const Platform = struct {
         return self.fullscreen;
     }
 
+    pub fn setEsdf(self: *Platform, enabled: bool) void {
+        self.esdf = enabled;
+    }
+
     pub fn setPadSwap(self: *Platform, enabled: bool) void {
         self.pad_swap = enabled;
     }
@@ -346,6 +351,41 @@ pub const Platform = struct {
         self.* = .{};
     }
 
+    fn moveDir(self: *const Platform, sc: c.SDL_Scancode) u8 {
+        const up = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_UP));
+        const down = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_DOWN));
+        const left = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_LEFT));
+        const right = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_RIGHT));
+        const kp8 = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_8));
+        const kp2 = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_2));
+        const kp4 = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_4));
+        const kp6 = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_6));
+        if (sc == up or sc == kp8) return 1;
+        if (sc == down or sc == kp2) return 2;
+        if (sc == left or sc == kp4) return 3;
+        if (sc == right or sc == kp6) return 4;
+        if (self.esdf) {
+            const e = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_E));
+            const f = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F));
+            const s_key = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_S));
+            const d_key = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_D));
+            if (sc == e) return 1;
+            if (sc == s_key) return 2;
+            if (sc == f) return 3;
+            if (sc == d_key) return 4;
+        } else {
+            const w = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_W));
+            const a = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_A));
+            const s_key = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_S));
+            const d_key = @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_D));
+            if (sc == w) return 1;
+            if (sc == s_key) return 2;
+            if (sc == a) return 3;
+            if (sc == d_key) return 4;
+        }
+        return 0;
+    }
+
     pub fn poll(self: *Platform, dt: f32) FrameInput {
         var input = FrameInput{ .mouse_x = self.mouse_x, .mouse_y = self.mouse_y };
         var ev: c.SDL_Event = undefined;
@@ -367,10 +407,13 @@ pub const Platform = struct {
             } else if (t == @as(u32, @intCast(c.SDL_EVENT_KEY_DOWN))) {
                 if (ev.key.repeat) {
                     const rsc = ev.key.scancode;
-                    if (rsc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_W)) or rsc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_UP)) or rsc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_8))) input.step_n = true;
-                    if (rsc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_S)) or rsc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_DOWN)) or rsc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_2))) input.step_s = true;
-                    if (rsc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_D)) or rsc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_RIGHT)) or rsc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_6))) input.step_e = true;
-                    if (rsc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_A)) or rsc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_LEFT)) or rsc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_4))) input.step_w = true;
+                    switch (self.moveDir(rsc)) {
+                        1 => input.step_n = true,
+                        2 => input.step_s = true,
+                        3 => input.step_w = true,
+                        4 => input.step_e = true,
+                        else => {},
+                    }
                 } else {
                     const sc = ev.key.scancode;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_ESCAPE))) input.escape = true;
@@ -380,10 +423,13 @@ pub const Platform = struct {
                         input.wait = true;
                     }
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_5)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_PERIOD))) input.wait = true;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_W)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_UP)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_8))) input.step_n = true;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_S)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_DOWN)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_2))) input.step_s = true;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_D)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_RIGHT)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_6))) input.step_e = true;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_A)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_LEFT)) or sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_KP_4))) input.step_w = true;
+                    switch (self.moveDir(sc)) {
+                        1 => input.step_n = true,
+                        2 => input.step_s = true,
+                        3 => input.step_w = true,
+                        4 => input.step_e = true,
+                        else => {},
+                    }
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_1))) {
                         input.talent_1 = true;
                         input.stat = 0;
