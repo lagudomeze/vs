@@ -797,6 +797,12 @@ test "qa2: 3x3 chunks round-trip arenas and v3 saves" {
             s.enterChunk(edge);
             try checkEnemies(&s);
             if (!s.chunks_enabled or s.chunk > 8) return error.ChunkState;
+            var step: usize = 0;
+            while (step < 5 and s.state == .playing) : (step += 1) {
+                const before = snapshot(&s);
+                _ = autoStep(&s);
+                try checkAfterAction(&s, before);
+            }
             const bytes = try save_mod.saveAlloc(alloc, &s);
             const loaded = try save_mod.loadAlloc(alloc, bytes);
             alloc.free(bytes);
