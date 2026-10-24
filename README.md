@@ -256,3 +256,5 @@ Steam 上架/商店素材/Demo/反馈闭环见 [docs/STEAM.md](docs/STEAM.md)；
 ---
 
 *Built with Zig 0.17 + SDL3 + zflecs. Real meshes, chunky pixels, turn-based depths.*
+
+- **Boss 血条**：Boss 存活时顶部中央显示名字与血量。

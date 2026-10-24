@@ -49,6 +49,7 @@ const Options = struct {
     victory_screen: bool = false,
     demo: bool = false,
     demo_end_screen: bool = false,
+    boss_screen: bool = false,
     shop_screen: bool = false,
 };
 
@@ -97,6 +98,7 @@ fn usage() void {
         \\  --victory         show the victory summary (screenshot/QA)
         \\  --demo            demo mode: first floor only
         \\  --demo-end        show the demo end screen (screenshot/QA)
+        \\  --boss            jump to the floor-3 boss (screenshot/QA)
         \\  --help            this text
         \\
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
@@ -203,6 +205,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.demo = true;
         } else if (std.mem.eql(u8, a, "--demo-end")) {
             o.demo_end_screen = true;
+        } else if (std.mem.eql(u8, a, "--boss")) {
+            o.boss_screen = true;
         } else if (std.mem.eql(u8, a, "--shop")) {
             o.shop_screen = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
@@ -854,6 +858,12 @@ pub fn main(init: std.process.Init.Minimal) !void {
         game.demo_end = true;
         game.sim.state = .victory;
         game.sim.pushLog("DEMO END", .{});
+    }
+    if (options.boss_screen) {
+        game.started = true;
+        game.sim.floor = 1;
+        game.sim.nextFloor();
+        game.sim.nextFloor();
     }
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
