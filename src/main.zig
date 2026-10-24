@@ -856,6 +856,10 @@ pub fn main(init: std.process.Init.Minimal) !void {
     }
     if (options.demo or options.demo_end_screen) {
         game.demo = true;
+        if (game.class != .warrior) {
+            game.class = .warrior;
+            game.restart();
+        }
         game.setChunks(false);
     }
     if (options.demo_end_screen) {

@@ -407,6 +407,10 @@ pub const RunGame = struct {
     }
 
     pub fn selectClass(self: *RunGame, class: sim_mod.Class) void {
+        if (self.demo and class != .warrior) {
+            self.sim.pushLog("DEMO: WARRIOR ONLY", .{});
+            return;
+        }
         self.class = class;
         self.restart();
         self.sim.pushLog("开始：{s}", .{sim_mod.class_names[@backingInt(self.class)]});
@@ -2134,6 +2138,7 @@ pub const RunGame = struct {
             .settings_shake = self.settings_shake,
             .chunk_map_open = self.chunk_map_open,
             .demo_end = self.demo_end,
+            .demo = self.demo,
             .boss_active = boss_active,
             .boss_hp = boss_hp,
             .boss_hp_max = boss_hp_max,
@@ -2455,6 +2460,17 @@ test "run game: sim notice becomes a HUD toast" {
     try std.testing.expectEqualStrings("TEST NOTICE", g.hud_state.toast);
     try std.testing.expect(g.toast_time > 0);
     try std.testing.expectEqualStrings("", g.sim.notice);
+}
+
+test "run game: demo locks non-warrior classes" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.demo = true;
+    g.openMenu();
+    g.selectClass(.mage);
+    try std.testing.expectEqual(sim_mod.Class.warrior, g.class);
+    try std.testing.expect(!g.started);
 }
 
 test "run game: demo ends at the stairs and skips records" {

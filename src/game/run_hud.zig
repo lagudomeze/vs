@@ -83,6 +83,7 @@ pub const State = struct {
     chunk_visited: [9]bool = @splat(false),
     chunk_cleared: [9]bool = @splat(false),
     demo_end: bool = false,
+    demo: bool = false,
     boss_active: bool = false,
     boss_hp: f32 = 0,
     boss_hp_max: f32 = 1,
@@ -306,6 +307,12 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
             r.drawText(x + 8, ty, label, palette.cream, 1, false);
             r.drawText(x + 22, ty + 13, card.descs[t], palette.muted, 1, false);
         }
+        if (state.demo and i != 0) {
+            r.fillRect(x + 1, y0 + 1, card_w - 2, card_h - 2, palette.deep);
+            const lock = "DEMO LOCKED";
+            const lw = renderer.Renderer.textWidth(lock, 1);
+            r.drawText(x + @divTrunc(card_w - lw, 2), y0 + @divTrunc(card_h, 2), lock, palette.muted, 1, false);
+        }
     }
 
     if (h >= 300) {
@@ -331,8 +338,9 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         r.drawText(@divTrunc(w, 2) - @divTrunc(bw, 2), h - 45, badges, palette.cyan_light, 1, false);
     }
 
-    const fw = renderer.Renderer.textWidth(menu_footer, 1);
-    r.drawText(@divTrunc(w, 2) - @divTrunc(fw, 2), h - 18, menu_footer, palette.muted, 1, false);
+    const footer_text = if (state.demo) "1 选择  2/3 DEMO LOCKED  F9 读档  R 重开" else menu_footer;
+    const fw = renderer.Renderer.textWidth(footer_text, 1);
+    r.drawText(@divTrunc(w, 2) - @divTrunc(fw, 2), h - 18, footer_text, palette.muted, 1, false);
 }
 
 fn drawHelp(r: *renderer.Renderer, w: i32, h: i32) void {
