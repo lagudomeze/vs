@@ -13,8 +13,12 @@ pub fn build(b: *std.Build) void {
     const zflecs_dep = b.dependency("zflecs", .{ .target = target, .optimize = optimize });
     const sdl_dep = b.dependency("sdl", .{ .target = target, .optimize = optimize });
 
+    // Keep the one-line C shim in the build cache instead of a repo file.
+    const sdl_shim = b.addWriteFiles();
     const sdl_c = b.addTranslateC(.{
-        .root_source_file = b.path("src/sdl_c.h"),
+        .root_source_file = sdl_shim.add("sdl_shim.c",
+            \\#include <SDL3/SDL.h>
+        ),
         .target = target,
         .optimize = optimize,
     });
