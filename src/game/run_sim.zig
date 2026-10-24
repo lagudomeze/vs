@@ -474,8 +474,7 @@ pub const Sim = struct {
     log_total: usize = 0,
     chunks_enabled: bool = false,
     chunk: u8 = 0,
-    arena0: Arena = .{},
-    arena1: Arena = .{},
+    arenas: [9]Arena = @splat(.{}),
 
     pub fn init(seed: u64, class: Class) Sim {
         return initWithDifficulty(seed, class, .normal);
@@ -921,40 +920,55 @@ pub const Sim = struct {
         self.shop_used = a.shop_used;
     }
 
-    fn carveGates(self: *Sim) void {
+    fn carveGatesFor(self: *Sim, index: u8) void {
+        const cx: i32 = @as(i32, @intCast(index % 3)) - 1;
+        const cy: i32 = @as(i32, @intCast(index / 3)) - 1;
         const mx: i32 = @divTrunc(@as(i32, grid_w), 2);
         const my: i32 = @divTrunc(@as(i32, grid_h), 2);
-        const pts = [_]GridPos{
-            .{ .x = mx, .y = 0 },
-            .{ .x = mx, .y = 1 },
-            .{ .x = mx, .y = @as(i32, grid_h) - 1 },
-            .{ .x = mx, .y = @as(i32, grid_h) - 2 },
-            .{ .x = 0, .y = my },
-            .{ .x = 1, .y = my },
-            .{ .x = @as(i32, grid_w) - 1, .y = my },
-            .{ .x = @as(i32, grid_w) - 2, .y = my },
-        };
-        for (pts) |p| {
-            self.map.setTile(.{ .x = p.x, .y = p.y }, .floor);
-            self.blocked[@as(usize, @intCast(p.y)) * grid_w + @as(usize, @intCast(p.x))] = false;
+        if (cy > -1) {
+            self.map.setTile(.{ .x = mx, .y = 0 }, .floor);
+            self.map.setTile(.{ .x = mx, .y = 1 }, .floor);
+            self.blocked[@as(usize, 0) * grid_w + @as(usize, @intCast(mx))] = false;
+            self.blocked[@as(usize, 1) * grid_w + @as(usize, @intCast(mx))] = false;
+        }
+        if (cy < 1) {
+            self.map.setTile(.{ .x = mx, .y = @as(i32, grid_h) - 1 }, .floor);
+            self.map.setTile(.{ .x = mx, .y = @as(i32, grid_h) - 2 }, .floor);
+            self.blocked[@as(usize, grid_h - 1) * grid_w + @as(usize, @intCast(mx))] = false;
+            self.blocked[@as(usize, grid_h - 2) * grid_w + @as(usize, @intCast(mx))] = false;
+        }
+        if (cx > -1) {
+            self.map.setTile(.{ .x = 0, .y = my }, .floor);
+            self.map.setTile(.{ .x = 1, .y = my }, .floor);
+            self.blocked[@as(usize, @intCast(my)) * grid_w + 0] = false;
+            self.blocked[@as(usize, @intCast(my)) * grid_w + 1] = false;
+        }
+        if (cx < 1) {
+            self.map.setTile(.{ .x = @as(i32, grid_w) - 1, .y = my }, .floor);
+            self.map.setTile(.{ .x = @as(i32, grid_w) - 2, .y = my }, .floor);
+            self.blocked[@as(usize, @intCast(my)) * grid_w + grid_w - 1] = false;
+            self.blocked[@as(usize, @intCast(my)) * grid_w + grid_w - 2] = false;
         }
     }
 
-    /// Experimental vertical slice: two linked arenas. Default off; CLI
-    /// --chunks enables it. Save only stores the active arena.
+    /// Experimental 3x3 chunk grid. Center is 4. Saving stays disabled.
     pub fn enableChunks(self: *Sim) void {
         if (self.chunks_enabled) return;
         self.chunks_enabled = true;
-        self.carveGates();
-        self.arena0 = self.captureArena();
+        self.chunk = 4;
+        self.carveGatesFor(4);
+        self.arenas[4] = self.captureArena();
 
-        var alt = Sim.initWithDifficulty(self.seed ^ 0x9e3779b97f4a7c15, self.class, self.difficulty);
-        alt.floor = self.floor;
-        alt.generateFloor();
-        alt.carveGates();
-        self.arena1 = alt.captureArena();
-        self.chunk = 0;
-        self.pushLog("CHUNK SYSTEM ON", .{});
+        var i: u8 = 0;
+        while (i < 9) : (i += 1) {
+            if (i == 4) continue;
+            var alt = Sim.initWithDifficulty(self.seed ^ (@as(u64, i + 1) *% 0x9e3779b97f4a7c15), self.class, self.difficulty);
+            alt.floor = self.floor;
+            alt.generateFloor();
+            alt.carveGatesFor(i);
+            self.arenas[i] = alt.captureArena();
+        }
+        self.pushLog("CHUNKS 3x3 ON", .{});
     }
 
     fn edgeAt(self: *const Sim) ?Edge {
@@ -978,15 +992,23 @@ pub const Sim = struct {
 
     pub fn enterChunk(self: *Sim, edge: Edge) void {
         if (!self.chunks_enabled) return;
-        if (self.chunk == 0) {
-            self.arena0 = self.captureArena();
-            self.restoreArena(self.arena1);
-            self.chunk = 1;
-        } else {
-            self.arena1 = self.captureArena();
-            self.restoreArena(self.arena0);
-            self.chunk = 0;
+        const cx: i32 = @intCast(self.chunk % 3);
+        const cy: i32 = @intCast(self.chunk / 3);
+        var tx = cx;
+        var ty = cy;
+        switch (edge) {
+            .north => ty -= 1,
+            .south => ty += 1,
+            .west => tx -= 1,
+            .east => tx += 1,
         }
+        if (tx < 0 or tx > 2 or ty < 0 or ty > 2) return;
+        const target: u8 = @intCast(ty * 3 + tx);
+
+        self.arenas[self.chunk] = self.captureArena();
+        self.restoreArena(self.arenas[target]);
+        self.chunk = target;
+
         var entry = entryFor(edge);
         if (self.isBlocked(entry.x, entry.y) or self.enemyAt(entry.x, entry.y) != null) {
             const dirs = [_]GridPos{ .{ .x = 0, .y = 1 }, .{ .x = 0, .y = -1 }, .{ .x = 1, .y = 0 }, .{ .x = -1, .y = 0 } };
@@ -999,10 +1021,10 @@ pub const Sim = struct {
             }
         }
         self.hero.pos = entry;
-        self.hero.last_pos = self.hero.pos;
+        self.hero.last_pos = entry;
         self.hero.history_len = 0;
         self.aoe_armed = false;
-        self.pushLog("CHUNK {s}", .{if (self.chunk == 0) "A" else "B"});
+        self.pushLog("CHUNK {d},{d}", .{ tx, ty });
     }
 
     /// Deterministic affix roll; does not consume the run RNG, so loot order
@@ -1963,17 +1985,17 @@ test "run sim: abyss wraith ranged hit applies burn" {
     try std.testing.expect(s.hero.status.burn_turns > 0);
 }
 
-test "run sim: two-chunk slice preserves arena state" {
+test "run sim: 3x3 chunk slice preserves arena state" {
     var s = Sim.init(81, .warrior);
     s.enableChunks();
     try std.testing.expect(s.chunks_enabled);
-    try std.testing.expect(s.chunk == 0);
+    try std.testing.expectEqual(@as(u8, 4), s.chunk);
     const before = s.enemy_count;
     const chest_before = s.chest_alive;
     s.enterChunk(.north);
     try std.testing.expectEqual(@as(u8, 1), s.chunk);
     s.enterChunk(.south);
-    try std.testing.expectEqual(@as(u8, 0), s.chunk);
+    try std.testing.expectEqual(@as(u8, 4), s.chunk);
     try std.testing.expectEqual(before, s.enemy_count);
     try std.testing.expectEqual(chest_before, s.chest_alive);
 }
