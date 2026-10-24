@@ -22,6 +22,10 @@ pwsh -File tools/playtest_pack.ps1
 | FEEDBACK.md | 单人记录模板 + P0–P3 分级 |
 | README/CREDITS/OFL | 项目说明与字体许可 |
 
+## 招募
+
+渠道、英文/中文文案、筛选问题、排期与隐私见 [RECRUIT.md](RECRUIT.md)；记录用 [playtest_tracker.csv](playtest_tracker.csv)。
+
 ## 分发
 
 - 只发 zip，不发源码/开发构建
