@@ -201,6 +201,7 @@ pub const RunGame = struct {
     panel: hud.Panel = .none,
     hud_state: hud.State = .{},
     time: f32 = 0,
+    shake: f32 = 0,
     dt: f32 = 0,
     frame: u32 = 0,
     fps: f32 = 60,
@@ -1294,6 +1295,11 @@ pub const RunGame = struct {
         self.camera.target.x = std.math.clamp(self.hero_vis.pos.x, -half_extent + margin, half_extent - margin);
         self.camera.target.z = std.math.clamp(self.hero_vis.pos.z, -half_extent + margin, half_extent - margin);
         self.camera.target.y = 0.35;
+        if (self.shake > 0) {
+            const amp = self.shake * 0.22;
+            self.camera.target.x += @sin(self.time * 57.0) * amp;
+            self.camera.target.z += @cos(self.time * 49.0) * amp;
+        }
         self.camera_target = self.camera.target;
     }
 
@@ -1541,8 +1547,10 @@ pub const RunGame = struct {
         const hero_loss = hero_before - self.sim.hero.vitals.val;
         if (hero_loss > 0.5) {
             self.hero_vis.flash = 0.22;
+            self.shake = @min(1.0, self.shake + 0.35);
             self.spawnFloat(self.hero_vis.pos, -@as(i32, @intFromFloat(hero_loss)), palette.red);
         }
+        if (self.sim.state == .victory) self.shake = 1.0;
         var i: usize = 0;
         while (i < enemies_before.len and i < self.sim.enemy_count) : (i += 1) {
             const loss = enemies_before[i] - self.sim.enemies[i].vitals.val;
@@ -1586,6 +1594,7 @@ pub const RunGame = struct {
         self.hero_vis.anim.moving = self.hero_vis.moving;
         self.hero_vis.anim.cast = @max(0, self.hero_vis.anim.cast - dt * 3.0);
         self.hero_vis.flash = @max(0, self.hero_vis.flash - dt);
+        self.shake = @max(0, self.shake - dt * 3.0);
         for (&self.floats) |*f| {
             if (f.life > 0) {
                 f.life -= dt;
