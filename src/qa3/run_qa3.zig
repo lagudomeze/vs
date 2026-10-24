@@ -283,6 +283,8 @@ test "qa3: self talents fire immediately without entering aim" {
     defer c.destroy();
     resetAimBoard(c);
     c.sim.hero.last_pos = .{ .x = 6, .y = 5 };
+    c.sim.hero.history[0] = .{ .x = 6, .y = 5 };
+    c.sim.hero.history_len = 1;
     const ct = c.sim.turn;
     c.update(.{ .talent = 2 }, dt);
     try std.testing.expect(!c.isAiming());

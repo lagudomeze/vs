@@ -118,6 +118,8 @@ const StatsSave = struct {
 const HeroSave = struct {
     pos: GridPosSave,
     last_pos: GridPosSave,
+    history: [4]GridPosSave = .{ .{ .x = 0, .y = 0 }, .{ .x = 0, .y = 0 }, .{ .x = 0, .y = 0 }, .{ .x = 0, .y = 0 } },
+    history_len: u8 = 0,
     stats: StatsSave,
     hp: f32,
     hp_max: f32,
@@ -371,6 +373,8 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
         .hero = .{
             .pos = savePos(hero.pos),
             .last_pos = savePos(hero.last_pos),
+            .history = .{ savePos(hero.history[0]), savePos(hero.history[1]), savePos(hero.history[2]), savePos(hero.history[3]) },
+            .history_len = hero.history_len,
             .stats = .{
                 .strength = hero.sheet.stats.strength.val,
                 .agility = hero.sheet.stats.agility.val,
@@ -477,6 +481,10 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
 
     const h = &root.hero;
     if (!inBounds(h.pos) or !inBounds(h.last_pos)) return error.InvalidCoordinate;
+    if (h.history_len > 4) return error.InvalidValue;
+    for (h.history) |p| {
+        if (!inBounds(p)) return error.InvalidCoordinate;
+    }
     if (!statsFinite(h.stats)) return error.InvalidValue;
     if (!allFinite(&h.eff_stats)) return error.InvalidValue;
     if (!std.math.isFinite(h.hp) or !std.math.isFinite(h.hp_max) or
@@ -586,6 +594,8 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
             .class = root.class,
             .pos = loadPos(h.pos),
             .last_pos = loadPos(h.last_pos),
+            .history = .{ loadPos(h.history[0]), loadPos(h.history[1]), loadPos(h.history[2]), loadPos(h.history[3]) },
+            .history_len = @min(h.history_len, 4),
             .sheet = .{
                 .stats = numeric.PrimarySheet.fromArray(.{
                     h.stats.strength,
