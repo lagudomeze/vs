@@ -9,7 +9,7 @@
 1. F2 打开设置
 2. 按 8 进入 REMAP KEYS
 3. 依次按新键：CONFIRM / POTION / BOMB / INVENTORY / CHARACTER / TALENT 1-3
-4. ESC 取消；每绑定一个动作立即保存
+4. 重复键会被拒绝并显示 KEY IN USE；BACKSPACE 恢复全部默认；ESC 取消
 
 截图：docs/screenshots/key_remap.png
 
@@ -57,8 +57,8 @@
 ## 规则
 
 - 1 ≤ scancode ≤ 300；ESC(41) 会被拒绝并回退默认。
-- 允许重复绑定，但同一键会同时触发多个动作，不推荐。
-- 游戏内捕获会立即保存；手动编辑文件后重启生效。
+- 游戏内会拒绝与其他动作重复的键；手编 JSON 仍可重复，但不推荐。
+- 游戏内捕获/恢复默认会立即保存；手动编辑文件后重启生效。
 - Steam Input 官方配置仍待做；捕获 UI 不支持鼠标键。
 
 ## 常见 scancode

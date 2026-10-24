@@ -67,6 +67,7 @@ pub const State = struct {
     settings_esdf: bool = false,
     keys_mode: bool = false,
     keys_index: u8 = 0,
+    keys_error: bool = false,
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -653,7 +654,11 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
             r.drawText(kx + 48, ky + 52 + @as(i32, @intCast(i)) * 20, action, if (selected) palette.gold_light else palette.cream, 1, false);
             if (selected) r.fillRect(kx + 38, ky + 57 + @as(i32, @intCast(i)) * 20, 4, 4, palette.gold);
         }
-        r.drawText(kx + 16, ky + kh - 22, "PRESS NEW KEY   ESC CANCEL", palette.muted, 1, false);
+        if (state.keys_error) {
+            r.drawText(kx + 16, ky + kh - 22, "KEY IN USE - TRY AGAIN", palette.red, 1, false);
+        } else {
+            r.drawText(kx + 16, ky + kh - 22, "PRESS NEW KEY  BACKSPACE RESET  ESC CANCEL", palette.muted, 1, false);
+        }
         return;
     }
     const pw: i32 = 320;
