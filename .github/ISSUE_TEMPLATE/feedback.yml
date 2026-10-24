@@ -1,0 +1,69 @@
+name: Playtest feedback
+description: Report a bug, balance issue, or UX problem from a playtest run.
+title: "[Feedback] "
+labels: ["nightly-review"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for playing. Please include enough detail to reproduce the issue.
+        If possible, attach a screenshot or the save file from your user save directory.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of vx --version, or the build/commit you played.
+      placeholder: vx 0.1.0 / commit
+    validations:
+      required: true
+  - type: dropdown
+    id: class
+    attributes:
+      label: Class
+      options:
+        - Warrior
+        - Mage
+        - Chronomancer
+        - Not class-specific
+    validations:
+      required: true
+  - type: input
+    id: floor
+    attributes:
+      label: Floor / turn
+      description: Where it happened (e.g. floor 2, turn 87).
+      placeholder: floor 2, turn 87
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: Actual behaviour, including any error text.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Keys pressed, enemy/talent involved, seed if known.
+      placeholder: |
+        1. Start as ...
+        2. Press ...
+        3. ...
+  - type: textarea
+    id: save
+    attributes:
+      label: Save / screenshot
+      description: Drag files here if relevant. Saves live in %APPDATA%\lagudomeze\vx\saves.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I reproduced this more than once
+        - label: I can share the save/screenshot

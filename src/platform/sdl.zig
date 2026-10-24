@@ -35,6 +35,7 @@ pub const FrameInput = struct {
     toggle_debug: bool = false,
     toggle_fullscreen: bool = false,
     settings: bool = false,
+    feedback: bool = false,
     screenshot: bool = false,
     save_slot: bool = false,
     load_slot: bool = false,
@@ -190,6 +191,7 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_R))) input.reset = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F1))) input.toggle_debug = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F2))) input.settings = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F3))) input.feedback = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F11))) input.toggle_fullscreen = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F12))) input.screenshot = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F5))) input.save_slot = true;
@@ -264,4 +266,8 @@ pub fn performanceNow() u64 {
 
 pub fn performanceFrequency() u64 {
     return c.SDL_GetPerformanceFrequency();
+}
+
+pub fn openUrl(url: [:0]const u8) bool {
+    return c.SDL_OpenURL(url.ptr);
 }

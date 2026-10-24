@@ -370,6 +370,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             settings.fullscreen = platform.fullscreen;
             vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
         }
+        if (pin.feedback) _ = vx.platform.openUrl("https://github.com/lagudomeze/vs/issues/new?template=feedback.yml");
         if (pin.settings) game.settings_open = !game.settings_open;
         if (game.settings_open) {
             var settings_dirty = false;
