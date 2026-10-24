@@ -32,6 +32,7 @@ const Options = struct {
     aim: ?u32 = null,
     hide_hud: bool = false,
     help: bool = false,
+    portable: bool = false,
     help_screen: bool = false,
     shrine_screen: bool = false,
     shop_screen: bool = false,
@@ -68,6 +69,7 @@ fn usage() void {
         \\  --debug           show the debug HUD
         \\  --lineup          class showcase camera (for documentation shots)
         \\  --hide-hud        render without the HUD
+        \\  --portable        keep saves in the current directory (development)
         \\  --help            this text
         \\
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
@@ -161,6 +163,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.shop_screen = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
             o.hide_hud = true;
+        } else if (std.mem.eql(u8, a, "--portable")) {
+            o.portable = true;
         } else if (std.mem.eql(u8, a, "--help") or std.mem.eql(u8, a, "-h")) {
             o.help = true;
         } else {
@@ -444,7 +448,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
 pub fn main(init: std.process.Init.Minimal) !void {
     const gpa = std.heap.page_allocator;
     const argv = try init.args.toSlice(gpa);
-    const options = parseOptions(argv) catch |err| switch (err) {
+    var options = parseOptions(argv) catch |err| switch (err) {
         error.MissingValue, error.BadResolution, error.UnknownOption => return err,
         else => return err,
     };
@@ -463,6 +467,27 @@ pub fn main(init: std.process.Init.Minimal) !void {
         }
     }
 
+    if (!options.portable) {
+        if (vx.platform.prefPath(gpa)) |pref| {
+            defer gpa.free(pref);
+            // Resolve --out before changing the process cwd so dev screenshots
+            // still land where the caller asked.
+            if (options.out) |out| {
+                var cwd_buf: [4096]u8 = undefined;
+                const cwd_raw = std.c.getcwd(&cwd_buf, cwd_buf.len) orelse cwd_buf[0..0].ptr;
+                options.out = try std.fs.path.resolve(gpa, &.{ std.mem.sliceTo(cwd_raw, 0), out });
+            }
+            const pref_z = try gpa.dupeSentinel(u8, pref, 0);
+            defer gpa.free(pref_z);
+            if (std.c.chdir(pref_z.ptr) != 0) {
+                std.debug.print("vx: could not enter save directory {s}; saves stay in cwd\n", .{pref});
+            } else {
+                std.debug.print("vx: saves -> {s}\n", .{pref});
+            }
+        } else |_| {
+            std.debug.print("vx: no per-user save path; saves stay in cwd\n", .{});
+        }
+    }
     var threaded: std.Io.Threaded = .init(gpa, .{});
     defer threaded.deinit();
     const io = threaded.io();
