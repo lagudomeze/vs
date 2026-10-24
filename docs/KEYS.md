@@ -57,7 +57,9 @@
 ## 规则
 
 - 1 ≤ scancode ≤ 300；ESC(41) 会被拒绝并回退默认。
-- 游戏内会拒绝与其他动作重复的键；手编 JSON 仍可重复，但不推荐。
+- 固定功能键不能绑定：WASD/ESDF、方向键、小键盘、Tab、Q/E、R、M、H、4–0、period、F1–F12。命中会提示 KEY IN USE。
+- 手编 JSON 里同一键绑两个动作，加载时后出现的动作恢复默认（去重）。
+- 游戏内会拒绝与其他动作重复的键；手编 JSON 的重复键在加载时会被去重。
 - 游戏内捕获/恢复默认会立即保存；手动编辑文件后重启生效。
 - Steam Input 官方配置仍待做；捕获 UI 不支持鼠标键。
 
@@ -67,3 +69,11 @@ A=4, B=5, C=6, D=7, E=8, F=9, G=10, H=11, I=12, J=13, K=14, L=15,
 M=16, N=17, O=18, P=19, Q=20, R=21, S=22, T=23, U=24, V=25, W=26, X=27,
 Y=28, Z=29, 1=30 … 9=38, 0=39, RETURN=40, ESC=41, SPACE=44,
 F1=58 … F12=69.
+
+
+## 开发者：新增动作
+
+1. 在 settings.zig 的 binding_defs 表加一行（label/default/get/set）。
+2. sanitized、keyConflicts、assignKey、HUD 列表、remap 上限都从表派生。
+3. 不要另写 8 元素数组；越界 assign 返回 false，由调用方处理。
+4. 保留键表 reserved_keys 也要同步，新增固定功能键时先加进去。

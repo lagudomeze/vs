@@ -3,6 +3,7 @@ const std = @import("std");
 const color = @import("../core/color.zig");
 const palette = @import("../core/palette.zig");
 const renderer = @import("../engine/renderer.zig");
+const settings_mod = @import("settings.zig");
 
 pub const Panel = enum(u8) { none, character, inventory };
 
@@ -716,10 +717,9 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         const title = "REMAP KEYS";
         const tw = renderer.Renderer.textWidth(title, 2);
         r.drawText(kx + @divTrunc(kw - tw, 2), ky + 14, title, palette.gold_light, 2, true);
-        const actions = [_][]const u8{ "CONFIRM", "POTION", "BOMB", "INVENTORY", "CHARACTER", "TALENT 1", "TALENT 2", "TALENT 3" };
-        for (actions, 0..) |action, i| {
+        for (settings_mod.binding_defs, 0..) |def, i| {
             const selected = i == state.keys_index;
-            r.drawText(kx + 48, ky + 52 + @as(i32, @intCast(i)) * 20, action, if (selected) palette.gold_light else palette.cream, 1, false);
+            r.drawText(kx + 48, ky + 52 + @as(i32, @intCast(i)) * 20, def.label, if (selected) palette.gold_light else palette.cream, 1, false);
             if (selected) r.fillRect(kx + 38, ky + 57 + @as(i32, @intCast(i)) * 20, 4, 4, palette.gold);
         }
         if (state.keys_error) {
