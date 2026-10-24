@@ -159,7 +159,7 @@ const help_lines = [_][]const u8{
     "天赋  1/2/3 瞄准，空格/同键确认",
     "等待  5 / .     背包 I     角色 C",
     "P POTION  anytime, no cost at full",
-    "SHOP/SHRINE  1-5 select",
+    "SHOP/SHRINE  1-6 select",
     "Esc 取消瞄准 / 关闭面板 / 退出",
     "存档 F5  读档 F9 槽  自动档 F10",
     "相机 Q/E/右键   滚轮 WHEEL ZOOM",
@@ -675,7 +675,7 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
 
 fn drawShop(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const pw: i32 = 300;
-    const ph: i32 = 204;
+    const ph: i32 = 224;
     const px = @divTrunc(w - pw, 2);
     const py = @divTrunc(h - ph, 2);
     r.fillRect(0, 0, w, h, palette.deep);
@@ -692,11 +692,11 @@ fn drawShop(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const gw = renderer.Renderer.textWidth(gold, 1);
     r.drawText(px + @divTrunc(pw - gw, 2), py + 38, gold, palette.gold, 1, false);
 
-    const lines = [_][]const u8{ "1 治疗 25G", "2 主属性 +2 60G", "3 体质 +2 60G", "4 CLEANSE 20G", "5 LOOT 80G" };
+    const lines = [_][]const u8{ "1 治疗 25G", "2 主属性 +2 60G", "3 体质 +2 60G", "4 CLEANSE 20G", "5 LOOT 80G", "6 BOMB 40G" };
     for (lines, 0..) |line, i| {
-        r.drawText(px + 40, py + 58 + @as(i32, @intCast(i)) * 20, line, if (i == 3) palette.cyan_light else if (i == 4) palette.gold_light else palette.cream, 1, false);
+        r.drawText(px + 40, py + 58 + @as(i32, @intCast(i)) * 20, line, if (i == 3) palette.cyan_light else if (i >= 4) palette.gold_light else palette.cream, 1, false);
     }
-    r.drawText(px + 16, py + ph - 20, "1/2/3/4/5 选择   Esc 关闭", palette.muted, 1, false);
+    r.drawText(px + 16, py + ph - 20, "1/2/3/4/5/6 选择   Esc 关闭", palette.muted, 1, false);
 }
 
 fn drawShrine(r: *renderer.Renderer, state: State, w: i32, h: i32) void {

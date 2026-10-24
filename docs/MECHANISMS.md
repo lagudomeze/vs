@@ -263,8 +263,9 @@ raw
 
 已落地契约（金币/补给站，M8）：
 
-- 输入：击杀、普通宝箱、诅咒宝箱发金币；玩家在 SHOP 面板选择 1-5。
+- 输入：击杀、普通宝箱、诅咒宝箱发金币；玩家在 SHOP 面板选择 1-6。
 - 状态：gold、shop、shop_active、shop_used；每层一个 SHOP，购买一次后消失。
+- BOMB 补给：40G，Sim 只扣款并置 shop_used，Game 负责把 fire_bomb 放入背包。
 - 结算：治疗/主属性/体质/净化由 Sim.useShop 结算；LOOT 只扣款并置 shop_used，物品 roll 留在 RunGame/内容层。
 - 边界：金币不是经验，不触发升级；商店不写 M9 楼层胜负；存档保存 gold/shop/shop_used。
 - 不做：定向商品库存、价格随楼层浮动。

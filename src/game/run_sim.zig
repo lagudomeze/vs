@@ -23,6 +23,7 @@ pub const shop_power_cost: u32 = 60;
 pub const shop_vitality_cost: u32 = 60;
 pub const shop_cleanse_cost: u32 = 20;
 pub const shop_loot_cost: u32 = 80;
+pub const shop_bomb_cost: u32 = 40;
 
 pub const Affix = enum(u8) { none, swift, armored, vampiric, explosive, split, frost };
 
@@ -792,6 +793,15 @@ pub const Sim = struct {
         }
         self.gold -= cost;
         self.shop_used = true;
+        return true;
+    }
+
+    /// Deduct the bomb price. Adding the item to the bag stays in Game.
+    pub fn buyShopBomb(self: *Sim) bool {
+        if (!self.atShop() or self.gold < shop_bomb_cost) return false;
+        self.gold -= shop_bomb_cost;
+        self.shop_used = true;
+        self.pushLog("SHOP BOMB", .{});
         return true;
     }
 
@@ -2342,6 +2352,13 @@ test "run sim: shop buys healing and permanent power" {
     try std.testing.expectEqual(@as(u32, 20), l.gold);
     try std.testing.expect(l.shop_used);
     try std.testing.expect(!l.buyShopLoot());
+
+    var b = Sim.init(95, .warrior);
+    b.hero.pos = b.shop;
+    b.gold = 40;
+    try std.testing.expect(b.buyShopBomb());
+    try std.testing.expectEqual(@as(u32, 0), b.gold);
+    try std.testing.expect(b.shop_used);
 }
 
 test "run sim: shrine grants one permanent stat choice" {
