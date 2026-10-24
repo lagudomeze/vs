@@ -117,3 +117,8 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 - hero.bombs 保存英雄炸弹计数；v2 旧档缺失时默认 1。
 - v2 存档仍读取为单图；v1 拒绝。
 - 单文件上限提高到 1 MiB。
+
+
+## 本地备份
+
+每次写槽位前把旧文件复制为 path + .bak；主档缺失/解析失败时自动回退到 .bak。Auto-Cloud 只匹配 *.save，所以 .bak 留在本机，不参与云同步。
