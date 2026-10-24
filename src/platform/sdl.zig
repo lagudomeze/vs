@@ -66,6 +66,7 @@ pub const Platform = struct {
     gamepad: ?*c.SDL_Gamepad = null,
     pad_prev: u32 = 0,
     pad_dir: u8 = 0,
+    pad_swap: bool = false,
     audio_volume: f32 = 0.55,
     ambient: bool = true,
     ambient_phase: f32 = 0,
@@ -162,11 +163,18 @@ pub const Platform = struct {
         const pressed = mask & ~self.pad_prev;
         self.pad_prev = mask;
 
-        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_SOUTH)) != 0) {
+        var south = pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_SOUTH)) != 0;
+        var east = pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_EAST)) != 0;
+        if (self.pad_swap) {
+            const tmp = south;
+            south = east;
+            east = tmp;
+        }
+        if (south) {
             input.cast = true;
             input.wait = true;
         }
-        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_EAST)) != 0) input.escape = true;
+        if (east) input.escape = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_WEST)) != 0) input.inventory = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_NORTH)) != 0) input.character = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_LEFT_SHOULDER)) != 0) input.talent_1 = true;
@@ -210,6 +218,10 @@ pub const Platform = struct {
     pub fn toggleFullscreen(self: *Platform) bool {
         self.setFullscreen(!self.fullscreen);
         return self.fullscreen;
+    }
+
+    pub fn setPadSwap(self: *Platform, enabled: bool) void {
+        self.pad_swap = enabled;
     }
 
     pub fn setAmbient(self: *Platform, enabled: bool) void {
