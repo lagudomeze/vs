@@ -51,6 +51,7 @@ const Options = struct {
     demo_end_screen: bool = false,
     boss_screen: bool = false,
     pause_screen: bool = false,
+    quit_confirm_screen: bool = false,
     shop_screen: bool = false,
 };
 
@@ -101,6 +102,7 @@ fn usage() void {
         \\  --demo-end        show the demo end screen (screenshot/QA)
         \\  --boss            jump to the floor-3 boss (screenshot/QA)
         \\  --pause           show the pause menu (screenshot/QA)
+        \\  --quit-confirm    show the quit confirmation (screenshot/QA)
         \\  --help            this text
         \\
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
@@ -211,6 +213,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.boss_screen = true;
         } else if (std.mem.eql(u8, a, "--pause")) {
             o.pause_screen = true;
+        } else if (std.mem.eql(u8, a, "--quit-confirm")) {
+            o.quit_confirm_screen = true;
         } else if (std.mem.eql(u8, a, "--shop")) {
             o.shop_screen = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
@@ -584,7 +588,12 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             }
         }
         if (pin.quit) break;
-        if (game.pause_open and pin.key_code == 20) break;
+        if (game.pause_open and pin.key_code == 20) {
+            if (game.pause_confirm_quit) break;
+            game.pause_confirm_quit = true;
+            game.hud_state.pause_confirm_quit = true;
+            platform.playSound(.ui);
+        }
         // Escape is hierarchical: cancel aim first (never lose the run just
         // for cancelling a target), then close a modal panel, then quit.
         if (pin.escape) {
@@ -607,10 +616,14 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                     game.panel = .none;
                 } else if (game.pause_open) {
                     game.pause_open = false;
+                    game.pause_confirm_quit = false;
                     game.hud_state.pause_open = false;
+                    game.hud_state.pause_confirm_quit = false;
                 } else if (game.started and game.sim.state == .playing) {
                     game.pause_open = true;
+                    game.pause_confirm_quit = false;
                     game.hud_state.pause_open = true;
+                    game.hud_state.pause_confirm_quit = false;
                 } else {
                     break;
                 }
@@ -882,10 +895,14 @@ pub fn main(init: std.process.Init.Minimal) !void {
         game.sim.state = .victory;
         game.sim.pushLog("DEMO END", .{});
     }
-    if (options.pause_screen) {
+    if (options.pause_screen or options.quit_confirm_screen) {
         game.started = true;
         game.pause_open = true;
         game.hud_state.pause_open = true;
+    }
+    if (options.quit_confirm_screen) {
+        game.pause_confirm_quit = true;
+        game.hud_state.pause_confirm_quit = true;
     }
     if (options.boss_screen) {
         game.started = true;

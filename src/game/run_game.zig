@@ -193,6 +193,7 @@ pub const RunGame = struct {
     demo: bool = false,
     demo_end: bool = false,
     pause_open: bool = false,
+    pause_confirm_quit: bool = false,
     toast_text: []const u8 = "",
     toast_time: f32 = 0,
     hero_vis: Visual = .{},
@@ -332,6 +333,9 @@ pub const RunGame = struct {
     fn resetRun(self: *RunGame) void {
         self.sim.reset(self.seed, self.class);
         if (self.settings_chunks) self.sim.enableChunks();
+        self.demo_end = false;
+        self.pause_open = false;
+        self.pause_confirm_quit = false;
         self.inventory = items_mod.Inventory.init();
         self.mods.clear();
         self.loot_rng = std.Random.DefaultPrng.init(self.seed ^ 0x9e3779b97f4a7c15);
@@ -824,6 +828,7 @@ pub const RunGame = struct {
         self.shrine_open = self.sim.atShrine();
         self.settings_chunks = self.sim.chunks_enabled;
         self.pause_open = false;
+        self.pause_confirm_quit = false;
         self.shop_open = self.sim.atShop();
         self.rebuildMesh();
         self.resetVisuals();
@@ -2147,6 +2152,7 @@ pub const RunGame = struct {
             .demo_end = self.demo_end,
             .demo = self.demo,
             .pause_open = self.pause_open,
+            .pause_confirm_quit = self.pause_confirm_quit,
             .boss_active = boss_active,
             .boss_hp = boss_hp,
             .boss_hp_max = boss_hp_max,
@@ -2513,6 +2519,8 @@ test "run game: demo ends at the stairs and skips records" {
     try std.testing.expect(g.demo_end);
     try std.testing.expectEqual(sim_mod.State.victory, g.sim.state);
     try std.testing.expectEqual(@as(u32, 0), g.records.wins);
+    g.restart();
+    try std.testing.expect(!g.demo_end);
 }
 
 test "run game: pause blocks world movement" {
