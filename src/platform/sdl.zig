@@ -171,6 +171,7 @@ pub const Platform = struct {
             c.SDL_GAMEPAD_BUTTON_LEFT_SHOULDER,
             c.SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER,
             c.SDL_GAMEPAD_BUTTON_LEFT_STICK,
+            c.SDL_GAMEPAD_BUTTON_RIGHT_STICK,
             c.SDL_GAMEPAD_BUTTON_START,
             c.SDL_GAMEPAD_BUTTON_BACK,
             c.SDL_GAMEPAD_BUTTON_DPAD_UP,
@@ -201,6 +202,7 @@ pub const Platform = struct {
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_LEFT_SHOULDER)) != 0) input.talent_1 = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER)) != 0) input.talent_2 = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_LEFT_STICK)) != 0) input.talent_3 = true;
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_RIGHT_STICK)) != 0) input.map = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_START)) != 0) input.help = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_BACK)) != 0) input.settings = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_DPAD_UP)) != 0) input.step_n = true;
@@ -227,6 +229,14 @@ pub const Platform = struct {
             }
             self.pad_dir = dir;
         }
+
+        const rx = c.SDL_GetGamepadAxis(pad, @intCast(c.SDL_GAMEPAD_AXIS_RIGHTX));
+        if (@abs(@as(i32, rx)) > 12000) {
+            input.yaw_delta += @as(f32, @floatFromInt(rx)) / 32767.0 * 0.04;
+        }
+        const lt = c.SDL_GetGamepadAxis(pad, @intCast(c.SDL_GAMEPAD_AXIS_LEFT_TRIGGER));
+        const rt = c.SDL_GetGamepadAxis(pad, @intCast(c.SDL_GAMEPAD_AXIS_RIGHT_TRIGGER));
+        input.zoom_delta += (@as(f32, @floatFromInt(lt)) - @as(f32, @floatFromInt(rt))) / 32767.0 * 0.25;
     }
 
     pub fn setFullscreen(self: *Platform, on: bool) void {
