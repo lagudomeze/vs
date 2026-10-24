@@ -219,6 +219,10 @@ docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 - 没有音频、天赋树、随机词缀；存档已接 F5/F9（见 [docs/SAVE.md](docs/SAVE.md)）。
 - 当前数值是 v1 占位，优先验证循环与可读性。
 
+## 发行计划
+
+Steam 上架/商店素材/Demo/反馈闭环见 [docs/STEAM.md](docs/STEAM.md)。拆出的任务：#120 ECS Phase1、#121 Steam 构建、#122 商店/Demo/反馈、#123 设置/手柄。
+
 ## 致谢与许可
 
 - **Kenney** Mini Dungeon / Mini Arena，CC0 1.0；见 assets/CREDITS.md。
