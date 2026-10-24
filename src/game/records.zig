@@ -13,6 +13,7 @@ pub const Records = struct {
     wins_mage: u32 = 0,
     wins_chronomancer: u32 = 0,
     chunk_clears: u32 = 0,
+    flawless_wins: u32 = 0,
 };
 
 pub const default_path = "saves/records.json";
@@ -50,7 +51,7 @@ test "records round-trip and missing file is empty" {
     defer tmp.cleanup();
     const path = try std.fs.path.join(alloc, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "records.json" });
     defer alloc.free(path);
-    const want = Records{ .wins = 3, .deaths = 5, .best_floor = 3, .best_turn = 180, .best_kills = 24, .best_gold = 210, .wins_warrior = 2, .wins_mage = 1, .wins_chronomancer = 0, .chunk_clears = 4 };
+    const want = Records{ .wins = 3, .deaths = 5, .best_floor = 3, .best_turn = 180, .best_kills = 24, .best_gold = 210, .wins_warrior = 2, .wins_mage = 1, .wins_chronomancer = 0, .chunk_clears = 4, .flawless_wins = 1 };
     try save(io, alloc, path, want);
     try std.testing.expectEqual(want, try load(io, alloc, path));
 }
