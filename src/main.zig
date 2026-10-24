@@ -37,6 +37,7 @@ const Options = struct {
     version: bool = false,
     fullscreen: bool = false,
     save_info: bool = false,
+    hide_labels: bool = false,
     help_screen: bool = false,
     shrine_screen: bool = false,
     settings_screen: bool = false,
@@ -78,6 +79,7 @@ fn usage() void {
         \\  --version         print version
         \\  --fullscreen      start fullscreen (F11 toggles)
         \\  --save-info       print effective save paths and exit
+        \\  --hide-labels     hide world-space names/intents (clean screenshots)
         \\  --settings        open the settings panel (screenshot/QA)
         \\  --help            this text
         \\
@@ -183,6 +185,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.fullscreen = true;
         } else if (std.mem.eql(u8, a, "--save-info")) {
             o.save_info = true;
+        } else if (std.mem.eql(u8, a, "--hide-labels")) {
+            o.hide_labels = true;
         } else if (std.mem.eql(u8, a, "--help") or std.mem.eql(u8, a, "-h")) {
             o.help = true;
         } else {
@@ -626,6 +630,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
     if (options.settings_screen) game.settings_open = true;
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
+    game.show_world_labels = !options.hide_labels;
     game.presentation = !options.auto_demo and !options.headless;
     if (options.enemy_phase_shot) game.presentation = true;
     game.camera.yaw = options.yaw;

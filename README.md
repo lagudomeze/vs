@@ -142,6 +142,7 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | --portable | 存档留在当前目录（开发/CI；默认写用户目录） |
 | --version | 打印版本 |
 | --save-info | 打印实际存档/设置/records 路径后退出 |
+| --hide-labels | 隐藏世界内名字/意图（商店干净截图） |
 | --fullscreen | 全屏启动（F11 运行时切换） |
 | --settings | headless 打开设置面板（截图/QA） |
 | --auto | headless 自动向楼梯推进、打怪、放天赋 |
@@ -231,7 +232,7 @@ docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 
 ## 发行计划
 
-Steam 上架/商店素材/Demo/反馈闭环见 [docs/STEAM.md](docs/STEAM.md)；Auto-Cloud 配置见 [docs/STEAM_CLOUD.md](docs/STEAM_CLOUD.md)；SteamPipe 模板在 [steam/](steam/README.md)；玩家反馈流程见 [docs/FEEDBACK.md](docs/FEEDBACK.md)。拆出的任务：#120 ECS Phase1、#121 Steam 构建、#122 商店/Demo/反馈、#123 设置/手柄。
+Steam 上架/商店素材/Demo/反馈闭环见 [docs/STEAM.md](docs/STEAM.md)；商店占位素材与生成器见 [docs/store/README.md](docs/store/README.md)；Auto-Cloud 配置见 [docs/STEAM_CLOUD.md](docs/STEAM_CLOUD.md)；SteamPipe 模板在 [steam/](steam/README.md)；玩家反馈流程见 [docs/FEEDBACK.md](docs/FEEDBACK.md)。拆出的任务：#120 ECS Phase1、#121 Steam 构建、#122 商店/Demo/反馈、#123 设置/手柄。
 
 ## 致谢与许可
 

@@ -16,7 +16,7 @@
 | 设置 | 无 | 全屏/窗口、分辨率缩放、音量、键位 |
 | 手柄 | 键鼠 | Steam Input / 手柄导航 |
 | 本地化 | 中文 | 英文商店页 + 英文本地化（至少 UI/日志） |
-| 商店素材 | 游戏内截图 | Capsule、1920×1080 截图、预告片 |
+| 商店素材 | 占位 Capsule + 1920 截图已生成 | 正式 key art、5 张截图、预告片 |
 | 法律 | 无 | EULA/隐私政策、第三方许可（SDL/zflecs/字体/Kenney） |
 | 反馈 | 已有 F3 GitHub 表单 | Discord/Steam 论坛、Demo 问卷 |
 
@@ -43,6 +43,7 @@
 ### Phase 2：商店页与 Demo（3–4 周）
 
 - Coming Soon 页至少提前 2 周；越早越好，先积累愿望单。
+- 占位生成：docs/store/README.md + tools/store_assets.py；正式美术替换。
 - 素材：
   - Header capsule 920×430
   - Small capsule 462×174
