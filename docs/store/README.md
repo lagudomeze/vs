@@ -2,7 +2,7 @@
 
 这些图是**尺寸/命名可上传的占位**，不是最终 key art。上架前用正式美术替换同名文件。
 
-商店页文案见 [PAGE.md](PAGE.md)；测试流程见 [PLAYTEST.md](../PLAYTEST.md)。
+商店页文案见 [PAGE.md](PAGE.md)；测试流程见 [PLAYTEST.md](../PLAYTEST.md)；预告片分镜见 [TRAILER.md](../TRAILER.md)。
 
 生成：
 
@@ -23,6 +23,7 @@ python tools/pixel_logo.py
 | 文件 | 尺寸 | 说明 |
 | --- | --- | --- |
 | key_art_1920x1080.png | 1920x1080 | 占位主视觉：干净场景 + 像素 VX logo + 标题排版 |
+| trailer_storyboard.png | 1920x1080 | 30 秒预告片故事板（6 镜） |
 | logo_920x430.png | 920x430 | 像素 VX / AETHER KEEP 透明 logo |
 
 仍不是正式手绘 key art；上架前替换为专门构图。logo 为 5x7 像素字表生成，可作为正式 logo 的方向稿。
