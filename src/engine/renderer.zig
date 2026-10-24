@@ -11,7 +11,7 @@ const palette = @import("../core/palette.zig");
 const font = @import("../core/font.zig");
 const model_mod = @import("model.zig");
 const arena_mesh = @import("arena_mesh.zig");
-const icons = @import("icons.zig");
+pub const icons = @import("icons.zig");
 
 pub const max_lights = 18;
 
@@ -717,7 +717,7 @@ test "renderer allocates and clears" {
 }
 
 test "hud icon atlas has silhouettes and blank margins" {
-    const all = [_]icons.Icon{ .bag, .hero, .coin, .sword, .shield, .potion, .time, .fire, .skull, .heart, .gear };
+    const all = [_]icons.Icon{ .bag, .hero, .coin, .sword, .shield, .potion, .time, .fire, .skull, .heart, .save, .stairs, .gear };
     for (all) |icon| {
         const rows = icons.rows(icon);
         var bits: usize = 0;

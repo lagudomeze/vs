@@ -103,3 +103,11 @@ Windows x64 发布包：
     pwsh -File tools/package.ps1 -Version 0.1.1
 
 产物：dist/vx-<version>-win64.zip，内含 exe、README、CREDITS、OFL、VERSION。当前 exe 静态链接 SDL/zflecs，无需额外 DLL。
+
+## HUD 图标
+
+~~~powershell
+python tools/gen_icons.py
+~~~
+
+从 assets/icons 下的 Kenney CC0 PNG 生成 src/engine/icons.zig（12×12 1-bit）。改动图标先改脚本再生成，不要手改生成文件。
