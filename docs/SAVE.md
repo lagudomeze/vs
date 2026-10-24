@@ -121,4 +121,4 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 
 ## 本地备份
 
-每次写槽位前把旧文件复制为 path + .bak；主档缺失/解析失败时自动回退到 .bak。Auto-Cloud 只匹配 *.save，所以 .bak 留在本机，不参与云同步。
+每次写槽位前轮转三代备份：path.bak / path.bak2 / path.bak3；主档缺失/解析失败时依次回退。Auto-Cloud 只匹配 *.save，所以备份留在本机，不参与云同步。
