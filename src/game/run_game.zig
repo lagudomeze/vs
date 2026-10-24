@@ -419,9 +419,20 @@ pub const RunGame = struct {
         }
         if (self.last_state == .playing and self.sim.state != .playing) {
             if (self.sim.state == .victory) {
+                const had_win = self.records.wins > 0;
+                const all_before = self.records.wins_warrior > 0 and self.records.wins_mage > 0 and self.records.wins_chronomancer > 0;
+                const flawless_before = self.records.flawless_wins;
                 self.records.wins +|= 1;
                 if (self.records.best_turn == 0 or self.sim.turn < self.records.best_turn) self.records.best_turn = self.sim.turn;
                 if (self.sim.hero.vitals.val >= self.sim.hero.vitals.full - 0.01) self.records.flawless_wins +|= 1;
+                const all_after = self.records.wins_warrior > 0 and self.records.wins_mage > 0 and self.records.wins_chronomancer > 0;
+                if (self.records.flawless_wins > flawless_before) {
+                    self.sim.notice = "BADGE: FLAWLESS";
+                } else if (all_after and !all_before) {
+                    self.sim.notice = "BADGE: ALL-CLASS";
+                } else if (!had_win) {
+                    self.sim.notice = "BADGE: FIRST-WIN";
+                }
                 switch (self.class) {
                     .warrior => self.records.wins_warrior +|= 1,
                     .mage => self.records.wins_mage +|= 1,
@@ -2377,6 +2388,7 @@ test "run game: victory updates class and chunk records" {
     try std.testing.expectEqual(@as(u32, 1), g.records.wins_warrior);
     try std.testing.expectEqual(@as(u32, 2), g.records.chunk_clears);
     try std.testing.expectEqual(@as(u32, 1), g.records.flawless_wins);
+    try std.testing.expect(std.mem.startsWith(u8, g.hud_state.toast, "BADGE:"));
 }
 
 test "run game: sim notice becomes a HUD toast" {
