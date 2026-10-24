@@ -18,7 +18,7 @@
 | 本地化 | 中文 | 英文商店页 + 英文本地化（至少 UI/日志） |
 | 商店素材 | 游戏内截图 | Capsule、1920×1080 截图、预告片 |
 | 法律 | 无 | EULA/隐私政策、第三方许可（SDL/zflecs/字体/Kenney） |
-| 反馈 | 无渠道 | Discord/Steam 论坛、Demo 反馈表 |
+| 反馈 | 已有 F3 GitHub 表单 | Discord/Steam 论坛、Demo 问卷 |
 
 ## 2. 发行阶段
 
