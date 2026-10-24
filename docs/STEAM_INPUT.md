@@ -39,3 +39,12 @@
 - [ ] 手柄/Steam Deck 可完成移动、攻击、药水、炸弹
 - [ ] 键位提示与 A/B swap 一致
 - [ ] 不与 SDL 映射双触发
+
+
+## 预检
+
+~~~powershell
+pwsh -File tools/steam_input_check.ps1
+~~~
+
+检查：manifest 存在、括号平衡、9 个动作、英中本地化、steam_appid.txt 泄漏、STEAMWORKS_SDK、vx.exe。SDK 未设置只 WARN；模板未接入时 PASS。
