@@ -13,6 +13,7 @@ const content_mod = @import("../game/content.zig");
 const attributes = @import("../game/attributes.zig");
 const items_mod = @import("../game/items.zig");
 const intent_mod = @import("../game/intent.zig");
+const save_mod = @import("../game/save.zig");
 
 /// Seeds used by the generation matrix and by the autoplay batch.
 pub const seed_count: usize = 100;
@@ -783,6 +784,25 @@ test "qa2: hard mode batch remains playable" {
     try std.testing.expectEqual(@as(u32, @intCast(seed_count * run.class_count)), b.runs);
     try std.testing.expectEqual(@as(u32, 0), b.timeouts);
     try std.testing.expectEqual(b.runs, b.wins + b.deaths);
+}
+
+test "qa2: 3x3 chunks round-trip arenas and v3 saves" {
+    const alloc = std.testing.allocator;
+    const edges = [_]run.Edge{ .north, .east, .south, .west };
+    for (0..20) |i| {
+        var s = run.Sim.init(seedFor(i), .warrior);
+        s.enableChunks();
+        try checkEnemies(&s);
+        for (edges) |edge| {
+            s.enterChunk(edge);
+            try checkEnemies(&s);
+            if (!s.chunks_enabled or s.chunk > 8) return error.ChunkState;
+            const bytes = try save_mod.saveAlloc(alloc, &s);
+            const loaded = try save_mod.loadAlloc(alloc, bytes);
+            alloc.free(bytes);
+            if (!loaded.chunks_enabled or loaded.chunk != s.chunk) return error.ChunkSaveMismatch;
+        }
+    }
 }
 
 test "qa2: fixed seed report is reproducible" {
