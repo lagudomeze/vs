@@ -22,7 +22,7 @@ python tools/pixel_logo.py
 
 | 文件 | 尺寸 | 说明 |
 | --- | --- | --- |
-| key_art_1920x1080.png | 1920x1080 | 占位主视觉：干净场景 + 像素 VX logo + 标题排版 |
+| key_art_1920x1080.png | 1920x1080 | 主视觉 v2：放大像素 VX logo + AETHER KEEP，回合制 Roguelike 文案与 Wishlist |
 | trailer_storyboard.png | 1920x1080 | 30 秒预告片故事板（6 镜） |
 | logo_920x430.png | 920x430 | 像素 VX / AETHER KEEP 透明 logo |
 
