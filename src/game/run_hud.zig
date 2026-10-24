@@ -50,6 +50,7 @@ pub const State = struct {
     shrine_open: bool = false,
     shrine_main_label: []const u8 = "力量",
     potions: u8 = 0,
+    bombs: u8 = 0,
     floor_mod_label: []const u8 = "",
     record_wins: u32 = 0,
     record_best_floor: u8 = 1,
@@ -564,7 +565,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                 r.drawText(ix + 16, iy + ih - 78 + @as(i32, @intCast(i)) * 16, fmt(&ebuf, "{s}  {s}", .{ label, name }), palette.muted, 1, false);
             }
             var pbuf: [48]u8 = undefined;
-            r.drawText(ix + 16, iy + ih - 18, fmt(&pbuf, "1/2/3 装备  P POTION x{d}  I 关闭", .{state.potions}), palette.muted, 1, false);
+            r.drawText(ix + 16, iy + ih - 18, fmt(&pbuf, "1/2/3 EQ  P POT x{d}  B BOMB x{d}", .{ state.potions, state.bombs }), palette.muted, 1, false);
         }
     }
 

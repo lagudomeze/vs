@@ -463,6 +463,14 @@ pub const builtin_items = [_]items.ItemDef{
         .description = "恢复 40 生命；背包面板按 P 使用。",
     },
     .{
+        .id = "fire_bomb",
+        .name = "FIRE BOMB",
+        .quality = .common,
+        .drop = .{ .weight = 0 },
+        .kind = .{ .consumable = .{ .use = .{ .bomb = 45, .bomb_radius = 2 } } },
+        .description = "B: 2-cell AoE, 45 damage.",
+    },
+    .{
         .id = "gear_sigil",
         .name = "齿轮印记",
         .quality = .epic,
@@ -943,7 +951,7 @@ fn validateItems(list: []const items.ItemDef, report: *Report) bool {
                 }
             },
             .consumable => |consumable| {
-                if (!finiteInRange(consumable.use.heal, 0, 10000) or !finiteInRange(consumable.use.resource, 0, 10000)) {
+                if (!finiteInRange(consumable.use.heal, 0, 10000) or !finiteInRange(consumable.use.resource, 0, 10000) or !finiteInRange(consumable.use.bomb, 0, 10000) or !finiteInRange(consumable.use.bomb_radius, 0, 10)) {
                     report.add(file_items, "消耗品效果超出范围", def.id);
                     ok = false;
                 }
@@ -1195,7 +1203,7 @@ test "embedded tables match the RUN v1 content plan" {
     var content = try load(std.testing.allocator);
     defer content.deinit();
 
-    try std.testing.expectEqual(@as(usize, 13), content.items.len);
+    try std.testing.expectEqual(@as(usize, 14), content.items.len);
     try std.testing.expectEqual(@as(usize, 7), content.enemies.len);
     try std.testing.expectEqual(@as(usize, 10), content.skills.len);
 

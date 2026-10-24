@@ -447,6 +447,7 @@ test "qa3: empty gear object is rejected without clearing the bag" {
 
     const g = try RunGame.create(alloc, 640, 360, .warrior, 12345);
     defer g.destroy();
+    const expected_bag = g.inventory.len + 1;
     try std.testing.expect(g.inventory.pickup(0));
     g.saveRun(io, sim_path, gear_path);
     const turn = g.sim.turn;
@@ -456,7 +457,7 @@ test "qa3: empty gear object is rejected without clearing the bag" {
     try tmp.dir.writeFile(io, .{ .sub_path = "empty-gear.json", .data = "{}" });
     g.loadRun(io, sim_path, gear_path);
     try std.testing.expectEqual(turn, g.sim.turn);
-    try std.testing.expectEqual(@as(usize, 1), g.inventory.len);
+    try std.testing.expectEqual(expected_bag, g.inventory.len);
     std.debug.print("[qa3] empty gear object rejected; bag retained (len={d})\n", .{g.inventory.len});
 }
 

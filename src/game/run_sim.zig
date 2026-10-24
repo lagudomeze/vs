@@ -1521,6 +1521,28 @@ pub const Sim = struct {
         self.pushLog("{s} 造成 {d:.0} 伤害", .{ e.identity.name, dmg });
     }
 
+    /// Hero-centred bomb: damages every living enemy within Manhattan radius,
+    /// then spends the turn if anything was hit.
+    pub fn detonate(self: *Sim, damage: f32, radius: f32) usize {
+        if (self.state != .playing) return 0;
+        var hits: usize = 0;
+        var i: usize = 0;
+        while (i < self.enemy_count) : (i += 1) {
+            const e = &self.enemies[i];
+            if (!e.life.alive) continue;
+            const dx = @abs(e.pos.x - self.hero.pos.x);
+            const dy = @abs(e.pos.y - self.hero.pos.y);
+            if (@as(f32, @floatFromInt(dx + dy)) > radius) continue;
+            const dmg = combat.resolve(.{ .raw = damage }, .{ .armor = e.combat.armor.val }).amount *
+                e.status.damageTakenScale();
+            e.vitals.val = @max(0, e.vitals.val - dmg);
+            hits += 1;
+            if (e.vitals.val <= 0) self.killEnemy(i);
+        }
+        if (hits > 0) self.endTurn();
+        return hits;
+    }
+
     pub fn playerAttack(self: *Sim, idx: usize, mult: f32) void {
         const e = &self.enemies[idx];
         if (!e.life.alive) return;
@@ -2048,6 +2070,21 @@ test "run sim: chunk save freeze closes gates" {
     s.freezeForSave();
     try std.testing.expect(!s.chunks_enabled);
     try std.testing.expect(s.isBlocked(@divTrunc(@as(i32, grid_w), 2), 0));
+}
+
+test "run sim: bomb hits enemies in radius and spends a turn" {
+    var s = Sim.init(87, .warrior);
+    s.enemy_count = 3;
+    s.enemies[0] = enemyFromParts(.{ .kind = 0, .name = "骷髅兵", .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y }, .hp = 20, .hp_max = 20, .attack = 5, .armor = 0, .speed = 100, .range = 1, .xp = 5 });
+    s.enemies[1] = enemyFromParts(.{ .kind = 0, .name = "骷髅兵", .pos = .{ .x = s.hero.pos.x + 2, .y = s.hero.pos.y }, .hp = 20, .hp_max = 20, .attack = 5, .armor = 0, .speed = 100, .range = 1, .xp = 5 });
+    s.enemies[2] = enemyFromParts(.{ .kind = 0, .name = "骷髅兵", .pos = .{ .x = s.hero.pos.x + 4, .y = s.hero.pos.y }, .hp = 20, .hp_max = 20, .attack = 5, .armor = 0, .speed = 100, .range = 1, .xp = 5 });
+    const turn = s.turn;
+    const hits = s.detonate(100, 2);
+    try std.testing.expectEqual(@as(usize, 2), hits);
+    try std.testing.expect(!s.enemies[0].life.alive);
+    try std.testing.expect(!s.enemies[1].life.alive);
+    try std.testing.expect(s.enemies[2].life.alive);
+    try std.testing.expect(s.turn > turn);
 }
 
 test "run sim: frost affix slows the hero and reduces player damage" {
