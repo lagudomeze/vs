@@ -149,7 +149,7 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | --version | 打印版本 |
 | --save-info | 打印实际存档/设置/records 路径后退出 |
 | --hide-labels | 隐藏世界内名字/意图（商店干净截图） |
-| --chunks | 实验性 3×3 边缘门（默认关闭；存档只保留当前 Arena；minimap 金点=邻接） |
+| --chunks | 实验性 3×3 边缘门（默认关闭；v3 存档含 9 Arena；minimap 金点=邻接） |
 | --fullscreen | 全屏启动（F11 运行时切换） |
 | --settings | headless 打开设置面板（截图/QA） |
 | --auto | headless 自动向楼梯推进、打怪、放天赋 |

@@ -514,11 +514,6 @@ pub const RunGame = struct {
     }
 
     pub fn saveSlot(self: *RunGame, io: std.Io, slot: usize) void {
-        var frozen = self.sim;
-        if (self.sim.chunks_enabled) {
-            frozen.freezeForSave();
-            self.sim.pushLog("CHUNK SAVE: ACTIVE ARENA", .{});
-        }
         if (slot >= self.slot_files.len) return;
         if (self.sim.enemy_phase_pending) {
             self.sim.resolvePendingEnemyPhase();
@@ -527,7 +522,7 @@ pub const RunGame = struct {
         if (std.fs.path.dirname(self.slot_files[slot])) |dir| {
             std.Io.Dir.cwd().createDirPath(io, dir) catch {};
         }
-        slot_bundle.saveFileAtomic(io, self.gpa, self.slot_files[slot], &frozen, &self.inventory, &self.loot_rng) catch |err| {
+        slot_bundle.saveFileAtomic(io, self.gpa, self.slot_files[slot], &self.sim, &self.inventory, &self.loot_rng) catch |err| {
             self.sim.pushLog("存档失败 {s}", .{@errorName(err)});
             self.save_ok = false;
             self.slot_menu = .none;
@@ -561,8 +556,6 @@ pub const RunGame = struct {
     }
 
     pub fn flushAutosave(self: *RunGame, io: std.Io) void {
-        var frozen = self.sim;
-        if (self.sim.chunks_enabled) frozen.freezeForSave();
         if (!self.autosave_pending) return;
         self.autosave_pending = false;
         if (self.sim.enemy_phase_pending) {
@@ -572,7 +565,7 @@ pub const RunGame = struct {
         if (std.fs.path.dirname(self.auto_files[0])) |dir| {
             std.Io.Dir.cwd().createDirPath(io, dir) catch {};
         }
-        slot_bundle.saveFileAtomic(io, self.gpa, self.auto_tmp_file, &frozen, &self.inventory, &self.loot_rng) catch |err| {
+        slot_bundle.saveFileAtomic(io, self.gpa, self.auto_tmp_file, &self.sim, &self.inventory, &self.loot_rng) catch |err| {
             self.sim.pushLog("自动存档失败 {s}", .{@errorName(err)});
             self.fillHudState();
             return;
@@ -2671,7 +2664,7 @@ test "run game: v1 save reports a Chinese incompatibility reason" {
     defer g.destroy();
     const bytes = try save_mod.saveAlloc(alloc, &g.sim);
     defer alloc.free(bytes);
-    const old = try std.mem.replaceOwned(u8, alloc, bytes, "\"version\":2", "\"version\":1");
+    const old = try std.mem.replaceOwned(u8, alloc, bytes, "\"version\":3", "\"version\":1");
     defer alloc.free(old);
     try tmp.dir.writeFile(io, .{ .sub_path = "run.json", .data = old });
 
