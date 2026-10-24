@@ -311,6 +311,17 @@ pub const Platform = struct {
             const t: u32 = ev.type;
             if (t == @as(u32, @intCast(c.SDL_EVENT_QUIT))) {
                 input.quit = true;
+            } else if (t == @as(u32, @intCast(c.SDL_EVENT_GAMEPAD_ADDED))) {
+                if (self.gamepad == null) {
+                    self.gamepad = c.SDL_OpenGamepad(ev.gdevice.which);
+                    self.pad_prev = 0;
+                    self.pad_dir = 0;
+                }
+            } else if (t == @as(u32, @intCast(c.SDL_EVENT_GAMEPAD_REMOVED))) {
+                if (self.gamepad) |pad| c.SDL_CloseGamepad(pad);
+                self.gamepad = null;
+                self.pad_prev = 0;
+                self.pad_dir = 0;
             } else if (t == @as(u32, @intCast(c.SDL_EVENT_KEY_DOWN))) {
                 if (ev.key.repeat) {
                     const rsc = ev.key.scancode;
