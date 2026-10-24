@@ -1601,8 +1601,17 @@ pub const RunGame = struct {
                     .wait => "晕",
                 };
                 if (label.len > 0) {
-                    const ix = std.math.clamp(x - @divTrunc(renderer.Renderer.textWidth(label, 1), 2), 2, w - 2);
-                    self.renderer.drawText(ix, y + 5, label, if (intent.kind == .aoe) palette.red else palette.gold_light, 1, true);
+                    var aim_buf: [48]u8 = undefined;
+                    var shown: []const u8 = label;
+                    var label_col: u32 = if (intent.kind == .aoe) palette.red else palette.gold_light;
+                    if (self.aim_talent) |talent| {
+                        const verdict = target_mod.preview(&self.sim, talent, i).verdict;
+                        const tag = if (verdict == .ok) "OK" else "OUT";
+                        shown = std.fmt.bufPrint(&aim_buf, "{s} {s}", .{ tag, label }) catch label;
+                        label_col = if (verdict == .ok) color.pack(80, 235, 150) else color.pack(255, 64, 64);
+                    }
+                    const ix = std.math.clamp(x - @divTrunc(renderer.Renderer.textWidth(shown, 1), 2), 2, w - 2);
+                    self.renderer.drawText(ix, y + 5, shown, label_col, 1, true);
                 }
                 const affix_label: []const u8 = switch (self.sim.enemies[i].affix) {
                     .swift => "SWIFT",
@@ -1653,6 +1662,11 @@ pub const RunGame = struct {
             }
             if (target != null and target.? == i) {
                 const aiming = self.aim_talent != null;
+                const aim_ok = if (self.aim_talent) |talent|
+                    target_mod.preview(&self.sim, talent, i).valid()
+                else
+                    true;
+                const aim_col: u32 = if (aim_ok) color.pack(80, 235, 150) else color.pack(255, 64, 64);
                 var tbuf: [64]u8 = undefined;
                 const speed_mark = if (e.combat.speed.val >= 150) " x2" else if (e.combat.speed.val <= 75) " 慢" else "";
                 const tname = std.fmt.bufPrint(&tbuf, "{s} {d:.0}/{d:.0}{s}", .{ e.identity.name, e.vitals.val, e.vitals.full, speed_mark }) catch e.identity.name;
@@ -1660,8 +1674,8 @@ pub const RunGame = struct {
                 const lx = std.math.clamp(x - @divTrunc(tw, 2), 2, w - tw - 2);
                 const ly = @max(68, y - 13);
                 self.renderer.fillRect(lx - 3, ly, tw + 6, 11, palette.panel);
-                self.renderer.strokeRect(lx - 3, ly, tw + 6, 11, if (aiming) palette.gold else palette.border);
-                self.renderer.drawText(lx, ly + 1, tname, if (aiming) palette.gold_light else palette.red, 1, true);
+                self.renderer.strokeRect(lx - 3, ly, tw + 6, 11, if (aiming) aim_col else palette.border);
+                self.renderer.drawText(lx, ly + 1, tname, if (aiming) aim_col else palette.red, 1, true);
             }
         }
     }
@@ -1747,9 +1761,9 @@ pub const RunGame = struct {
             const accent: u32 = if (verdict == .ok) color.pack(255, 168, 74) else color.pack(220, 70, 50);
             self.renderer.drawModel(ring_model, null, math.Mat4.compose(tilePos(cell.x, cell.y).add(math.Vec3.init(0, 0.06, 0)), self.time * 0.9, 0, 0, 0.62), .{
                 .tint = accent,
-                .boost = 1.0,
-                .additive = true,
-                .alpha = 0.95,
+                .boost = 1.1,
+                .additive = false,
+                .alpha = 0.96,
             });
             var dy: i32 = -1;
             while (dy <= 1) : (dy += 1) {
@@ -1769,6 +1783,24 @@ pub const RunGame = struct {
                 }
             }
             return;
+        }
+        // Range readability: every living enemy gets a green/red ground ring
+        // while aiming, so the player can pick a legal target without reading
+        // the hint line. The selected target is drawn larger below.
+        var ri: usize = 0;
+        while (ri < self.sim.enemy_count) : (ri += 1) {
+            const e = self.sim.enemies[ri];
+            if (!e.life.alive) continue;
+            const verdict = target_mod.preview(&self.sim, talent, ri).verdict;
+            const ring_tint: u32 = if (verdict == .ok) color.pack(80, 235, 150) else color.pack(255, 64, 64);
+            const pos = tilePos(e.pos.x, e.pos.y).add(math.Vec3.init(0, 0.07, 0));
+            self.renderer.drawGlow(pos, 0.46, ring_tint, 0.45);
+            self.renderer.drawModel(ring_model, null, math.Mat4.compose(pos, self.time * 0.7, 0, 0, 0.52), .{
+                .tint = ring_tint,
+                .boost = 1.1,
+                .additive = false,
+                .alpha = 0.92,
+            });
         }
         const p = target_mod.preview(&self.sim, talent, self.aimTarget());
         const accent: u32 = if (p.valid()) color.pack(110, 235, 200) else color.pack(255, 84, 66);
