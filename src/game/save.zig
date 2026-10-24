@@ -904,6 +904,12 @@ fn writeBytes(io: std.Io, path: []const u8, bytes: []const u8) !void {
     try atomic.replace(io);
 }
 
+fn copyIfExists(io: std.Io, alloc: std.mem.Allocator, from: []const u8, to: []const u8) void {
+    const bytes = std.Io.Dir.cwd().readFileAlloc(io, from, alloc, .limited(max_save_bytes)) catch return;
+    defer alloc.free(bytes);
+    writeBytes(io, to, bytes) catch {};
+}
+
 /// Write a save file. The path may be relative to the process cwd or absolute;
 /// parent directories must already exist. The previous file is kept as
 /// path + ".bak" before replacement, as a local fallback for Auto-Cloud
@@ -912,24 +918,30 @@ pub fn saveFile(io: std.Io, alloc: std.mem.Allocator, path: []const u8, sim: *co
     const bytes = try saveAlloc(alloc, sim);
     defer alloc.free(bytes);
 
-    const bak = try std.fmt.allocPrint(alloc, "{s}.bak", .{path});
-    defer alloc.free(bak);
-    if (std.Io.Dir.cwd().readFileAlloc(io, path, alloc, .limited(max_save_bytes))) |old| {
-        defer alloc.free(old);
-        writeBytes(io, bak, old) catch {};
-    } else |_| {}
+    const bak1 = try std.fmt.allocPrint(alloc, "{s}.bak", .{path});
+    defer alloc.free(bak1);
+    const bak2 = try std.fmt.allocPrint(alloc, "{s}.bak2", .{path});
+    defer alloc.free(bak2);
+    const bak3 = try std.fmt.allocPrint(alloc, "{s}.bak3", .{path});
+    defer alloc.free(bak3);
+    copyIfExists(io, alloc, bak2, bak3);
+    copyIfExists(io, alloc, bak1, bak2);
+    copyIfExists(io, alloc, path, bak1);
 
     try writeBytes(io, path, bytes);
 }
 
 fn loadBackup(io: std.Io, alloc: std.mem.Allocator, path: []const u8, original: anyerror) !Sim {
-    const bak = try std.fmt.allocPrint(alloc, "{s}.bak", .{path});
-    defer alloc.free(bak);
-    const bytes = std.Io.Dir.cwd().readFileAlloc(io, bak, alloc, .limited(max_save_bytes)) catch |err| {
-        return if (err == error.FileNotFound) original else err;
-    };
-    defer alloc.free(bytes);
-    return loadAlloc(alloc, bytes) catch return original;
+    const suffixes = [_][]const u8{ ".bak", ".bak2", ".bak3" };
+    for (suffixes) |suffix| {
+        const bak = try std.fmt.allocPrint(alloc, "{s}{s}", .{ path, suffix });
+        defer alloc.free(bak);
+        const bytes = std.Io.Dir.cwd().readFileAlloc(io, bak, alloc, .limited(max_save_bytes)) catch continue;
+        defer alloc.free(bytes);
+        const loaded = loadAlloc(alloc, bytes) catch continue;
+        return loaded;
+    }
+    return original;
 }
 
 /// Read and validate a save file. The file is opened read-only; a bad save is
@@ -1349,9 +1361,19 @@ test "save file: .bak survives overwrite and loads after corruption" {
     second.hero.vitals.val = 88;
     try saveFile(io, alloc, path, &second);
 
+    var third = Sim.init(13, .chronomancer);
+    third.hero.vitals.val = 99;
+    try saveFile(io, alloc, path, &third);
+
     try writeBytes(io, path, "corrupt");
     const loaded = try loadFile(io, alloc, path);
-    try testing.expectApproxEqAbs(@as(f32, 77), loaded.hero.vitals.val, 0.01);
+    try testing.expectApproxEqAbs(@as(f32, 88), loaded.hero.vitals.val, 0.01);
+
+    const bak = try std.fmt.allocPrint(alloc, "{s}.bak", .{path});
+    defer alloc.free(bak);
+    try writeBytes(io, bak, "corrupt");
+    const older = try loadFile(io, alloc, path);
+    try testing.expectApproxEqAbs(@as(f32, 77), older.hero.vitals.val, 0.01);
 }
 
 test "save file: round-trip and a corrupt file is rejected without overwriting" {
