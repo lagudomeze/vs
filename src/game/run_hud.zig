@@ -85,6 +85,7 @@ pub const State = struct {
     demo_end: bool = false,
     demo: bool = false,
     pause_open: bool = false,
+    pause_confirm_quit: bool = false,
     boss_active: bool = false,
     boss_hp: f32 = 0,
     boss_hp_max: f32 = 1,
@@ -201,7 +202,7 @@ const aim_hint = "空格/同键/左键确认  Esc取消  Tab换目标";
 
 /// Pre-run class selection. A checkerboard dim keeps the 3D dungeon visible
 /// behind the cards while the title and card panels stay fully readable.
-fn drawPause(r: *renderer.Renderer, w: i32, h: i32) void {
+fn drawPause(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     r.fillRect(0, 0, w, h, palette.deep);
     const pw: i32 = 260;
     const ph: i32 = 150;
@@ -213,7 +214,11 @@ fn drawPause(r: *renderer.Renderer, w: i32, h: i32) void {
     r.drawText(px + @divTrunc(pw - tw, 2), py + 20, title, palette.gold_light, 2, true);
     r.drawText(px + 30, py + 64, "ESC  RESUME", palette.cream, 1, false);
     r.drawText(px + 30, py + 84, "F2   SETTINGS", palette.cream, 1, false);
-    r.drawText(px + 30, py + 104, "Q    QUIT", palette.muted, 1, false);
+    if (state.pause_confirm_quit) {
+        r.drawText(px + 30, py + 104, "Q AGAIN TO QUIT", palette.red, 1, false);
+    } else {
+        r.drawText(px + 30, py + 104, "Q    QUIT", palette.muted, 1, false);
+    }
     r.drawText(px + 30, py + ph - 22, "F4 COPY DIAGNOSTICS", palette.gold, 1, false);
 }
 
@@ -396,7 +401,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         return;
     }
     if (state.pause_open and !state.settings_open and !state.shop_open and !state.shrine_open) {
-        drawPause(r, w, h);
+        drawPause(r, state, w, h);
         return;
     }
 
