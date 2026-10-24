@@ -232,7 +232,17 @@ pub const Platform = struct {
             const drone = @sin(t * std.math.tau * 55.0) * 0.55 +
                 @sin(t * std.math.tau * 82.41) * 0.28 +
                 @sin(t * std.math.tau * 110.0) * 0.17;
-            buf[i] = drone * lfo * 0.035;
+
+            const notes = [_]f32{ 220.0, 261.63, 293.66, 329.63, 392.0, 329.63, 293.66, 261.63 };
+            const beat: f32 = 0.55;
+            const step_f = @floor(t / beat);
+            const note = notes[@as(usize, @intFromFloat(step_f)) % notes.len];
+            const local = t - step_f * beat;
+            const env = @sin(std.math.pi * local / beat);
+            const melody = (@sin(t * std.math.tau * note) * 0.010 +
+                @sin(t * std.math.tau * note * 2.0) * 0.003) * env;
+
+            buf[i] = drone * lfo * 0.035 + melody;
         }
         self.ambient_phase = @mod(phase + @as(f32, @floatFromInt(buf.len)) / 22050.0, 1000.0);
         _ = c.SDL_PutAudioStreamData(stream, &buf, @intCast(buf.len * @sizeOf(f32)));
