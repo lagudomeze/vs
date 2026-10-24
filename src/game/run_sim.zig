@@ -990,6 +990,26 @@ pub const Sim = struct {
         };
     }
 
+    /// Save a chunk run as a normal single-arena save. Edge gates are closed
+    /// again so v2 validation succeeds; other chunks are intentionally not
+    /// persisted yet (prototype limitation).
+    pub fn freezeForSave(self: *Sim) void {
+        self.chunks_enabled = false;
+        self.chunk = 0;
+        const mx: i32 = @divTrunc(@as(i32, grid_w), 2);
+        const my: i32 = @divTrunc(@as(i32, grid_h), 2);
+        const pts = [_]GridPos{
+            .{ .x = mx, .y = 0 },
+            .{ .x = mx, .y = @as(i32, grid_h) - 1 },
+            .{ .x = 0, .y = my },
+            .{ .x = @as(i32, grid_w) - 1, .y = my },
+        };
+        for (pts) |p| {
+            self.map.setTile(.{ .x = p.x, .y = p.y }, .wall);
+            self.blocked[@as(usize, @intCast(p.y)) * grid_w + @as(usize, @intCast(p.x))] = true;
+        }
+    }
+
     pub fn enterChunk(self: *Sim, edge: Edge) void {
         if (!self.chunks_enabled) return;
         const cx: i32 = @intCast(self.chunk % 3);
@@ -2008,6 +2028,14 @@ test "run sim: walking into an edge gate enters the linked chunk" {
     try std.testing.expect(s.move(0, -1));
     try std.testing.expectEqual(@as(u8, 1), s.chunk);
     try std.testing.expectEqual(@as(i32, grid_h - 2), s.hero.pos.y);
+}
+
+test "run sim: chunk save freeze closes gates" {
+    var s = Sim.init(83, .warrior);
+    s.enableChunks();
+    s.freezeForSave();
+    try std.testing.expect(!s.chunks_enabled);
+    try std.testing.expect(s.isBlocked(@divTrunc(@as(i32, grid_w), 2), 0));
 }
 
 test "run sim: split spawns a 40% echo once" {
