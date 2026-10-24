@@ -358,35 +358,6 @@ fn bindingsFor(settings: vx.settings.Settings) vx.platform.Bindings {
     };
 }
 
-fn keyConflict(settings: vx.settings.Settings, index: u8, code: u32) bool {
-    const k = settings.keys;
-    return switch (index) {
-        0 => code == k.potion or code == k.bomb or code == k.inventory or code == k.character or code == k.talent1 or code == k.talent2 or code == k.talent3,
-        1 => code == k.confirm or code == k.bomb or code == k.inventory or code == k.character or code == k.talent1 or code == k.talent2 or code == k.talent3,
-        2 => code == k.confirm or code == k.potion or code == k.inventory or code == k.character or code == k.talent1 or code == k.talent2 or code == k.talent3,
-        3 => code == k.confirm or code == k.potion or code == k.bomb or code == k.character or code == k.talent1 or code == k.talent2 or code == k.talent3,
-        4 => code == k.confirm or code == k.potion or code == k.bomb or code == k.inventory or code == k.talent1 or code == k.talent2 or code == k.talent3,
-        5 => code == k.confirm or code == k.potion or code == k.bomb or code == k.inventory or code == k.character or code == k.talent2 or code == k.talent3,
-        6 => code == k.confirm or code == k.potion or code == k.bomb or code == k.inventory or code == k.character or code == k.talent1 or code == k.talent3,
-        7 => code == k.confirm or code == k.potion or code == k.bomb or code == k.inventory or code == k.character or code == k.talent1 or code == k.talent2,
-        else => false,
-    };
-}
-
-fn applyBinding(settings: *vx.settings.Settings, index: u8, code: u32) void {
-    switch (index) {
-        0 => settings.keys.confirm = code,
-        1 => settings.keys.potion = code,
-        2 => settings.keys.bomb = code,
-        3 => settings.keys.inventory = code,
-        4 => settings.keys.character = code,
-        5 => settings.keys.talent1 = code,
-        6 => settings.keys.talent2 = code,
-        7 => settings.keys.talent3 = code,
-        else => {},
-    }
-}
-
 fn ambienceFor(game: *const vx.RunGame) vx.platform.Ambience {
     if (game.sim.state == .dead) return .death;
     if (game.sim.state == .victory) return .victory;
@@ -478,12 +449,12 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                     game.hud_state.keys_error = false;
                     platform.playSound(.ui);
                 } else if (pin.key_code != 0 and pin.key_code != 41) {
-                    if (keyConflict(settings, game.settings_key_index, pin.key_code)) {
+                    if (vx.settings.keyConflicts(settings.keys, game.settings_key_index, pin.key_code)) {
                         game.settings_key_error = true;
                         game.hud_state.keys_error = true;
                         platform.playSound(.hit);
                     } else {
-                        applyBinding(&settings, game.settings_key_index, pin.key_code);
+                        vx.settings.assignKey(&settings.keys, game.settings_key_index, pin.key_code);
                         settings = settings.sanitized();
                         platform.setBindings(bindingsFor(settings));
                         vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
