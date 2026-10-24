@@ -111,3 +111,13 @@ python tools/gen_icons.py
 ~~~
 
 从 assets/icons 下的 Kenney CC0 PNG 生成 src/engine/icons.zig（12×12 1-bit）。改动图标先改脚本再生成，不要手改生成文件。
+
+## Steam 包检查
+
+~~~powershell
+pwsh -File tools/steam_check.ps1
+# 先重新打包
+pwsh -File tools/steam_check.ps1 -Build
+~~~
+
+检查 zip、包内 exe 版本、steam_appid.txt 泄漏，并打印 Auto-Cloud 路径。

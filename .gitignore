@@ -11,3 +11,5 @@ __pycache__/
 qa-results/
 .qa-tmp/
 dist/
+steam/*.vdf
+steam_appid.txt
