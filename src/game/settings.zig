@@ -12,6 +12,7 @@ pub const Keys = struct {
     talent1: u32 = 30, // 1
     talent2: u32 = 31, // 2
     talent3: u32 = 32, // 3
+    help: u32 = 11, // H
 };
 
 /// Single source of truth for the rebindable actions. Adding an action here
@@ -72,6 +73,12 @@ fn getTalent3(k: *const Keys) u32 {
 fn setTalent3(k: *Keys, v: u32) void {
     k.talent3 = v;
 }
+fn getHelp(k: *const Keys) u32 {
+    return k.help;
+}
+fn setHelp(k: *Keys, v: u32) void {
+    k.help = v;
+}
 
 pub const binding_defs = [_]BindingDef{
     .{ .label = "CONFIRM", .default = 44, .get = getConfirm, .set = setConfirm },
@@ -82,13 +89,14 @@ pub const binding_defs = [_]BindingDef{
     .{ .label = "TALENT 1", .default = 30, .get = getTalent1, .set = setTalent1 },
     .{ .label = "TALENT 2", .default = 31, .get = getTalent2, .set = setTalent2 },
     .{ .label = "TALENT 3", .default = 32, .get = getTalent3, .set = setTalent3 },
+    .{ .label = "HELP", .default = 11, .get = getHelp, .set = setHelp },
 };
 
 /// Fixed keys read by SDL outside Bindings. Rebinding onto these would make
 /// one press do two unrelated things (#195), so they are rejected.
 const reserved_keys = [_]u32{
     41, 42, 43, // Esc, Backspace, Tab
-    4, 7, 8, 9, 11, 16, 20, 21, 22, 26, // A D E F H M Q R S W
+    4, 7, 8, 9, 16, 20, 21, 22, 26, // A D E F M Q R S W
     33, 34, 35, 36, 37, 38, 39, // 4..9, 0 (shop/wait/selection)
     55, // period
     58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, // F1..F12
@@ -213,7 +221,9 @@ test "settings: key assignment and conflict" {
     for ([_]u32{ 21, 16, 64, 26 }) |code| {
         try std.testing.expect(keyConflicts(keys, 0, code));
     }
-    try std.testing.expect(!assignKey(&keys, 8, 44));
+    try std.testing.expect(!assignKey(&keys, 9, 44));
+    try std.testing.expect(assignKey(&keys, 8, 57));
+    try std.testing.expectEqual(@as(u32, 57), keys.help);
     const deduped = (Settings{ .keys = .{ .potion = 44 } }).sanitized();
     try std.testing.expectEqual(@as(u32, 19), deduped.keys.potion);
     try std.testing.expectEqual(@as(u32, 44), deduped.keys.confirm);

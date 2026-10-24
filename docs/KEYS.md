@@ -8,7 +8,7 @@
 
 1. F2 打开设置
 2. 按 8 进入 REMAP KEYS
-3. 依次按新键：CONFIRM / POTION / BOMB / INVENTORY / CHARACTER / TALENT 1-3
+3. 依次按新键：CONFIRM / POTION / BOMB / INVENTORY / CHARACTER / TALENT 1-3 / HELP
 4. 重复键会被拒绝并显示 KEY IN USE；BACKSPACE 恢复全部默认；ESC 取消
 
 截图：docs/screenshots/key_remap.png
@@ -27,6 +27,7 @@
 | talent1 | 天赋 1 | 30 | 1 |
 | talent2 | 天赋 2 | 31 | 2 |
 | talent3 | 天赋 3 | 32 | 3 |
+| help | 帮助 | 11 | H |
 
 移动键由 F2 第 7 项在 WASD / ESDF 间切换；方向键与小键盘始终可用。ESC（41）、F1–F12、数字 1–6 的菜单选择、R/Tab 等仍固定。
 

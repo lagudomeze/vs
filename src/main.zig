@@ -367,6 +367,7 @@ fn bindingsFor(settings: vx.settings.Settings) vx.platform.Bindings {
         .talent1 = settings.keys.talent1,
         .talent2 = settings.keys.talent2,
         .talent3 = settings.keys.talent3,
+        .help = settings.keys.help,
     };
 }
 
