@@ -24,7 +24,7 @@ pub const shop_vitality_cost: u32 = 60;
 pub const shop_cleanse_cost: u32 = 20;
 pub const shop_loot_cost: u32 = 80;
 
-pub const Affix = enum(u8) { none, swift, armored, vampiric, explosive };
+pub const Affix = enum(u8) { none, swift, armored, vampiric, explosive, split };
 
 pub const FloorMod = enum(u8) {
     none,
@@ -846,10 +846,11 @@ pub const Sim = struct {
             (@as(u64, @intCast(@max(0, pos.y))) *% 0xd6e8feb86659fd93);
         var rng = std.Random.DefaultPrng.init(h);
         const roll = rng.random().float(f32);
-        if (roll < 0.06) return .swift;
-        if (roll < 0.12) return .armored;
-        if (roll < 0.16) return .vampiric;
-        if (roll < 0.22) return .explosive;
+        if (roll < 0.05) return .swift;
+        if (roll < 0.10) return .armored;
+        if (roll < 0.15) return .vampiric;
+        if (roll < 0.19) return .explosive;
+        if (roll < 0.21 and floor >= 3) return .split;
         return .none;
     }
 
@@ -1356,6 +1357,31 @@ pub const Sim = struct {
         self.kills += 1;
         self.gold +|= 5 + @as(u32, e.identity.kind) * 2 + @as(u32, self.floor) * 3;
         self.kill_loot_events += 1;
+        if (e.affix == .split and self.enemy_count < max_enemies and self.state == .playing) {
+            const dirs = [_]GridPos{
+                .{ .x = 1, .y = 0 },
+                .{ .x = -1, .y = 0 },
+                .{ .x = 0, .y = 1 },
+                .{ .x = 0, .y = -1 },
+            };
+            for (dirs) |d| {
+                const p = GridPos{ .x = e.pos.x + d.x, .y = e.pos.y + d.y };
+                if (!self.isFree(p.x, p.y)) continue;
+                if (p.x == self.hero.pos.x and p.y == self.hero.pos.y) continue;
+                if (self.enemyAt(p.x, p.y) != null) continue;
+                const child = &self.enemies[self.enemy_count];
+                child.* = e.*;
+                child.pos = p;
+                child.affix = .none;
+                child.vitals = numeric.gaugeAt(numeric.Health, e.vitals.full, e.vitals.full * 0.20);
+                child.life.alive = true;
+                child.action.energy = 0;
+                child.status = .{ .stun_turns = 1 };
+                self.enemy_count += 1;
+                self.pushLog("SPLIT ECHO", .{});
+                break;
+            }
+        }
         if (e.affix == .explosive and self.state == .playing) {
             const dx = @abs(e.pos.x - self.hero.pos.x);
             const dy = @abs(e.pos.y - self.hero.pos.y);
@@ -1758,6 +1784,30 @@ test "run sim: abyss wraith ranged hit applies burn" {
     });
     _ = s.wait();
     try std.testing.expect(s.hero.status.burn_turns > 0);
+}
+
+test "run sim: split spawns a 40% echo once" {
+    var s = Sim.init(80, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{
+        .kind = 0,
+        .name = "骷髅兵",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 1,
+        .hp_max = 100,
+        .attack = 10,
+        .armor = 0,
+        .speed = 100,
+        .range = 1,
+        .xp = 10,
+        .affix = .split,
+        .energy = 0,
+    });
+    s.playerAttack(0, 3.0);
+    try std.testing.expect(!s.enemies[0].life.alive);
+    try std.testing.expectEqual(@as(usize, 2), s.enemy_count);
+    try std.testing.expect(s.enemies[1].life.alive);
+    try std.testing.expectApproxEqAbs(@as(f32, 20), s.enemies[1].vitals.val, 0.01);
 }
 
 test "run sim: volatile explodes when killed next to the hero" {

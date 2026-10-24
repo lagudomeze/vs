@@ -1625,6 +1625,7 @@ pub const RunGame = struct {
                     .armored => "ARM",
                     .vampiric => "VAMP",
                     .explosive => "VOL",
+                    .split => "SPLIT",
                     else => "",
                 };
                 if (affix_label.len > 0) {
