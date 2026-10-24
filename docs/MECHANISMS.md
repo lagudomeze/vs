@@ -219,6 +219,7 @@ raw
 
 拥有：
 
+- 状态 tag：STUN / SLOW / BUFF / BURN / VULN / GUARD；
 - StatusDef：id、duration、stack、modifier payload、tick effect、tags；
 - StatusSet：每个 Actor 的实例；
 - 应用/移除/叠层规则；
@@ -230,7 +231,16 @@ raw
 
 - StatusSet 已统一到 Hero.status / Enemy.status，方法集中 canAct / attackScale / slowDamageScale / tickBuff / applyStun / applySlow / applyBurn；火球附加 5 回合灼烧并最多叠 3 层（1/1.5/2 倍），Boss AOE 也点燃英雄；Boss 通过 stun_immune 免疫眩晕（减速/灼烧仍有效）；时空时间停止命中 Boss 时改为减速 2 + 0.5× 反噬；战士冲锋、石魔像命中、Boss 深渊斩都可附加 VULN（受伤 +20%）；
 - 状态元数据已收口到 status_def（tag/label/color/debuff/max_burn_stacks）；状态应用仍散落在 endTurn/enemyAct/useTalent，下一步可做通用 StatusDef 行为表。
-- 没有通用 StatusDef、叠层、驱散；只有 Boss 的 stun_immune 特判，无法用数据扩展新状态。
+- 没有通用 StatusDef 行为表、驱散以外的状态联动；只有 Boss 的 stun_immune 特判。
+
+已落地契约（VULN，M7）：
+
+- 输入：战士冲锋命中、石魔像近战、Boss 深渊斩；只产生 StatusSet 字段，不直接改伤害公式。
+- 状态：vulnerable_turns / vulnerable_pct；同一目标只刷新最长持续时间，不叠层。
+- 结算：M6 通过 StatusSet.damageTakenScale() 读取（1 + pct）；与 GUARD 的 0.5 相乘。
+- 边界：玩家施加与敌方施加共用同一字段；Boss 不免疫 VULN；endTurn 递减。
+- 不做：tick 伤害、驱散以外的状态联动。
+
 
 ### M8 成长/经济
 
@@ -251,6 +261,24 @@ raw
 - 升级曲线硬编码 100*level；
 - 自动加点与手动加点在 Sim/RunGame 分叉。
 
+已落地契约（金币/补给站，M8）：
+
+- 输入：击杀、普通宝箱、诅咒宝箱发金币；玩家在 SHOP 面板选择 1-5。
+- 状态：gold、shop、shop_active、shop_used；每层一个 SHOP，购买一次后消失。
+- 结算：治疗/主属性/体质/净化由 Sim.useShop 结算；LOOT 只扣款并置 shop_used，物品 roll 留在 RunGame/内容层。
+- 边界：金币不是经验，不触发升级；商店不写 M9 楼层胜负；存档保存 gold/shop/shop_used。
+- 不做：定向商品库存、价格随楼层浮动。
+
+已落地契约（祭坛，M8）：
+
+- 输入：踩上每层一处 SHRINE 后选择 1/2/3/4；RISK 为第 4 项。
+- 状态：shrine、shrine_active、shrine_used；每层只有一个，使用后消失。
+- 结算：主属性/体质/意志 +2；RISK 主属性 +4、体质 -2（最低 1）；立即 recomputeHero，不直接改 HP。
+- 边界：祭坛不消耗金币/回合；Esc 可离开；存档保存位置与使用状态。
+- 不做：随机祝福、诅咒、祭坛等级。
+
+
+
 ### M9 运行/遭遇
 
 拥有：
@@ -268,6 +296,15 @@ raw
 - 胜负写入仍散落在 killEnemy/endTurn/nextFloor；
 - Boss AOE 在 Sim；
 - 楼层生成直接改 Sim 全体状态。
+
+已落地契约（难度/楼层词条/诅咒箱，M9）：
+
+- 难度：Difficulty 只缩放敌人 HP/伤害（hard 1.15/1.08，easy 0.80/0.90），在 spawnEnemyAt 读取；不改变 AI/掉落。
+- FloorMod：由 seed/floor 确定性选择 EMBER/FROST/MIASMA；分别缩放灼烧、敌人速度、玩家资源回复；第 1 层为 none。
+- 诅咒宝箱（CURSED）：seed/floor/chest index 决定 chest_cursed；开箱扣 10% 最大生命、施加 VULN、给 25 金币；普通箱仍回血 25、给 10 金币。
+- 边界：三者都是 M9 的遭遇参数，不进入 M6 公式；楼层切换重新生成，存档保留 floor_mod/chest_cursed。
+- 不做：难度改变地图生成、词条叠加、诅咒箱专属掉落表。
+
 
 ### M10 感知/表现
 
@@ -309,6 +346,15 @@ raw
 - save.zig 手写每个字段；
 - 新机制加字段要同时改 save/load/test；
 - 建议每个机制提供 snapshot，再由 RunState 聚合。
+
+已落地契约（终身记录，M11）：
+
+- 输入：fillHudState 检测 playing -> dead/victory 的一次性跃迁。
+- 状态：records.json 的 wins/deaths/best_floor/best_turn/best_kills，独立于 run save。
+- 结算：RunGame.trackRunEnd 更新内存，main 在 dirty 时原子写；文件缺失/损坏回退空记录，不影响读档。
+- 边界：记录不参与 Sim 结算；不写入 run save；不因读档重复计数。
+- 不做：排行榜/云同步/多存档聚合。
+
 
 ### M12 定义/内容
 
@@ -404,7 +450,7 @@ M5 ActionResolved
 | Actor energy 1000 | M2 能量 | 敌人已有 ActionState.energy；玩家仍单行动 |
 | DamageType + projector | M6 类型/管线 | 只有物理，公式三处重复 |
 | Talents 数据 + function | M5 + M12 | 玩家天赋硬编码，skills.json 未生效 |
-| Effects 表 | M7 | StatusSet 已统一；仍无 StatusDef/叠层 |
+| Effects 表 | M7 | StatusSet 统一；status_def 元数据表已落地；行为表仍待做 |
 | Actor stats/combat | M4 | 已单表化，仍有 HP 当前值散落 |
 | Zone/level generator | M9 | 31x31 单层 + 固定 3 层 |
 | FOV | M10 | 暂无战争迷雾 |

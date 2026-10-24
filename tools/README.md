@@ -81,3 +81,17 @@ python tools/gen_cjk_font.py
 - `abyss_guard`：深渊守卫（暗红石甲、角、巨斧），第 5 波首领。
 
 它们与英雄共用 `BASE_JOINTS` 和导出/烘焙流程；`bake_assets.py` 的角色列表在文件末尾。动画 kind 由 `game.zig` 的敌人类型写入。
+
+## 截图量化
+
+软件光栅化器直接输出 8-bit RGB 且 PNG 使用 stored deflate，所以一张 640×360 截图约 690 KB。提交前用：
+
+```powershell
+python tools/shrink_shots.py docs/screenshots
+python tools/shrink_shots.py --check docs/screenshots
+```
+
+- 统一量化到 64 色（与游戏调色板一致）；
+- 尺寸从 ~690 KB 降到 ~10 KB，肉眼无差异；
+- `--check` 在 CI/巡检里检查是否还有 >100 KB 的截图。
+

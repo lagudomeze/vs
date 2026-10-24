@@ -49,3 +49,29 @@ test "status defs are unique and tag-sized" {
         try std.testing.expect(d.label.len > 0);
     }
 }
+
+test "core mechanism docs cover status and economic anchors" {
+    const alloc = std.testing.allocator;
+    const candidates = [_][]const u8{
+        "docs/MECHANISMS.md",
+        "../docs/MECHANISMS.md",
+        "../../docs/MECHANISMS.md",
+        "../../../docs/MECHANISMS.md",
+    };
+    var doc_opt: ?[]u8 = null;
+    for (candidates) |path| {
+        doc_opt = std.Io.Dir.cwd().readFileAlloc(std.testing.io, path, alloc, .limited(256 * 1024)) catch null;
+        if (doc_opt != null) {
+            break;
+        }
+    }
+    const doc = doc_opt orelse return error.MissingMechanismsDoc;
+    defer alloc.free(doc);
+    for (defs) |d| {
+        try std.testing.expect(std.mem.indexOf(u8, doc, d.tag) != null);
+    }
+    const anchors = [_][]const u8{ "SHOP", "SHRINE", "EMBER", "FROST", "MIASMA", "CURSED", "records.json", "VULN" };
+    for (anchors) |a| {
+        try std.testing.expect(std.mem.indexOf(u8, doc, a) != null);
+    }
+}
