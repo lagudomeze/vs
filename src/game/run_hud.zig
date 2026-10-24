@@ -81,6 +81,7 @@ pub const State = struct {
     chunk: u8 = 4,
     chunk_visited: [9]bool = @splat(false),
     chunk_cleared: [9]bool = @splat(false),
+    demo_end: bool = false,
     toast: []const u8 = "",
     seed: u64 = 0,
     buff_turns: u16 = 0,
@@ -661,7 +662,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
 
     // death / victory overlay; keep the last log line as the cause
     if (state.dead or state.victory) {
-        const title = if (state.victory) "胜利" else "死亡";
+        const title = if (state.demo_end) "DEMO END" else if (state.victory) "胜利" else "死亡";
         var best_buf: [96]u8 = undefined;
         const sub = if (state.record_wins > 0)
             fmt(&best_buf, "BEST F{d} T{d} K{d} G{d}   R 重开", .{ state.record_best_floor, state.record_best_turn, state.record_best_kills, state.record_best_gold })
@@ -669,9 +670,12 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
             "按 R 重开 同职业";
         const cause = if (state.log_count > 0) state.log_lines[state.log_count - 1] else "";
         var sbuf: [96]u8 = undefined;
-        const summary = fmt(&sbuf, "F{d}/{d}  T{d}  KILL {d}  GOLD {d}  SEED {d}", .{
-            state.floor, state.floors, state.turn, state.kills, state.gold, state.seed,
-        });
+        const summary = if (state.demo_end)
+            "WISHLIST ON STEAM"
+        else
+            fmt(&sbuf, "F{d}/{d}  T{d}  KILL {d}  GOLD {d}  SEED {d}", .{
+                state.floor, state.floors, state.turn, state.kills, state.gold, state.seed,
+            });
         r.fillRect(0, @divTrunc(h, 2) - 28, w, 76, palette.panel);
         r.fillRect(0, @divTrunc(h, 2) - 29, w, 1, palette.gold);
         r.fillRect(0, @divTrunc(h, 2) + 47, w, 1, palette.gold);

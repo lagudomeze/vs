@@ -47,6 +47,8 @@ const Options = struct {
     toast_screen: bool = false,
     death_screen: bool = false,
     victory_screen: bool = false,
+    demo: bool = false,
+    demo_end_screen: bool = false,
     shop_screen: bool = false,
 };
 
@@ -93,6 +95,8 @@ fn usage() void {
         \\  --toast           show a sample event toast (screenshot/QA)
         \\  --death           show the death summary (screenshot/QA)
         \\  --victory         show the victory summary (screenshot/QA)
+        \\  --demo            demo mode: first floor only
+        \\  --demo-end        show the demo end screen (screenshot/QA)
         \\  --help            this text
         \\
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
@@ -195,6 +199,10 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.death_screen = true;
         } else if (std.mem.eql(u8, a, "--victory")) {
             o.victory_screen = true;
+        } else if (std.mem.eql(u8, a, "--demo")) {
+            o.demo = true;
+        } else if (std.mem.eql(u8, a, "--demo-end")) {
+            o.demo_end_screen = true;
         } else if (std.mem.eql(u8, a, "--shop")) {
             o.shop_screen = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
@@ -827,6 +835,17 @@ pub fn main(init: std.process.Init.Minimal) !void {
         game.sim.state = .victory;
         game.sim.hero.vitals.val = game.sim.hero.vitals.full;
         game.sim.pushLog("VICTORY", .{});
+    }
+    if (options.demo or options.demo_end_screen) {
+        game.demo = true;
+        game.setChunks(false);
+    }
+    if (options.demo_end_screen) {
+        game.started = true;
+        game.last_state = .playing;
+        game.demo_end = true;
+        game.sim.state = .victory;
+        game.sim.pushLog("DEMO END", .{});
     }
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
