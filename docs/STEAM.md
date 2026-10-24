@@ -31,6 +31,12 @@
 - 崩溃/错误日志落盘；启动失败给出可读提示。
 - QA：不同 DPI、双屏、只读安装目录、无音频设备、存档损坏。
 
+### 包体预检
+
+- pwsh -File tools/package.ps1 生成 dist
+- pwsh -File tools/steam_package_check.ps1 检查包/启动 exe/--version/VDF/泄漏/包新旧
+- 上传前再跑 pwsh -File tools/steam_check.ps1
+
 ### Phase 1：Steamworks 接入（1–2 周）
 
 - Steamworks SDK，steam_appid.txt 仅开发用；发布构建不打包该文件。
