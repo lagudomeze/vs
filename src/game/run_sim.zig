@@ -485,6 +485,7 @@ pub const Sim = struct {
     chunks_enabled: bool = false,
     chunk: u8 = 0,
     arenas: [9]Arena = @splat(.{}),
+    visited_chunks: [9]bool = @splat(false),
 
     pub fn init(seed: u64, class: Class) Sim {
         return initWithDifficulty(seed, class, .normal);
@@ -976,6 +977,8 @@ pub const Sim = struct {
         if (self.chunks_enabled) return;
         self.chunks_enabled = true;
         self.chunk = 4;
+        self.visited_chunks = @splat(false);
+        self.visited_chunks[4] = true;
         self.carveGatesFor(4);
         self.arenas[4] = self.captureArena();
 
@@ -1046,8 +1049,15 @@ pub const Sim = struct {
         const target: u8 = @intCast(ty * 3 + tx);
 
         self.arenas[self.chunk] = self.captureArena();
+        const first_visit = !self.visited_chunks[target];
         self.restoreArena(self.arenas[target]);
         self.chunk = target;
+        self.visited_chunks[target] = true;
+        if (first_visit) {
+            self.hero.vitals.val = @min(self.hero.vitals.full, self.hero.vitals.val + self.hero.vitals.full * 0.20);
+            self.hero.resource.val = @min(self.hero.resource.full, self.hero.resource.val + self.hero.resource.full * 0.20);
+            self.pushLog("CHUNK REST +20%", .{});
+        }
 
         var entry = entryFor(edge);
         if (self.isBlocked(entry.x, entry.y) or self.enemyAt(entry.x, entry.y) != null) {
@@ -1225,7 +1235,7 @@ pub const Sim = struct {
             self.chest_alive[i] = false;
             self.chest_count -= 1;
             if (self.chest_cursed[i]) {
-                const dmg = self.hero.vitals.full * 0.10;
+                const dmg = self.hero.vitals.full * 0.20;
                 self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
                 _ = self.hero.status.applyVulnerable(1);
                 self.gold +|= 25;
@@ -2093,10 +2103,13 @@ test "run sim: 3x3 chunk slice preserves arena state" {
     s.enableChunks();
     try std.testing.expect(s.chunks_enabled);
     try std.testing.expectEqual(@as(u8, 4), s.chunk);
+    try std.testing.expect(s.visited_chunks[4]);
+    try std.testing.expect(!s.visited_chunks[1]);
     const before = s.enemy_count;
     const chest_before = s.chest_alive;
     s.enterChunk(.north);
     try std.testing.expectEqual(@as(u8, 1), s.chunk);
+    try std.testing.expect(s.visited_chunks[1]);
     s.enterChunk(.south);
     try std.testing.expectEqual(@as(u8, 4), s.chunk);
     try std.testing.expectEqual(before, s.enemy_count);
