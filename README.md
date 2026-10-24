@@ -259,4 +259,5 @@ Steam 上架/商店素材/Demo/反馈闭环见 [docs/STEAM.md](docs/STEAM.md)；
 *Built with Zig 0.17 + SDL3 + zflecs. Real meshes, chunky pixels, turn-based depths.*
 
 - **受击反馈**：英雄掉血时红闪 + 轻量镜头震动；击败 Boss 时更强震动，快速衰减。
+- **Boss 击败演出**：胜利后冻结 1.4s 显示 BOSS DEFEATED 横幅，确认键可跳过，再进入结算。
 - **Boss 血条**：Boss 存活时顶部中央显示名字与血量。

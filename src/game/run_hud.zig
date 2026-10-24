@@ -86,6 +86,7 @@ pub const State = struct {
     demo: bool = false,
     pause_open: bool = false,
     pause_confirm_quit: bool = false,
+    victory_hold: bool = false,
     boss_active: bool = false,
     boss_hp: f32 = 0,
     boss_hp_max: f32 = 1,
@@ -220,6 +221,19 @@ fn drawPause(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         r.drawText(px + 30, py + 104, "Q    QUIT", palette.muted, 1, false);
     }
     r.drawText(px + 30, py + ph - 22, "F4 COPY DIAGNOSTICS", palette.gold, 1, false);
+}
+
+fn drawVictoryBanner(r: *renderer.Renderer, w: i32, h: i32) void {
+    r.fillRect(0, 0, w, h, palette.deep);
+    const title = "BOSS DEFEATED";
+    const tw = renderer.Renderer.textWidth(title, 3);
+    r.drawText(@divTrunc(w, 2) - @divTrunc(tw, 2), @divTrunc(h, 2) - 34, title, palette.gold_light, 3, true);
+    const sub = "ABYSS WARDEN FALLS";
+    const sw = renderer.Renderer.textWidth(sub, 1);
+    r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), @divTrunc(h, 2) + 10, sub, palette.cream, 1, false);
+    const hint = "PRESS CONFIRM TO CONTINUE";
+    const hw = renderer.Renderer.textWidth(hint, 1);
+    r.drawText(@divTrunc(w, 2) - @divTrunc(hw, 2), @divTrunc(h, 2) + 32, hint, palette.muted, 1, false);
 }
 
 fn drawChunkMap(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
@@ -711,6 +725,10 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
 
     // death / victory overlay; keep the last log line as the cause
     if (state.dead or state.victory) {
+        if (state.victory and state.victory_hold) {
+            drawVictoryBanner(r, w, h);
+            return;
+        }
         const title = if (state.demo_end) "DEMO END" else if (state.victory) "胜利" else "死亡";
         var best_buf: [96]u8 = undefined;
         const sub = if (state.record_wins > 0)
