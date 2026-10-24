@@ -1635,6 +1635,17 @@ pub const Sim = struct {
         self.pushLog("深渊守卫 狂暴", .{});
     }
 
+    /// Deterministic elite bomb drop; does not consume the run RNG.
+    pub fn eliteDropsBomb(seed: u64, floor: u8, pos: GridPos) bool {
+        const h = seed ^
+            (@as(u64, floor) *% 0x9e3779b97f4a7c15) ^
+            (@as(u64, @intCast(@max(0, pos.x))) *% 0x94d049bb133111eb) ^
+            (@as(u64, @intCast(@max(0, pos.y))) *% 0xd6e8feb86659fd93) ^
+            0xb0b0b0b0b0b0b0b0;
+        var rng = std.Random.DefaultPrng.init(h);
+        return rng.random().float(f32) < 0.20;
+    }
+
     fn killEnemy(self: *Sim, idx: usize) void {
         const e = &self.enemies[idx];
         if (!e.life.alive) return;
@@ -1679,6 +1690,10 @@ pub const Sim = struct {
                 self.pushLog("VOLATILE -{d:.0}", .{blast});
                 if (self.hero.vitals.val <= 0) self.state = .dead;
             }
+        }
+        if (e.affix != .none and self.hero.bombs < 99 and eliteDropsBomb(self.seed, self.floor, e.pos)) {
+            self.hero.bombs +|= 1;
+            self.pushLog("BOMB +1", .{});
         }
         self.pushLog("击杀 {s} +{d}XP", .{ e.identity.name, e.reward.xp });
         self.hero.progression.xp += e.reward.xp;
@@ -2104,6 +2119,19 @@ test "run sim: chunk save freeze closes gates" {
     s.freezeForSave();
     try std.testing.expect(!s.chunks_enabled);
     try std.testing.expect(s.isBlocked(@divTrunc(@as(i32, grid_w), 2), 0));
+}
+
+test "run sim: elite kill can drop a bomb" {
+    var drop_seed: u64 = 0;
+    while (!Sim.eliteDropsBomb(drop_seed, 1, .{ .x = 10, .y = 10 })) : (drop_seed += 1) {
+        if (drop_seed > 10000) return error.NoDropSeed;
+    }
+    var s = Sim.init(drop_seed, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{ .kind = 0, .name = "骷髅兵", .pos = .{ .x = 10, .y = 10 }, .hp = 1, .hp_max = 1, .attack = 1, .armor = 0, .speed = 100, .range = 1, .xp = 1, .affix = .swift });
+    try std.testing.expectEqual(@as(u8, 1), s.hero.bombs);
+    s.killEnemy(0);
+    try std.testing.expectEqual(@as(u8, 2), s.hero.bombs);
 }
 
 test "run sim: hero bomb charge is consumed only with a target" {
