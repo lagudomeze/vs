@@ -9,7 +9,7 @@ zig build -Doptimize=ReleaseFast
 powershell -ExecutionPolicy Bypass -File tools/package.ps1
 ~~~
 
-产物：dist/vx-<version>-win64.zip。
+产物：dist/vx-<version>-win64.zip；分发包用 tools/playtest_pack.ps1 生成，见 [PLAYTEST_KIT.md](PLAYTEST_KIT.md)。
 测试者解压即玩，不需要安装；存档在 %APPDATA%\lagudomeze\vx。
 
 ## 2. 30 分钟脚本
