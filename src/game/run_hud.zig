@@ -58,6 +58,10 @@ pub const State = struct {
     record_best_turn: u32 = 0,
     record_best_kills: u32 = 0,
     record_best_gold: u32 = 0,
+    record_wins_warrior: u32 = 0,
+    record_wins_mage: u32 = 0,
+    record_wins_chronomancer: u32 = 0,
+    record_chunk_clears: u32 = 0,
     gold: u32 = 0,
     shop_open: bool = false,
     settings_open: bool = false,
@@ -299,9 +303,9 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     }
 
     if (h >= 300) {
-        var rbuf: [48]u8 = undefined;
+        var rbuf: [128]u8 = undefined;
         const rec = if (state.record_wins > 0)
-            fmt(&rbuf, "BEST F{d} T{d} K{d} G{d} W{d}", .{ state.record_best_floor, state.record_best_turn, state.record_best_kills, state.record_best_gold, state.record_wins })
+            fmt(&rbuf, "BEST F{d} T{d} K{d} G{d} | WINS {d}/{d}/{d} CH {d}", .{ state.record_best_floor, state.record_best_turn, state.record_best_kills, state.record_best_gold, state.record_wins_warrior, state.record_wins_mage, state.record_wins_chronomancer, state.record_chunk_clears })
         else
             fmt(&rbuf, "BEST --", .{});
         const rw = renderer.Renderer.textWidth(rec, 1);
