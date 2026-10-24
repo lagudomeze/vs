@@ -988,6 +988,8 @@ pub const Sim = struct {
             var alt = Sim.initWithDifficulty(self.seed ^ (@as(u64, i + 1) *% 0x9e3779b97f4a7c15), self.class, self.difficulty);
             alt.floor = self.floor;
             alt.generateFloor();
+            // Neighbour chunks are lighter outposts: less clear time per visit.
+            alt.enemy_count = @min(alt.enemy_count, 4);
             alt.carveGatesFor(i);
             self.arenas[i] = alt.captureArena();
         }
@@ -2110,6 +2112,7 @@ test "run sim: 3x3 chunk slice preserves arena state" {
     s.enterChunk(.north);
     try std.testing.expectEqual(@as(u8, 1), s.chunk);
     try std.testing.expect(s.visited_chunks[1]);
+    try std.testing.expect(s.enemy_count <= 4);
     s.enterChunk(.south);
     try std.testing.expectEqual(@as(u8, 4), s.chunk);
     try std.testing.expectEqual(before, s.enemy_count);
