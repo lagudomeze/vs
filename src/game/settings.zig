@@ -40,6 +40,34 @@ pub const Settings = struct {
     }
 };
 
+pub fn keyConflicts(keys: Keys, index: u8, code: u32) bool {
+    return switch (index) {
+        0 => code == keys.potion or code == keys.bomb or code == keys.inventory or code == keys.character or code == keys.talent1 or code == keys.talent2 or code == keys.talent3,
+        1 => code == keys.confirm or code == keys.bomb or code == keys.inventory or code == keys.character or code == keys.talent1 or code == keys.talent2 or code == keys.talent3,
+        2 => code == keys.confirm or code == keys.potion or code == keys.inventory or code == keys.character or code == keys.talent1 or code == keys.talent2 or code == keys.talent3,
+        3 => code == keys.confirm or code == keys.potion or code == keys.bomb or code == keys.character or code == keys.talent1 or code == keys.talent2 or code == keys.talent3,
+        4 => code == keys.confirm or code == keys.potion or code == keys.bomb or code == keys.inventory or code == keys.talent1 or code == keys.talent2 or code == keys.talent3,
+        5 => code == keys.confirm or code == keys.potion or code == keys.bomb or code == keys.inventory or code == keys.character or code == keys.talent2 or code == keys.talent3,
+        6 => code == keys.confirm or code == keys.potion or code == keys.bomb or code == keys.inventory or code == keys.character or code == keys.talent1 or code == keys.talent3,
+        7 => code == keys.confirm or code == keys.potion or code == keys.bomb or code == keys.inventory or code == keys.character or code == keys.talent1 or code == keys.talent2,
+        else => false,
+    };
+}
+
+pub fn assignKey(keys: *Keys, index: u8, code: u32) void {
+    switch (index) {
+        0 => keys.confirm = code,
+        1 => keys.potion = code,
+        2 => keys.bomb = code,
+        3 => keys.inventory = code,
+        4 => keys.character = code,
+        5 => keys.talent1 = code,
+        6 => keys.talent2 = code,
+        7 => keys.talent3 = code,
+        else => {},
+    }
+}
+
 fn keyCode(value: u32, fallback: u32) u32 {
     if (value < 1 or value > 300 or value == 41) return fallback; // 41 = ESC
     return value;
@@ -69,6 +97,16 @@ pub fn save(io: std.Io, alloc: std.mem.Allocator, path: []const u8, settings: Se
     defer atomic.deinit(io);
     try atomic.file.writeStreamingAll(io, bytes);
     try atomic.replace(io);
+}
+
+test "settings: key assignment and conflict" {
+    var keys = Keys{};
+    try std.testing.expect(keyConflicts(keys, 0, 19));
+    try std.testing.expect(!keyConflicts(keys, 0, 44));
+    assignKey(&keys, 0, 57);
+    try std.testing.expectEqual(@as(u32, 57), keys.confirm);
+    try std.testing.expect(keyConflicts(keys, 1, 57));
+    assignKey(&keys, 0, 44);
 }
 
 test "settings round-trip, defaults and clamp" {
