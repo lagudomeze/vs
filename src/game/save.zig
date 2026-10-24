@@ -726,7 +726,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     for (root.enemies, 0..) |e, i| {
         if (@as(usize, e.kind) >= enemy_names.len) return error.InvalidEnemyKind;
         if (!std.mem.eql(u8, e.name, enemy_names[e.kind])) return error.InvalidEnemyName;
-        if (e.affix > @backingInt(sim_mod.Affix.frost)) return error.InvalidValue;
+        if (e.affix > @backingInt(sim_mod.Affix.berserk)) return error.InvalidValue;
         if (!inBounds(e.pos)) return error.InvalidCoordinate;
         if (mapBlocked(map, e.pos)) return error.InconsistentMap;
         if (!std.math.isFinite(e.hp) or !std.math.isFinite(e.hp_max) or
