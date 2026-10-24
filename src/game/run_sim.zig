@@ -487,6 +487,8 @@ pub const Sim = struct {
     arenas: [9]Arena = @splat(.{}),
     visited_chunks: [9]bool = @splat(false),
     cleared_chunks: [9]bool = @splat(false),
+    /// Transient HUD notice consumed by RunGame; not saved.
+    notice: []const u8 = "",
 
     pub fn init(seed: u64, class: Class) Sim {
         return initWithDifficulty(seed, class, .normal);
@@ -1061,6 +1063,7 @@ pub const Sim = struct {
             self.hero.vitals.val = @min(self.hero.vitals.full, self.hero.vitals.val + self.hero.vitals.full * 0.20);
             self.hero.resource.val = @min(self.hero.resource.full, self.hero.resource.val + self.hero.resource.full * 0.20);
             self.gold += 25;
+            self.notice = "CHUNK CACHE +25G";
             self.pushLog("CHUNK CACHE +25G", .{});
         }
 
@@ -1658,6 +1661,7 @@ pub const Sim = struct {
         }
         self.cleared_chunks[self.chunk] = true;
         self.gold += 30;
+        self.notice = "CHUNK CLEAR +30G";
         self.pushLog("CHUNK CLEAR +30G", .{});
     }
 
@@ -1719,6 +1723,7 @@ pub const Sim = struct {
         }
         if (e.affix != .none and self.hero.bombs < 99 and eliteDropsBomb(self.seed, self.floor, e.pos)) {
             self.hero.bombs +|= 1;
+            self.notice = "ELITE DROP: BOMB +1";
             self.pushLog("BOMB +1", .{});
         }
         self.pushLog("击杀 {s} +{d}XP", .{ e.identity.name, e.reward.xp });
