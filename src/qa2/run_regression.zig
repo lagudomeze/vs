@@ -811,6 +811,31 @@ test "qa2: 3x3 chunks round-trip arenas and v3 saves" {
     }
 }
 
+test "qa2: 3x3 chunk long run stays invariant" {
+    const alloc = std.testing.allocator;
+    const edges = [_]run.Edge{ .north, .east, .south, .west };
+    for (0..10) |i| {
+        var s = run.Sim.init(seedFor(i), .warrior);
+        s.enableChunks();
+        var step: usize = 0;
+        while (step < 200 and s.state == .playing) : (step += 1) {
+            const before = snapshot(&s);
+            _ = autoStep(&s);
+            try checkAfterAction(&s, before);
+            if (step % 25 == 24) {
+                s.enterChunk(edges[step / 25 % edges.len]);
+                try checkEnemies(&s);
+            }
+        }
+        if (s.chunks_enabled) {
+            const bytes = try save_mod.saveAlloc(alloc, &s);
+            const loaded = try save_mod.loadAlloc(alloc, bytes);
+            alloc.free(bytes);
+            if (!loaded.chunks_enabled or loaded.chunk != s.chunk) return error.ChunkSaveMismatch;
+        }
+    }
+}
+
 test "qa2: fixed seed report is reproducible" {
     var c = try content_mod.load(std.testing.allocator);
     defer c.deinit();
