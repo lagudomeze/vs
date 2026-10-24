@@ -2,6 +2,8 @@
 
 这些图是**尺寸/命名可上传的占位**，不是最终 key art。上架前用正式美术替换同名文件。
 
+商店页文案见 [PAGE.md](PAGE.md)；测试流程见 [PLAYTEST.md](../PLAYTEST.md)。
+
 生成：
 
 ~~~powershell
