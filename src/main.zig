@@ -37,6 +37,7 @@ const Options = struct {
     fullscreen: bool = false,
     help_screen: bool = false,
     shrine_screen: bool = false,
+    settings_screen: bool = false,
     shop_screen: bool = false,
 };
 
@@ -74,6 +75,7 @@ fn usage() void {
         \\  --portable        keep saves in the current directory (development)
         \\  --version         print version
         \\  --fullscreen      start fullscreen (F11 toggles)
+        \\  --settings        open the settings panel (screenshot/QA)
         \\  --help            this text
         \\
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
@@ -163,6 +165,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.help_screen = true;
         } else if (std.mem.eql(u8, a, "--shrine")) {
             o.shrine_screen = true;
+        } else if (std.mem.eql(u8, a, "--settings")) {
+            o.settings_screen = true;
         } else if (std.mem.eql(u8, a, "--shop")) {
             o.shop_screen = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
@@ -329,6 +333,9 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     };
     defer platform.deinit();
     if (options.fullscreen) platform.setFullscreen(true);
+    game.settings_fullscreen = platform.fullscreen;
+    game.settings_scale = @intCast(@min(options.scale, 8));
+    game.settings_vsync = true;
 
     const freq: f64 = @floatFromInt(vx.platform.performanceFrequency());
     var last = vx.platform.performanceNow();
@@ -349,12 +356,36 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         elapsed += dt;
 
         const pin = platform.poll(dt);
-        if (pin.toggle_fullscreen) _ = platform.toggleFullscreen();
+        if (pin.toggle_fullscreen) {
+            _ = platform.toggleFullscreen();
+            game.settings_fullscreen = platform.fullscreen;
+        }
+        if (pin.settings) game.settings_open = !game.settings_open;
+        if (game.settings_open) {
+            if (pin.talent_1) {
+                game.settings_fullscreen = !game.settings_fullscreen;
+                platform.setFullscreen(game.settings_fullscreen);
+            }
+            if (pin.talent_2) {
+                game.settings_vsync = !game.settings_vsync;
+                platform.setVSync(game.settings_vsync);
+            }
+            if (pin.talent_3) {
+                game.settings_scale = switch (game.settings_scale) {
+                    2 => 3,
+                    3 => 4,
+                    else => 2,
+                };
+                platform.setWindowScale(game.settings_scale);
+            }
+        }
         if (pin.quit) break;
         // Escape is hierarchical: cancel aim first (never lose the run just
         // for cancelling a target), then close a modal panel, then quit.
         if (pin.escape) {
-            if (game.slot_menu != .none) {
+            if (game.settings_open) {
+                game.settings_open = false;
+            } else if (game.slot_menu != .none) {
                 game.closeSlotMenu();
                 slot_frame = true;
             } else if (game.shrine_open) {
@@ -535,6 +566,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
     game.setDifficulty(options.difficulty);
     if (options.shrine_screen) game.debugShrine();
     if (options.shop_screen) game.debugShop();
+    if (options.settings_screen) game.settings_open = true;
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
     game.presentation = !options.auto_demo and !options.headless;
