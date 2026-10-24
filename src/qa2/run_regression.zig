@@ -268,6 +268,20 @@ fn autoStep(s: *run.Sim) Action {
         if (s.wait()) return .wait;
     }
 
+    if (s.hero.bombs > 0) {
+        var near: usize = 0;
+        var ei: usize = 0;
+        while (ei < s.enemy_count) : (ei += 1) {
+            const e = &s.enemies[ei];
+            if (!e.life.alive) continue;
+            const dd = @abs(e.pos.x - hero.x) + @abs(e.pos.y - hero.y);
+            if (dd <= 2) near += 1;
+        }
+        if (near >= 2 or (near >= 1 and s.hero.vitals.val < s.hero.vitals.full * 0.5)) {
+            if (s.useBomb() > 0) return .talent;
+        }
+    }
+
     if (s.nearestEnemy(5) != null) {
         if (s.class == .warrior and s.hero.status.buff_turns == 0 and
             s.hero.talents.cooldowns[2] == 0 and s.hero.resource.val >= 20)

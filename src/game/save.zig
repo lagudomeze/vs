@@ -133,6 +133,7 @@ const HeroSave = struct {
     level: u16,
     xp: u32,
     pending_points: u8 = 0,
+    bombs: u8 = 1,
     cooldowns: [cooldown_slots]u16,
     buff_turns: u16,
     buff_pct: f32,
@@ -486,6 +487,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .level = hero.progression.level,
             .xp = hero.progression.xp,
             .pending_points = hero.progression.pending_points,
+            .bombs = hero.bombs,
             .cooldowns = hero.talents.cooldowns,
             .buff_turns = hero.status.buff_turns,
             .buff_pct = hero.status.buff_pct,
@@ -667,6 +669,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     if (h.buff_pct < 0 or h.buff_pct > 1) return error.InvalidValue;
     if (h.speed == 0 or h.speed > 1000) return error.InvalidValue;
     if (h.level == 0 or h.level > 50) return error.InvalidValue;
+    if (h.bombs > 99) return error.InvalidValue;
 
     const map = &root.map;
     if (!inBounds(map.entrance) or !inBounds(map.stairs) or !inBounds(map.aoe_target) or !inBounds(map.shrine) or !inBounds(map.shop)) {
@@ -785,6 +788,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
                 .speed = numeric.valueOf(numeric.Speed, @floatFromInt(h.speed)),
             },
             .progression = .{ .level = h.level, .xp = h.xp, .pending_points = h.pending_points },
+            .bombs = h.bombs,
             .status = .{ .buff_turns = h.buff_turns, .buff_pct = h.buff_pct, .burn_turns = h.burn_turns, .burn_damage = h.burn_damage, .burn_stacks = h.burn_stacks, .vulnerable_turns = h.vulnerable_turns, .vulnerable_pct = h.vulnerable_pct, .guard_turns = h.guard_turns },
             .talents = .{ .cooldowns = h.cooldowns },
         },
