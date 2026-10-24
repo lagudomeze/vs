@@ -188,6 +188,7 @@ pub const RunGame = struct {
     settings_key_index: u8 = 0,
     settings_key_error: bool = false,
     settings_chunks: bool = false,
+    settings_shake: bool = true,
     chunk_map_open: bool = false,
     demo: bool = false,
     demo_end: bool = false,
@@ -1547,10 +1548,10 @@ pub const RunGame = struct {
         const hero_loss = hero_before - self.sim.hero.vitals.val;
         if (hero_loss > 0.5) {
             self.hero_vis.flash = 0.22;
-            self.shake = @min(1.0, self.shake + 0.35);
+            if (self.settings_shake) self.shake = @min(1.0, self.shake + 0.35);
             self.spawnFloat(self.hero_vis.pos, -@as(i32, @intFromFloat(hero_loss)), palette.red);
         }
-        if (self.sim.state == .victory) self.shake = 1.0;
+        if (self.sim.state == .victory and self.settings_shake) self.shake = 1.0;
         var i: usize = 0;
         while (i < enemies_before.len and i < self.sim.enemy_count) : (i += 1) {
             const loss = enemies_before[i] - self.sim.enemies[i].vitals.val;
@@ -2123,6 +2124,7 @@ pub const RunGame = struct {
             .keys_index = self.settings_key_index,
             .keys_error = self.settings_key_error,
             .settings_chunks = self.settings_chunks,
+            .settings_shake = self.settings_shake,
             .chunk_map_open = self.chunk_map_open,
             .demo_end = self.demo_end,
             .boss_active = boss_active,
