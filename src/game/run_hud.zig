@@ -157,7 +157,7 @@ const help_lines = [_][]const u8{
     "SHOP/SHRINE  1-5 select",
     "Esc 取消瞄准 / 关闭面板 / 退出",
     "存档 F5  读档 F9 槽  自动档 F10",
-    "相机 Q/E/右键   鼠标悬停选目标",
+    "相机 Q/E/右键   滚轮 WHEEL ZOOM",
     "升级 C 面板 1-6 加点  R 重开",
     "目标  击杀第 3 层深渊守卫",
     "楼梯在 Boss 存活时被封印",

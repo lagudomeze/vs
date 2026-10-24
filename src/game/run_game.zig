@@ -964,7 +964,7 @@ pub const RunGame = struct {
         self.fps = if (dt > 0) 1.0 / dt else 60.0;
 
         self.camera.yaw += input.yaw_delta;
-        self.camera.distance = std.math.clamp(self.camera.distance - input.zoom_delta * 0.35, 7.0, 18.0);
+        self.camera.distance = std.math.clamp(self.camera.distance - input.zoom_delta * 0.35, 10.0, 28.0);
         self.step_cooldown = @max(0, self.step_cooldown - dt);
 
         if (!self.started) {
