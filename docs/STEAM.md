@@ -31,6 +31,10 @@
 - 崩溃/错误日志落盘；启动失败给出可读提示。
 - QA：不同 DPI、双屏、只读安装目录、无音频设备、存档损坏。
 
+### 发行节奏/定价
+
+见 [RELEASE_PLAN.md](RELEASE_PLAN.md)。
+
 ### 启动/Deck 配置
 
 启动项、Depot、Auto-Cloud、Deck 与首启清单见 [LAUNCH_CONFIG.md](LAUNCH_CONFIG.md)。
