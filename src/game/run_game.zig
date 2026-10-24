@@ -189,6 +189,8 @@ pub const RunGame = struct {
     settings_key_error: bool = false,
     settings_chunks: bool = false,
     chunk_map_open: bool = false,
+    toast_text: []const u8 = "",
+    toast_time: f32 = 0,
     hero_vis: Visual = .{},
     enemy_vis: [sim_mod.max_enemies]Visual = undefined,
     floats: [24]FloatText = .{ .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{} },
@@ -1011,6 +1013,13 @@ pub const RunGame = struct {
         self.frame_ms = dt * 1000.0;
         self.fps = if (dt > 0) 1.0 / dt else 60.0;
 
+        if (self.toast_time > 0) {
+            self.toast_time -= dt;
+            if (self.toast_time <= 0) {
+                self.toast_text = "";
+                self.hud_state.toast = "";
+            }
+        }
         if (self.chunk_map_open) return;
         self.camera.yaw += input.yaw_delta;
         self.camera.distance = std.math.clamp(self.camera.distance - input.zoom_delta * 0.35, 10.0, 28.0);
@@ -2002,6 +2011,11 @@ pub const RunGame = struct {
 
     fn fillHudState(self: *RunGame) void {
         self.trackRunEnd();
+        if (self.sim.notice.len > 0) {
+            self.toast_text = self.sim.notice;
+            self.toast_time = 2.0;
+            self.sim.notice = "";
+        }
         const initiative = self.initiativeNames();
         var potion_count: u8 = 0;
         for (self.inventory.slice()) |id| {
@@ -2037,6 +2051,7 @@ pub const RunGame = struct {
             .chunk = self.sim.chunk,
             .chunk_visited = self.sim.visited_chunks,
             .chunk_cleared = self.sim.cleared_chunks,
+            .toast = self.toast_text,
             .record_best_floor = self.records.best_floor,
             .record_best_turn = self.records.best_turn,
             .potions = potion_count,
@@ -2306,6 +2321,17 @@ test "run game: P quaffs a potion outside the inventory" {
     g.update(.{ .use_item = true }, 1.0 / 60.0);
     try std.testing.expect(g.sim.hero.vitals.val > 10);
     try std.testing.expectEqual(before - 1, g.inventory.count());
+}
+
+test "run game: sim notice becomes a HUD toast" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.sim.notice = "TEST NOTICE";
+    g.fillHudState();
+    try std.testing.expectEqualStrings("TEST NOTICE", g.hud_state.toast);
+    try std.testing.expect(g.toast_time > 0);
+    try std.testing.expectEqualStrings("", g.sim.notice);
 }
 
 test "run game: chunk map blocks world movement" {

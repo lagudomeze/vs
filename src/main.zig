@@ -44,6 +44,7 @@ const Options = struct {
     settings_screen: bool = false,
     remap_screen: bool = false,
     map_screen: bool = false,
+    toast_screen: bool = false,
     shop_screen: bool = false,
 };
 
@@ -87,6 +88,7 @@ fn usage() void {
         \\  --settings        open the settings panel (screenshot/QA)
         \\  --remap           open the key-remap panel (screenshot/QA)
         \\  --map             open the 3x3 chunk map (screenshot/QA)
+        \\  --toast           show a sample event toast (screenshot/QA)
         \\  --help            this text
         \\
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
@@ -183,6 +185,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.remap_screen = true;
         } else if (std.mem.eql(u8, a, "--map")) {
             o.map_screen = true;
+        } else if (std.mem.eql(u8, a, "--toast")) {
+            o.toast_screen = true;
         } else if (std.mem.eql(u8, a, "--shop")) {
             o.shop_screen = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
@@ -796,6 +800,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
         game.chunk_map_open = true;
         game.hud_state.chunk_map_open = true;
     }
+    if (options.toast_screen) game.sim.notice = "ELITE DROP: BOMB +1";
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
     game.show_world_labels = !options.hide_labels;

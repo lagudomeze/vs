@@ -73,6 +73,7 @@ pub const State = struct {
     chunk: u8 = 4,
     chunk_visited: [9]bool = @splat(false),
     chunk_cleared: [9]bool = @splat(false),
+    toast: []const u8 = "",
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -628,6 +629,13 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     if (state.bombs > 0) {
         var bbuf: [32]u8 = undefined;
         r.drawText(w - 92, h - 18, fmt(&bbuf, "B BOMB x{d}", .{state.bombs}), palette.gold_light, 1, false);
+    }
+
+    if (state.toast.len > 0) {
+        const tw = renderer.Renderer.textWidth(state.toast, 1);
+        const bw = tw + 16;
+        backPanel(r, @divTrunc(w - bw, 2), 72, bw, 18);
+        r.drawText(@divTrunc(w - tw, 2), 77, state.toast, palette.gold_light, 1, false);
     }
 
     // death / victory overlay; keep the last log line as the cause
