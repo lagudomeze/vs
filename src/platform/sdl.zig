@@ -67,6 +67,8 @@ pub const Platform = struct {
     pad_prev: u32 = 0,
     pad_dir: u8 = 0,
     audio_volume: f32 = 0.55,
+    ambient: bool = true,
+    ambient_phase: f32 = 0,
     window_scale: u8 = 3,
     window_height: u32 = 0,
     mouse_x: f32 = 0,
@@ -208,6 +210,32 @@ pub const Platform = struct {
     pub fn toggleFullscreen(self: *Platform) bool {
         self.setFullscreen(!self.fullscreen);
         return self.fullscreen;
+    }
+
+    pub fn setAmbient(self: *Platform, enabled: bool) void {
+        self.ambient = enabled;
+    }
+
+    /// Keep a quiet procedural drone queued. Uses the same stream as SFX;
+    /// skips generation while the queue is busy so one-shots stay responsive.
+    pub fn updateAmbient(self: *Platform) void {
+        if (!self.ambient) return;
+        const stream = self.audio orelse return;
+        if (c.SDL_GetAudioStreamQueued(stream) > 10000) return;
+
+        var buf: [2048]f32 = undefined;
+        var i: usize = 0;
+        const phase = self.ambient_phase;
+        while (i < buf.len) : (i += 1) {
+            const t = phase + @as(f32, @floatFromInt(i)) / 22050.0;
+            const lfo = 0.55 + 0.45 * @sin(t * 0.18);
+            const drone = @sin(t * std.math.tau * 55.0) * 0.55 +
+                @sin(t * std.math.tau * 82.41) * 0.28 +
+                @sin(t * std.math.tau * 110.0) * 0.17;
+            buf[i] = drone * lfo * 0.035;
+        }
+        self.ambient_phase = @mod(phase + @as(f32, @floatFromInt(buf.len)) / 22050.0, 1000.0);
+        _ = c.SDL_PutAudioStreamData(stream, &buf, @intCast(buf.len * @sizeOf(f32)));
     }
 
     pub fn setAudioVolume(self: *Platform, volume: f32) void {
