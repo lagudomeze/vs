@@ -439,7 +439,29 @@ pub fn runAutoWithDifficulty(
     turn_cap: u32,
     difficulty: run.Difficulty,
 ) !RunOutcome {
+    return runAutoImpl(seed, class, c, turn_cap, difficulty, false);
+}
+
+/// Same bot, but exploring one adjacent chunk every 60 steps.
+pub fn runAutoChunks(
+    seed: u64,
+    class: run.Class,
+    c: *const content_mod.Content,
+    turn_cap: u32,
+) !RunOutcome {
+    return runAutoImpl(seed, class, c, turn_cap, .normal, true);
+}
+
+fn runAutoImpl(
+    seed: u64,
+    class: run.Class,
+    c: *const content_mod.Content,
+    turn_cap: u32,
+    difficulty: run.Difficulty,
+    chunks: bool,
+) !RunOutcome {
     var s = run.Sim.initWithDifficulty(seed, class, difficulty);
+    if (chunks) s.enableChunks();
     var inv = items_mod.Inventory.init();
     var mods = items_mod.ModifierSet{};
     var loot_rng = std.Random.DefaultPrng.init(seed ^ 0x9e3779b97f4a7c15);
@@ -463,6 +485,15 @@ pub fn runAutoWithDifficulty(
             );
             return err;
         };
+        if (chunks and s.state == .playing and steps > 0 and steps % 60 == 0 and s.chunks_enabled) {
+            s.enterChunk(switch ((steps / 60) % 4) {
+                0 => .north,
+                1 => .east,
+                2 => .south,
+                else => .west,
+            });
+            try checkEnemies(&s);
+        }
         processLoot(
             &s,
             c,
@@ -848,6 +879,22 @@ test "qa2: 3x3 chunk long run stays invariant" {
             if (!loaded.chunks_enabled or loaded.chunk != s.chunk) return error.ChunkSaveMismatch;
         }
     }
+}
+
+test "qa2: chunk cohort A/B" {
+    const alloc = std.testing.allocator;
+    var c = try content_mod.load(alloc);
+    defer c.deinit();
+    var single_wins: u32 = 0;
+    var chunk_wins: u32 = 0;
+    for (0..20) |i| {
+        const seed = seedFor(i);
+        const single = try runAuto(seed, .warrior, &c, 900);
+        const chunk = try runAutoChunks(seed, .warrior, &c, 900);
+        if (single.state == .victory) single_wins += 1;
+        if (chunk.state == .victory) chunk_wins += 1;
+    }
+    std.debug.print("[qa2] chunk A/B: single={d}/20 chunks={d}/20 ", .{ single_wins, chunk_wins });
 }
 
 test "qa2: fixed seed report is reproducible" {
