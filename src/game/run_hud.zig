@@ -68,6 +68,7 @@ pub const State = struct {
     keys_mode: bool = false,
     keys_index: u8 = 0,
     keys_error: bool = false,
+    settings_chunks: bool = false,
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -662,7 +663,7 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         return;
     }
     const pw: i32 = 320;
-    const ph: i32 = 286;
+    const ph: i32 = 308;
     const px = @divTrunc(w - pw, 2);
     const py = @divTrunc(h - ph, 2);
     r.fillRect(0, 0, w, h, palette.deep);
@@ -684,13 +685,14 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         "6 PAD A/B       SWAP",
         "7 MOVE          WASD/ESDF",
         "8 REMAP KEYS",
+        "9 CHUNKS 3x3    ON/OFF",
     };
     for (lines, 0..) |line, i| {
         r.drawText(px + 28, py + 54 + @as(i32, @intCast(i)) * 22, line, palette.cream, 1, false);
     }
 
     var vbuf: [64]u8 = undefined;
-    const values = fmt(&vbuf, "F {s} VS {s} {d}x {d}% AMB {s} PAD {s} MOVE {s}", .{
+    const values = fmt(&vbuf, "F {s} VS {s} {d}x {d}% AMB {s} PAD {s} MOVE {s} CH {s}", .{
         if (state.settings_fullscreen) "ON" else "OFF",
         if (state.settings_vsync) "ON" else "OFF",
         state.settings_scale,
@@ -698,9 +700,10 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         if (state.settings_ambient) "ON" else "OFF",
         if (state.settings_pad_swap) "SWAP" else "STD",
         if (state.settings_esdf) "ESDF" else "WASD",
+        if (state.settings_chunks) "ON" else "OFF",
     });
     const vw = renderer.Renderer.textWidth(values, 1);
-    r.drawText(px + @divTrunc(pw - vw, 2), py + 234, values, palette.cyan_light, 1, false);
+    r.drawText(px + @divTrunc(pw - vw, 2), py + 256, values, palette.cyan_light, 1, false);
     r.drawText(px + 16, py + ph - 18, "Esc CLOSE   F2 TOGGLE", palette.muted, 1, false);
 }
 
