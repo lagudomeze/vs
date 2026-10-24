@@ -21,7 +21,7 @@
 
 目标：验证“边缘门 → 邻接图 → 返回”是否好玩，先不做 3×3。
 
-当前状态：F2 第9项或 --chunks 启用 3×3 九宫格；关闭时冻结当前 Arena；邻接 chunk 只生成 4 个敌人（中心保留 8），首次进入未访问 chunk 恢复 20% HP/资源并获 25G 缓存，visited 随 v3 存档；中心 chunk 起始，Arena 快照 + 四向边缘门 + 往返状态保留已实现并有单测；边界门只朝存在的邻居开；minimap 四向金点标记存在的邻居（截图 docs/screenshots/chunk_hud.png）。限制：默认关闭；v3 存档已包含 9 个 Arena 与当前 chunk（v2 单图仍可读）；存档体积上限 1 MiB；qa2 新增 20 seed × 四向 chunk 往返 + v3 存读测试，以及 10 seed × 200 步跨图长局不变量测试。
+当前状态：F2 第9项或 --chunks 启用 3×3 九宫格；关闭时冻结当前 Arena；邻接 chunk 只生成 4 个敌人（中心保留 8），首次进入未访问 chunk 恢复 20% HP/资源并获 25G 缓存；清空当前 chunk +30G 并在 M 地图标 CLEAR；visited/cleared 随 v3 存档；中心 chunk 起始，Arena 快照 + 四向边缘门 + 往返状态保留已实现并有单测；边界门只朝存在的邻居开；minimap 四向金点标记存在的邻居（截图 docs/screenshots/chunk_hud.png）。限制：默认关闭；v3 存档已包含 9 个 Arena 与当前 chunk（v2 单图仍可读）；存档体积上限 1 MiB；qa2 新增 20 seed × 四向 chunk 往返 + v3 存读测试，以及 10 seed × 200 步跨图长局不变量测试。
 
 1. Sim 增加 chunk: GridPos（先支持 0/1 两张）。
 2. 当前地图/敌人/宝箱/陷阱打包成 Arena 值类型（已完成）：

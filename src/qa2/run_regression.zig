@@ -853,6 +853,7 @@ test "qa2: 3x3 chunks round-trip arenas and v3 saves" {
             alloc.free(bytes);
             if (!loaded.chunks_enabled or loaded.chunk != s.chunk) return error.ChunkSaveMismatch;
             if (!std.mem.eql(bool, &loaded.visited_chunks, &s.visited_chunks)) return error.ChunkVisitedMismatch;
+            if (!std.mem.eql(bool, &loaded.cleared_chunks, &s.cleared_chunks)) return error.ChunkClearedMismatch;
         }
     }
 }

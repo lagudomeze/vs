@@ -72,6 +72,7 @@ pub const State = struct {
     chunk_map_open: bool = false,
     chunk: u8 = 4,
     chunk_visited: [9]bool = @splat(false),
+    chunk_cleared: [9]bool = @splat(false),
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -215,6 +216,8 @@ fn drawChunkMap(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         r.drawText(cx + 6, cy + 5, label, if (is_now or seen) palette.deep else palette.muted, 1, false);
         if (is_now) {
             r.drawText(cx + 14, cy + 30, "YOU", palette.deep, 1, false);
+        } else if (state.chunk_cleared[i]) {
+            r.drawText(cx + 14, cy + 30, "CLEAR", palette.cyan_light, 1, false);
         } else if (seen) {
             r.drawText(cx + 14, cy + 30, "VISITED", palette.deep, 1, false);
         } else {
