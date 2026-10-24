@@ -1,0 +1,63 @@
+// VX: Aether Keep — Steam Input action manifest TEMPLATE.
+// Not wired yet: current build reads gamepads through SDL3.
+// Copy to steam_input_manifest.vdf and call SteamInput()->SetActionManifestPath
+// after SteamAPI_Init once the Steamworks SDK is integrated.
+"ActionManifest"
+{
+    "actions"
+    {
+        "move"      { "type" "joystick" }
+        "confirm"   { "type" "button" }
+        "cancel"    { "type" "button" }
+        "inventory" { "type" "button" }
+        "character" { "type" "button" }
+        "talent1"   { "type" "button" }
+        "talent2"   { "type" "button" }
+        "talent3"   { "type" "button" }
+        "wait"      { "type" "button" }
+    }
+
+    "action_sets"
+    {
+        "gameplay"
+        {
+            "move"      "move"
+            "confirm"   "confirm"
+            "cancel"    "cancel"
+            "inventory" "inventory"
+            "character" "character"
+            "talent1"   "talent1"
+            "talent2"   "talent2"
+            "talent3"   "talent3"
+            "wait"      "wait"
+        }
+    }
+
+    "localization"
+    {
+        "english"
+        {
+            "move"      "Move"
+            "confirm"   "Confirm / Wait"
+            "cancel"    "Cancel"
+            "inventory" "Inventory"
+            "character" "Character"
+            "talent1"   "Talent 1"
+            "talent2"   "Talent 2"
+            "talent3"   "Talent 3"
+            "wait"      "Wait"
+        }
+        "schinese"
+        {
+            "move"      "移动"
+            "confirm"   "确认 / 等待"
+            "cancel"    "取消"
+            "inventory" "背包"
+            "character" "角色"
+            "talent1"   "天赋 1"
+            "talent2"   "天赋 2"
+            "talent3"   "天赋 3"
+            "wait"      "等待"
+        }
+    }
+}

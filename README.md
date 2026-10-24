@@ -239,7 +239,7 @@ docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 
 ## 发行计划
 
-Steam 上架/商店素材/Demo/反馈闭环见 [docs/STEAM.md](docs/STEAM.md)；商店占位素材与生成器见 [docs/store/README.md](docs/store/README.md)；Auto-Cloud 配置见 [docs/STEAM_CLOUD.md](docs/STEAM_CLOUD.md)；SteamPipe 模板在 [steam/](steam/README.md)；玩家反馈流程见 [docs/FEEDBACK.md](docs/FEEDBACK.md)；商店页文案见 [docs/store/PAGE.md](docs/store/PAGE.md)；测试流程见 [docs/PLAYTEST.md](docs/PLAYTEST.md)；预告片分镜见 [docs/TRAILER.md](docs/TRAILER.md)；按键重绑见 [docs/KEYS.md](docs/KEYS.md)。拆出的任务：#120 ECS Phase1、#121 Steam 构建、#122 商店/Demo/反馈、#123 设置/手柄。
+Steam 上架/商店素材/Demo/反馈闭环见 [docs/STEAM.md](docs/STEAM.md)；商店占位素材与生成器见 [docs/store/README.md](docs/store/README.md)；Auto-Cloud 配置见 [docs/STEAM_CLOUD.md](docs/STEAM_CLOUD.md)；SteamPipe 模板在 [steam/](steam/README.md)；玩家反馈流程见 [docs/FEEDBACK.md](docs/FEEDBACK.md)；商店页文案见 [docs/store/PAGE.md](docs/store/PAGE.md)；测试流程见 [docs/PLAYTEST.md](docs/PLAYTEST.md)；预告片分镜见 [docs/TRAILER.md](docs/TRAILER.md)；按键重绑见 [docs/KEYS.md](docs/KEYS.md)；Steam Input 模板见 [docs/STEAM_INPUT.md](docs/STEAM_INPUT.md)。拆出的任务：#120 ECS Phase1、#121 Steam 构建、#122 商店/Demo/反馈、#123 设置/手柄。
 
 ## 致谢与许可
 
