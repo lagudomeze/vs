@@ -193,6 +193,7 @@ pub const RunGame = struct {
     frame_ms: f32 = 16.6,
     show_hud: bool = true,
     show_help: bool = false,
+    show_world_labels: bool = true,
     debug: bool = false,
 
     pub fn create(gpa: std.mem.Allocator, width: u32, height: u32, class: sim_mod.Class, seed: u64) !*RunGame {
@@ -1563,6 +1564,7 @@ pub const RunGame = struct {
     }
 
     fn drawWorldBars(self: *RunGame) void {
+        if (!self.show_world_labels) return;
         const w: i32 = @intCast(self.renderer.width);
         const h: i32 = @intCast(self.renderer.height);
         if (self.camera.project(tilePos(self.sim.stairs.x, self.sim.stairs.y).add(math.Vec3.init(0, 1.0, 0)), self.renderer.width, self.renderer.height)) |sp| {
