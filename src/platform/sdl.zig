@@ -13,6 +13,8 @@ pub fn prefPath(alloc: std.mem.Allocator) ![]u8 {
 
 pub const Sound = enum(u8) { step, hit, cast, pickup, death, ui };
 
+pub const Ambience = enum { explore, danger, shop, death, victory };
+
 pub const FrameInput = struct {
     quit: bool = false,
     escape: bool = false,
@@ -71,6 +73,7 @@ pub const Platform = struct {
     audio_volume: f32 = 0.55,
     ambient: bool = true,
     ambient_phase: f32 = 0,
+    ambience: Ambience = .explore,
     window_scale: u8 = 3,
     window_height: u32 = 0,
     mouse_x: f32 = 0,
@@ -225,6 +228,10 @@ pub const Platform = struct {
         self.pad_swap = enabled;
     }
 
+    pub fn setAmbience(self: *Platform, mood: Ambience) void {
+        self.ambience = mood;
+    }
+
     pub fn setAmbient(self: *Platform, enabled: bool) void {
         self.ambient = enabled;
     }
@@ -236,6 +243,20 @@ pub const Platform = struct {
         const stream = self.audio orelse return;
         if (c.SDL_GetAudioStreamQueued(stream) > 10000) return;
 
+        const explore_notes = [_]f32{ 220.0, 261.63, 293.66, 329.63, 392.0, 329.63, 293.66, 261.63 };
+        const danger_notes = [_]f32{ 110.0, 130.81, 146.83, 164.81, 196.0, 164.81, 146.83, 130.81 };
+        const shop_notes = [_]f32{ 261.63, 329.63, 392.0, 523.25, 392.0, 329.63 };
+        const death_notes = [_]f32{ 82.41, 98.0, 110.0, 98.0 };
+        const victory_notes = [_]f32{ 261.63, 329.63, 392.0, 523.25, 659.25, 523.25, 392.0, 329.63 };
+
+        const notes: []const f32, const beat: f32, const drone_gain: f32, const melody_gain: f32 = switch (self.ambience) {
+            .explore => .{ &explore_notes, 0.55, 0.035, 0.010 },
+            .danger => .{ &danger_notes, 0.40, 0.048, 0.014 },
+            .shop => .{ &shop_notes, 0.80, 0.026, 0.006 },
+            .death => .{ &death_notes, 1.10, 0.040, 0.005 },
+            .victory => .{ &victory_notes, 0.50, 0.030, 0.012 },
+        };
+
         var buf: [2048]f32 = undefined;
         var i: usize = 0;
         const phase = self.ambient_phase;
@@ -246,16 +267,14 @@ pub const Platform = struct {
                 @sin(t * std.math.tau * 82.41) * 0.28 +
                 @sin(t * std.math.tau * 110.0) * 0.17;
 
-            const notes = [_]f32{ 220.0, 261.63, 293.66, 329.63, 392.0, 329.63, 293.66, 261.63 };
-            const beat: f32 = 0.55;
             const step_f = @floor(t / beat);
             const note = notes[@as(usize, @intFromFloat(step_f)) % notes.len];
             const local = t - step_f * beat;
             const env = @sin(std.math.pi * local / beat);
-            const melody = (@sin(t * std.math.tau * note) * 0.010 +
-                @sin(t * std.math.tau * note * 2.0) * 0.003) * env;
+            const melody = (@sin(t * std.math.tau * note) * melody_gain +
+                @sin(t * std.math.tau * note * 2.0) * melody_gain * 0.30) * env;
 
-            buf[i] = drone * lfo * 0.035 + melody;
+            buf[i] = drone * lfo * drone_gain + melody;
         }
         self.ambient_phase = @mod(phase + @as(f32, @floatFromInt(buf.len)) / 22050.0, 1000.0);
         _ = c.SDL_PutAudioStreamData(stream, &buf, @intCast(buf.len * @sizeOf(f32)));
