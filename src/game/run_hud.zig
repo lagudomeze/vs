@@ -77,6 +77,7 @@ pub const State = struct {
     keys_index: u8 = 0,
     keys_error: bool = false,
     settings_chunks: bool = false,
+    settings_shake: bool = true,
     chunk_map_open: bool = false,
     chunk: u8 = 4,
     chunk_visited: [9]bool = @splat(false),
@@ -768,7 +769,7 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         return;
     }
     const pw: i32 = 320;
-    const ph: i32 = 308;
+    const ph: i32 = 330;
     const px = @divTrunc(w - pw, 2);
     const py = @divTrunc(h - ph, 2);
     r.fillRect(0, 0, w, h, palette.deep);
@@ -791,24 +792,31 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         "7 MOVE          WASD/ESDF",
         "8 REMAP KEYS",
         "9 CHUNKS 3x3    ON/OFF",
+        "0 SCREEN SHAKE  ON/OFF",
     };
     for (lines, 0..) |line, i| {
         r.drawText(px + 28, py + 54 + @as(i32, @intCast(i)) * 22, line, palette.cream, 1, false);
     }
 
     var vbuf: [64]u8 = undefined;
-    const values = fmt(&vbuf, "F {s} VS {s} {d}x {d}% AMB {s} PAD {s} MOVE {s} CH {s}", .{
+    const v1 = fmt(&vbuf, "F {s} VS {s} {d}x {d}% AMB {s}", .{
         if (state.settings_fullscreen) "ON" else "OFF",
         if (state.settings_vsync) "ON" else "OFF",
         state.settings_scale,
         @as(i32, @intFromFloat(state.settings_volume * 100.0)),
         if (state.settings_ambient) "ON" else "OFF",
+    });
+    var vbuf2: [64]u8 = undefined;
+    const v2 = fmt(&vbuf2, "PAD {s} MOVE {s} CH {s} SH {s}", .{
         if (state.settings_pad_swap) "SWAP" else "STD",
         if (state.settings_esdf) "ESDF" else "WASD",
         if (state.settings_chunks) "ON" else "OFF",
+        if (state.settings_shake) "ON" else "OFF",
     });
-    const vw = renderer.Renderer.textWidth(values, 1);
-    r.drawText(px + @divTrunc(pw - vw, 2), py + 256, values, palette.cyan_light, 1, false);
+    const vw = renderer.Renderer.textWidth(v1, 1);
+    r.drawText(px + @divTrunc(pw - vw, 2), py + 274, v1, palette.cyan_light, 1, false);
+    const vw2 = renderer.Renderer.textWidth(v2, 1);
+    r.drawText(px + @divTrunc(pw - vw2, 2), py + 292, v2, palette.cyan_light, 1, false);
     r.drawText(px + 16, py + ph - 18, "Esc CLOSE   F2 TOGGLE", palette.muted, 1, false);
 }
 

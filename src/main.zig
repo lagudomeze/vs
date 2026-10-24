@@ -426,6 +426,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     game.settings_pad_swap = settings.pad_swap;
     game.settings_esdf = settings.esdf;
     game.settings_chunks = settings.chunks;
+    game.settings_shake = settings.shake;
     if (settings.chunks) game.setChunks(true);
 
     const freq: f64 = @floatFromInt(vx.platform.performanceFrequency());
@@ -573,6 +574,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                     settings.pad_swap = game.settings_pad_swap;
                     settings.esdf = game.settings_esdf;
                     settings.chunks = game.settings_chunks;
+                    settings.shake = game.settings_shake;
                     vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
                 }
             }
