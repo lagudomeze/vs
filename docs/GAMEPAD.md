@@ -29,6 +29,7 @@ Steam Input 可把手柄映射成标准 XInput 布局；不需要额外配置即
 ## 限制
 
 - 支持 GAMEPAD_ADDED/REMOVED 热插拔，始终使用第一个可用手柄。
+- F2 第 6 项可交换 A/B（Switch 布局/无障碍），settings.json 持久化 pad_swap。
 - 没有震动/扳机/右摇杆视角。
 - 没有改键 UI。
 - 手柄提示尚未画在 HUD 上，先写 README/本文件。
