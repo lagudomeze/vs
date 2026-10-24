@@ -421,6 +421,7 @@ pub const RunGame = struct {
             if (self.sim.state == .victory) {
                 self.records.wins +|= 1;
                 if (self.records.best_turn == 0 or self.sim.turn < self.records.best_turn) self.records.best_turn = self.sim.turn;
+                if (self.sim.hero.vitals.val >= self.sim.hero.vitals.full - 0.01) self.records.flawless_wins +|= 1;
                 switch (self.class) {
                     .warrior => self.records.wins_warrior +|= 1,
                     .mage => self.records.wins_mage +|= 1,
@@ -2082,6 +2083,7 @@ pub const RunGame = struct {
             .record_wins_mage = self.records.wins_mage,
             .record_wins_chronomancer = self.records.wins_chronomancer,
             .record_chunk_clears = self.records.chunk_clears,
+            .record_flawless = self.records.flawless_wins,
             .potions = potion_count,
             .bombs = bomb_count,
             .floor_mod_label = self.sim.floor_mod.label(),
@@ -2374,6 +2376,7 @@ test "run game: victory updates class and chunk records" {
     g.fillHudState();
     try std.testing.expectEqual(@as(u32, 1), g.records.wins_warrior);
     try std.testing.expectEqual(@as(u32, 2), g.records.chunk_clears);
+    try std.testing.expectEqual(@as(u32, 1), g.records.flawless_wins);
 }
 
 test "run game: sim notice becomes a HUD toast" {

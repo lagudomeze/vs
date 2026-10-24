@@ -62,6 +62,7 @@ pub const State = struct {
     record_wins_mage: u32 = 0,
     record_wins_chronomancer: u32 = 0,
     record_chunk_clears: u32 = 0,
+    record_flawless: u32 = 0,
     gold: u32 = 0,
     shop_open: bool = false,
     settings_open: bool = false,
@@ -310,6 +311,19 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
             fmt(&rbuf, "BEST --", .{});
         const rw = renderer.Renderer.textWidth(rec, 1);
         r.drawText(@divTrunc(w, 2) - @divTrunc(rw, 2), h - 32, rec, palette.gold_light, 1, false);
+
+        var bbuf: [96]u8 = undefined;
+        const all_classes = state.record_wins_warrior > 0 and state.record_wins_mage > 0 and state.record_wins_chronomancer > 0;
+        const badges = if (state.record_wins == 0)
+            "BADGES --"
+        else
+            fmt(&bbuf, "BADGES {s}{s}{s}", .{
+                if (state.record_wins > 0) "FIRST-WIN " else "",
+                if (all_classes) "ALL-CLASS " else "",
+                if (state.record_flawless > 0) "FLAWLESS" else "",
+            });
+        const bw = renderer.Renderer.textWidth(badges, 1);
+        r.drawText(@divTrunc(w, 2) - @divTrunc(bw, 2), h - 45, badges, palette.cyan_light, 1, false);
     }
 
     const fw = renderer.Renderer.textWidth(menu_footer, 1);
