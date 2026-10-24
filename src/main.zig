@@ -38,6 +38,7 @@ const Options = struct {
     fullscreen: bool = false,
     save_info: bool = false,
     hide_labels: bool = false,
+    chunks: bool = false,
     help_screen: bool = false,
     shrine_screen: bool = false,
     settings_screen: bool = false,
@@ -80,6 +81,7 @@ fn usage() void {
         \\  --fullscreen      start fullscreen (F11 toggles)
         \\  --save-info       print effective save paths and exit
         \\  --hide-labels     hide world-space names/intents (clean screenshots)
+        \\  --chunks          enable experimental two-chunk edge gates
         \\  --settings        open the settings panel (screenshot/QA)
         \\  --help            this text
         \\
@@ -187,6 +189,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.save_info = true;
         } else if (std.mem.eql(u8, a, "--hide-labels")) {
             o.hide_labels = true;
+        } else if (std.mem.eql(u8, a, "--chunks")) {
+            o.chunks = true;
         } else if (std.mem.eql(u8, a, "--help") or std.mem.eql(u8, a, "-h")) {
             o.help = true;
         } else {
@@ -666,6 +670,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
     if (options.shrine_screen) game.debugShrine();
     if (options.shop_screen) game.debugShop();
     if (options.settings_screen) game.settings_open = true;
+    if (options.chunks) game.sim.enableChunks();
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
     game.show_world_labels = !options.hide_labels;

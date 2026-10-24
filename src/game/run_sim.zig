@@ -392,6 +392,35 @@ pub fn enemyFromParts(parts: anytype) Enemy {
 
 pub const LogLine = struct { text: [64]u8 = undefined, len: usize = 0 };
 
+pub const Edge = enum { north, south, west, east };
+
+/// Snapshot of the map-local half of the simulation, used by the experimental
+/// two-chunk mode. Hero, inventory, RNG and turn state stay on Sim.
+pub const Arena = struct {
+    enemies: [max_enemies]Enemy = undefined,
+    enemy_count: usize = 0,
+    blocked: [grid_w * grid_h]bool = @splat(false),
+    stairs: GridPos = .{ .x = 0, .y = 0 },
+    chests: [4]GridPos = .{ .{ .x = 0, .y = 0 }, .{ .x = 0, .y = 0 }, .{ .x = 0, .y = 0 }, .{ .x = 0, .y = 0 } },
+    chest_alive: [4]bool = .{ false, false, false, false },
+    chest_cursed: [4]bool = .{ false, false, false, false },
+    chest_count: usize = 0,
+    traps: [4]GridPos = .{ .{ .x = 0, .y = 0 }, .{ .x = 0, .y = 0 }, .{ .x = 0, .y = 0 }, .{ .x = 0, .y = 0 } },
+    trap_alive: [4]bool = .{ false, false, false, false },
+    trap_count: usize = 0,
+    map: dungeon_mod.Dungeon = .{},
+    aoe_target: GridPos = .{ .x = 0, .y = 0 },
+    aoe_armed: bool = false,
+    boss_enraged: bool = false,
+    boss_summoned: bool = false,
+    shrine: GridPos = .{ .x = 0, .y = 0 },
+    shrine_active: bool = false,
+    shrine_used: bool = false,
+    shop: GridPos = .{ .x = 0, .y = 0 },
+    shop_active: bool = false,
+    shop_used: bool = false,
+};
+
 pub const Sim = struct {
     seed: u64,
     rng: std.Random.DefaultPrng,
@@ -443,6 +472,10 @@ pub const Sim = struct {
     log_buf: [6]LogLine = .{ .{}, .{}, .{}, .{}, .{}, .{} },
     log_head: usize = 0,
     log_total: usize = 0,
+    chunks_enabled: bool = false,
+    chunk: u8 = 0,
+    arena0: Arena = .{},
+    arena1: Arena = .{},
 
     pub fn init(seed: u64, class: Class) Sim {
         return initWithDifficulty(seed, class, .normal);
@@ -836,6 +869,142 @@ pub const Sim = struct {
         if (defs.len > 0) self.enemy_table = defs;
     }
 
+    fn captureArena(self: *const Sim) Arena {
+        return .{
+            .enemies = self.enemies,
+            .enemy_count = self.enemy_count,
+            .blocked = self.blocked,
+            .stairs = self.stairs,
+            .chests = self.chests,
+            .chest_alive = self.chest_alive,
+            .chest_cursed = self.chest_cursed,
+            .chest_count = self.chest_count,
+            .traps = self.traps,
+            .trap_alive = self.trap_alive,
+            .trap_count = self.trap_count,
+            .map = self.map,
+            .aoe_target = self.aoe_target,
+            .aoe_armed = self.aoe_armed,
+            .boss_enraged = self.boss_enraged,
+            .boss_summoned = self.boss_summoned,
+            .shrine = self.shrine,
+            .shrine_active = self.shrine_active,
+            .shrine_used = self.shrine_used,
+            .shop = self.shop,
+            .shop_active = self.shop_active,
+            .shop_used = self.shop_used,
+        };
+    }
+
+    fn restoreArena(self: *Sim, a: Arena) void {
+        self.enemies = a.enemies;
+        self.enemy_count = a.enemy_count;
+        self.blocked = a.blocked;
+        self.stairs = a.stairs;
+        self.chests = a.chests;
+        self.chest_alive = a.chest_alive;
+        self.chest_cursed = a.chest_cursed;
+        self.chest_count = a.chest_count;
+        self.traps = a.traps;
+        self.trap_alive = a.trap_alive;
+        self.trap_count = a.trap_count;
+        self.map = a.map;
+        self.aoe_target = a.aoe_target;
+        self.aoe_armed = a.aoe_armed;
+        self.boss_enraged = a.boss_enraged;
+        self.boss_summoned = a.boss_summoned;
+        self.shrine = a.shrine;
+        self.shrine_active = a.shrine_active;
+        self.shrine_used = a.shrine_used;
+        self.shop = a.shop;
+        self.shop_active = a.shop_active;
+        self.shop_used = a.shop_used;
+    }
+
+    fn carveGates(self: *Sim) void {
+        const mx: i32 = @divTrunc(@as(i32, grid_w), 2);
+        const my: i32 = @divTrunc(@as(i32, grid_h), 2);
+        const pts = [_]GridPos{
+            .{ .x = mx, .y = 0 },
+            .{ .x = mx, .y = 1 },
+            .{ .x = mx, .y = @as(i32, grid_h) - 1 },
+            .{ .x = mx, .y = @as(i32, grid_h) - 2 },
+            .{ .x = 0, .y = my },
+            .{ .x = 1, .y = my },
+            .{ .x = @as(i32, grid_w) - 1, .y = my },
+            .{ .x = @as(i32, grid_w) - 2, .y = my },
+        };
+        for (pts) |p| {
+            self.map.setTile(.{ .x = p.x, .y = p.y }, .floor);
+            self.blocked[@as(usize, @intCast(p.y)) * grid_w + @as(usize, @intCast(p.x))] = false;
+        }
+    }
+
+    /// Experimental vertical slice: two linked arenas. Default off; CLI
+    /// --chunks enables it. Save only stores the active arena.
+    pub fn enableChunks(self: *Sim) void {
+        if (self.chunks_enabled) return;
+        self.chunks_enabled = true;
+        self.carveGates();
+        self.arena0 = self.captureArena();
+
+        var alt = Sim.initWithDifficulty(self.seed ^ 0x9e3779b97f4a7c15, self.class, self.difficulty);
+        alt.floor = self.floor;
+        alt.generateFloor();
+        alt.carveGates();
+        self.arena1 = alt.captureArena();
+        self.chunk = 0;
+        self.pushLog("CHUNK SYSTEM ON", .{});
+    }
+
+    fn edgeAt(self: *const Sim) ?Edge {
+        if (self.hero.pos.y == 0) return .north;
+        if (self.hero.pos.y == @as(i32, grid_h) - 1) return .south;
+        if (self.hero.pos.x == 0) return .west;
+        if (self.hero.pos.x == @as(i32, grid_w) - 1) return .east;
+        return null;
+    }
+
+    fn entryFor(edge: Edge) GridPos {
+        const mx: i32 = @divTrunc(@as(i32, grid_w), 2);
+        const my: i32 = @divTrunc(@as(i32, grid_h), 2);
+        return switch (edge) {
+            .north => .{ .x = mx, .y = @as(i32, grid_h) - 2 },
+            .south => .{ .x = mx, .y = 1 },
+            .west => .{ .x = @as(i32, grid_w) - 2, .y = my },
+            .east => .{ .x = 1, .y = my },
+        };
+    }
+
+    pub fn enterChunk(self: *Sim, edge: Edge) void {
+        if (!self.chunks_enabled) return;
+        if (self.chunk == 0) {
+            self.arena0 = self.captureArena();
+            self.restoreArena(self.arena1);
+            self.chunk = 1;
+        } else {
+            self.arena1 = self.captureArena();
+            self.restoreArena(self.arena0);
+            self.chunk = 0;
+        }
+        var entry = entryFor(edge);
+        if (self.isBlocked(entry.x, entry.y) or self.enemyAt(entry.x, entry.y) != null) {
+            const dirs = [_]GridPos{ .{ .x = 0, .y = 1 }, .{ .x = 0, .y = -1 }, .{ .x = 1, .y = 0 }, .{ .x = -1, .y = 0 } };
+            for (dirs) |d| {
+                const q = GridPos{ .x = entry.x + d.x, .y = entry.y + d.y };
+                if (self.isFree(q.x, q.y)) {
+                    entry = q;
+                    break;
+                }
+            }
+        }
+        self.hero.pos = entry;
+        self.hero.last_pos = self.hero.pos;
+        self.hero.history_len = 0;
+        self.aoe_armed = false;
+        self.pushLog("CHUNK {s}", .{if (self.chunk == 0) "A" else "B"});
+    }
+
     /// Deterministic affix roll; does not consume the run RNG, so loot order
     /// and enemy turns stay stable when content changes.
     fn rollAffix(seed: u64, floor: u8, kind: u8, pos: GridPos) Affix {
@@ -954,6 +1123,12 @@ pub const Sim = struct {
         self.pushHistory();
         self.hero.last_pos = self.hero.pos;
         self.hero.pos = .{ .x = nx, .y = ny };
+        if (self.chunks_enabled) {
+            if (self.edgeAt()) |edge| {
+                self.enterChunk(edge);
+                return true;
+            }
+        }
         self.pickupAt(nx, ny);
         self.triggerTrapAt(nx, ny);
         if (self.hero.pos.x == self.stairs.x and self.hero.pos.y == self.stairs.y) {
@@ -1017,6 +1192,8 @@ pub const Sim = struct {
     }
 
     pub fn nextFloor(self: *Sim) void {
+        if (self.chunks_enabled) self.chunks_enabled = false;
+        self.chunk = 0;
         self.floor += 1;
         if (self.floor > self.floors) {
             self.state = .victory;
@@ -1784,6 +1961,31 @@ test "run sim: abyss wraith ranged hit applies burn" {
     });
     _ = s.wait();
     try std.testing.expect(s.hero.status.burn_turns > 0);
+}
+
+test "run sim: two-chunk slice preserves arena state" {
+    var s = Sim.init(81, .warrior);
+    s.enableChunks();
+    try std.testing.expect(s.chunks_enabled);
+    try std.testing.expect(s.chunk == 0);
+    const before = s.enemy_count;
+    const chest_before = s.chest_alive;
+    s.enterChunk(.north);
+    try std.testing.expectEqual(@as(u8, 1), s.chunk);
+    s.enterChunk(.south);
+    try std.testing.expectEqual(@as(u8, 0), s.chunk);
+    try std.testing.expectEqual(before, s.enemy_count);
+    try std.testing.expectEqual(chest_before, s.chest_alive);
+}
+
+test "run sim: walking into an edge gate enters the linked chunk" {
+    var s = Sim.init(82, .warrior);
+    s.enableChunks();
+    const mx: i32 = @divTrunc(@as(i32, grid_w), 2);
+    s.hero.pos = .{ .x = mx, .y = 1 };
+    try std.testing.expect(s.move(0, -1));
+    try std.testing.expectEqual(@as(u8, 1), s.chunk);
+    try std.testing.expectEqual(@as(i32, grid_h - 2), s.hero.pos.y);
 }
 
 test "run sim: split spawns a 40% echo once" {
