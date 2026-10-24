@@ -95,3 +95,11 @@ python tools/shrink_shots.py --check docs/screenshots
 - 尺寸从 ~690 KB 降到 ~10 KB，肉眼无差异；
 - `--check` 在 CI/巡检里检查是否还有 >100 KB 的截图。
 
+## 打包
+
+Windows x64 发布包：
+
+    pwsh -File tools/package.ps1
+    pwsh -File tools/package.ps1 -Version 0.1.1
+
+产物：dist/vx-<version>-win64.zip，内含 exe、README、CREDITS、OFL、VERSION。当前 exe 静态链接 SDL/zflecs，无需额外 DLL。
