@@ -65,6 +65,8 @@ pub const State = struct {
     settings_ambient: bool = true,
     settings_pad_swap: bool = false,
     settings_esdf: bool = false,
+    keys_mode: bool = false,
+    keys_index: u8 = 0,
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -634,8 +636,28 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
 }
 
 fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
+    if (state.keys_mode) {
+        const kw: i32 = 320;
+        const kh: i32 = 250;
+        const kx = @divTrunc(w - kw, 2);
+        const ky = @divTrunc(h - kh, 2);
+        r.fillRect(0, 0, w, h, palette.deep);
+        r.fillRect(kx, ky, kw, kh, palette.panel);
+        r.strokeRect(kx, ky, kw, kh, palette.gold);
+        const title = "REMAP KEYS";
+        const tw = renderer.Renderer.textWidth(title, 2);
+        r.drawText(kx + @divTrunc(kw - tw, 2), ky + 14, title, palette.gold_light, 2, true);
+        const actions = [_][]const u8{ "CONFIRM", "POTION", "BOMB", "INVENTORY", "CHARACTER", "TALENT 1", "TALENT 2", "TALENT 3" };
+        for (actions, 0..) |action, i| {
+            const selected = i == state.keys_index;
+            r.drawText(kx + 48, ky + 52 + @as(i32, @intCast(i)) * 20, action, if (selected) palette.gold_light else palette.cream, 1, false);
+            if (selected) r.fillRect(kx + 38, ky + 57 + @as(i32, @intCast(i)) * 20, 4, 4, palette.gold);
+        }
+        r.drawText(kx + 16, ky + kh - 22, "PRESS NEW KEY   ESC CANCEL", palette.muted, 1, false);
+        return;
+    }
     const pw: i32 = 320;
-    const ph: i32 = 264;
+    const ph: i32 = 286;
     const px = @divTrunc(w - pw, 2);
     const py = @divTrunc(h - ph, 2);
     r.fillRect(0, 0, w, h, palette.deep);
@@ -656,6 +678,7 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         "5 AMBIENT       ON/OFF",
         "6 PAD A/B       SWAP",
         "7 MOVE          WASD/ESDF",
+        "8 REMAP KEYS",
     };
     for (lines, 0..) |line, i| {
         r.drawText(px + 28, py + 54 + @as(i32, @intCast(i)) * 22, line, palette.cream, 1, false);
@@ -672,7 +695,7 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         if (state.settings_esdf) "ESDF" else "WASD",
     });
     const vw = renderer.Renderer.textWidth(values, 1);
-    r.drawText(px + @divTrunc(pw - vw, 2), py + 212, values, palette.cyan_light, 1, false);
+    r.drawText(px + @divTrunc(pw - vw, 2), py + 234, values, palette.cyan_light, 1, false);
     r.drawText(px + 16, py + ph - 18, "Esc CLOSE   F2 TOGGLE", palette.muted, 1, false);
 }
 

@@ -42,6 +42,7 @@ const Options = struct {
     help_screen: bool = false,
     shrine_screen: bool = false,
     settings_screen: bool = false,
+    remap_screen: bool = false,
     shop_screen: bool = false,
 };
 
@@ -83,6 +84,7 @@ fn usage() void {
         \\  --hide-labels     hide world-space names/intents (clean screenshots)
         \\  --chunks          enable experimental two-chunk edge gates
         \\  --settings        open the settings panel (screenshot/QA)
+        \\  --remap           open the key-remap panel (screenshot/QA)
         \\  --help            this text
         \\
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
@@ -175,6 +177,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.shrine_screen = true;
         } else if (std.mem.eql(u8, a, "--settings")) {
             o.settings_screen = true;
+        } else if (std.mem.eql(u8, a, "--remap")) {
+            o.remap_screen = true;
         } else if (std.mem.eql(u8, a, "--shop")) {
             o.shop_screen = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
@@ -341,6 +345,33 @@ fn runRunHeadless(game: *vx.RunGame, io: std.Io, options: Options) !void {
     );
 }
 
+fn bindingsFor(settings: vx.settings.Settings) vx.platform.Bindings {
+    return .{
+        .confirm = settings.keys.confirm,
+        .potion = settings.keys.potion,
+        .bomb = settings.keys.bomb,
+        .inventory = settings.keys.inventory,
+        .character = settings.keys.character,
+        .talent1 = settings.keys.talent1,
+        .talent2 = settings.keys.talent2,
+        .talent3 = settings.keys.talent3,
+    };
+}
+
+fn applyBinding(settings: *vx.settings.Settings, index: u8, code: u32) void {
+    switch (index) {
+        0 => settings.keys.confirm = code,
+        1 => settings.keys.potion = code,
+        2 => settings.keys.bomb = code,
+        3 => settings.keys.inventory = code,
+        4 => settings.keys.character = code,
+        5 => settings.keys.talent1 = code,
+        6 => settings.keys.talent2 = code,
+        7 => settings.keys.talent3 = code,
+        else => {},
+    }
+}
+
 fn ambienceFor(game: *const vx.RunGame) vx.platform.Ambience {
     if (game.sim.state == .dead) return .death;
     if (game.sim.state == .victory) return .victory;
@@ -371,16 +402,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     platform.setAmbient(settings.ambient);
     platform.setPadSwap(settings.pad_swap);
     platform.setEsdf(settings.esdf);
-    platform.setBindings(.{
-        .confirm = settings.keys.confirm,
-        .potion = settings.keys.potion,
-        .bomb = settings.keys.bomb,
-        .inventory = settings.keys.inventory,
-        .character = settings.keys.character,
-        .talent1 = settings.keys.talent1,
-        .talent2 = settings.keys.talent2,
-        .talent3 = settings.keys.talent3,
-    });
+    platform.setBindings(bindingsFor(settings));
     game.settings_fullscreen = settings.fullscreen;
     game.settings_scale = settings.scale;
     game.settings_vsync = settings.vsync;
@@ -418,62 +440,91 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         if (pin.feedback) _ = vx.platform.openUrl("https://github.com/lagudomeze/vs/issues/new?template=feedback.yml");
         if (pin.settings) {
             game.settings_open = !game.settings_open;
+            if (!game.settings_open) {
+                game.settings_key_mode = false;
+                game.hud_state.keys_mode = false;
+            }
             platform.playSound(.ui);
         }
         if (game.settings_open) {
-            var settings_dirty = false;
-            if (pin.talent_1) {
-                game.settings_fullscreen = !game.settings_fullscreen;
-                platform.setFullscreen(game.settings_fullscreen);
-                settings_dirty = true;
-            }
-            if (pin.talent_2) {
-                game.settings_vsync = !game.settings_vsync;
-                platform.setVSync(game.settings_vsync);
-                settings_dirty = true;
-            }
-            if (pin.talent_3) {
-                game.settings_scale = switch (game.settings_scale) {
-                    2 => 3,
-                    3 => 4,
-                    else => 2,
-                };
-                platform.setWindowScale(game.settings_scale);
-                settings_dirty = true;
-            }
-            if (pin.stat == 3) {
-                game.settings_volume = switch (@as(i32, @intFromFloat(game.settings_volume * 100.0))) {
-                    0 => 0.55,
-                    55 => 1.0,
-                    else => 0.0,
-                };
-                platform.setAudioVolume(game.settings_volume);
-                settings_dirty = true;
-            }
-            if (pin.stat == 4) {
-                game.settings_ambient = !game.settings_ambient;
-                platform.setAmbient(game.settings_ambient);
-                settings_dirty = true;
-            }
-            if (pin.stat == 5) {
-                game.settings_pad_swap = !game.settings_pad_swap;
-                platform.setPadSwap(game.settings_pad_swap);
-                settings_dirty = true;
-            }
-            if (pin.stat == 6) {
-                game.settings_esdf = !game.settings_esdf;
-                platform.setEsdf(game.settings_esdf);
-                settings_dirty = true;
-            }
-            if (settings_dirty) {
-                settings.fullscreen = game.settings_fullscreen;
-                settings.vsync = game.settings_vsync;
-                settings.scale = game.settings_scale;
-                settings.volume = game.settings_volume;
-                settings.ambient = game.settings_ambient;
-                settings.pad_swap = game.settings_pad_swap;
-                settings.esdf = game.settings_esdf;
-                vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
+            if (game.settings_key_mode) {
+                if (pin.escape) {
+                    game.settings_key_mode = false;
+                    game.hud_state.keys_mode = false;
+                } else if (pin.key_code != 0 and pin.key_code != 41) {
+                    applyBinding(&settings, game.settings_key_index, pin.key_code);
+                    settings = settings.sanitized();
+                    platform.setBindings(bindingsFor(settings));
+                    vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
+                    game.settings_key_index += 1;
+                    game.hud_state.keys_index = game.settings_key_index;
+                    if (game.settings_key_index >= 8) {
+                        game.settings_key_mode = false;
+                        game.hud_state.keys_mode = false;
+                    }
+                    platform.playSound(.ui);
+                }
+            } else if (pin.stat == 7) {
+                game.settings_key_mode = true;
+                game.settings_key_index = 0;
+                game.hud_state.keys_mode = true;
+                game.hud_state.keys_index = 0;
+                platform.playSound(.ui);
+            } else {
+                var settings_dirty = false;
+                if (pin.talent_1) {
+                    game.settings_fullscreen = !game.settings_fullscreen;
+                    platform.setFullscreen(game.settings_fullscreen);
+                    settings_dirty = true;
+                }
+                if (pin.talent_2) {
+                    game.settings_vsync = !game.settings_vsync;
+                    platform.setVSync(game.settings_vsync);
+                    settings_dirty = true;
+                }
+                if (pin.talent_3) {
+                    game.settings_scale = switch (game.settings_scale) {
+                        2 => 3,
+                        3 => 4,
+                        else => 2,
+                    };
+                    platform.setWindowScale(game.settings_scale);
+                    settings_dirty = true;
+                }
+                if (pin.stat == 3) {
+                    game.settings_volume = switch (@as(i32, @intFromFloat(game.settings_volume * 100.0))) {
+                        0 => 0.55,
+                        55 => 1.0,
+                        else => 0.0,
+                    };
+                    platform.setAudioVolume(game.settings_volume);
+                    settings_dirty = true;
+                }
+                if (pin.stat == 4) {
+                    game.settings_ambient = !game.settings_ambient;
+                    platform.setAmbient(game.settings_ambient);
+                    settings_dirty = true;
+                }
+                if (pin.stat == 5) {
+                    game.settings_pad_swap = !game.settings_pad_swap;
+                    platform.setPadSwap(game.settings_pad_swap);
+                    settings_dirty = true;
+                }
+                if (pin.stat == 6) {
+                    game.settings_esdf = !game.settings_esdf;
+                    platform.setEsdf(game.settings_esdf);
+                    settings_dirty = true;
+                }
+                if (settings_dirty) {
+                    settings.fullscreen = game.settings_fullscreen;
+                    settings.vsync = game.settings_vsync;
+                    settings.scale = game.settings_scale;
+                    settings.volume = game.settings_volume;
+                    settings.ambient = game.settings_ambient;
+                    settings.pad_swap = game.settings_pad_swap;
+                    settings.esdf = game.settings_esdf;
+                    vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
+                }
             }
         }
         if (pin.quit) break;
@@ -711,6 +762,13 @@ pub fn main(init: std.process.Init.Minimal) !void {
     if (options.shrine_screen) game.debugShrine();
     if (options.shop_screen) game.debugShop();
     if (options.settings_screen) game.settings_open = true;
+    if (options.remap_screen) {
+        game.settings_open = true;
+        game.settings_key_mode = true;
+        game.settings_key_index = 0;
+        game.hud_state.keys_mode = true;
+        game.hud_state.keys_index = 0;
+    }
     if (options.chunks) game.sim.enableChunks();
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
