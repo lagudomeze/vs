@@ -486,6 +486,7 @@ pub const Sim = struct {
     chunk: u8 = 0,
     arenas: [9]Arena = @splat(.{}),
     visited_chunks: [9]bool = @splat(false),
+    cleared_chunks: [9]bool = @splat(false),
 
     pub fn init(seed: u64, class: Class) Sim {
         return initWithDifficulty(seed, class, .normal);
@@ -979,6 +980,7 @@ pub const Sim = struct {
         self.chunk = 4;
         self.visited_chunks = @splat(false);
         self.visited_chunks[4] = true;
+        self.cleared_chunks = @splat(false);
         self.carveGatesFor(4);
         self.arenas[4] = self.captureArena();
 
@@ -1648,6 +1650,17 @@ pub const Sim = struct {
         self.pushLog("深渊守卫 狂暴", .{});
     }
 
+    fn checkChunkClear(self: *Sim) void {
+        if (!self.chunks_enabled or self.cleared_chunks[self.chunk]) return;
+        var i: usize = 0;
+        while (i < self.enemy_count) : (i += 1) {
+            if (self.enemies[i].life.alive) return;
+        }
+        self.cleared_chunks[self.chunk] = true;
+        self.gold += 30;
+        self.pushLog("CHUNK CLEAR +30G", .{});
+    }
+
     /// Deterministic elite bomb drop; does not consume the run RNG.
     pub fn eliteDropsBomb(seed: u64, floor: u8, pos: GridPos) bool {
         const h = seed ^
@@ -1709,6 +1722,7 @@ pub const Sim = struct {
             self.pushLog("BOMB +1", .{});
         }
         self.pushLog("击杀 {s} +{d}XP", .{ e.identity.name, e.reward.xp });
+        self.checkChunkClear();
         self.hero.progression.xp += e.reward.xp;
         while (self.hero.progression.xp >= 100 * self.hero.progression.level and self.hero.progression.level < 50) {
             self.hero.progression.xp -= 100 * self.hero.progression.level;
@@ -2099,6 +2113,20 @@ test "run sim: abyss wraith ranged hit applies burn" {
     });
     _ = s.wait();
     try std.testing.expect(s.hero.status.burn_turns > 0);
+}
+
+test "run sim: clearing a chunk pays once" {
+    var s = Sim.init(83, .warrior);
+    s.enableChunks();
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{ .kind = 0, .name = "骷髅兵", .pos = .{ .x = 10, .y = 10 }, .hp = 1, .hp_max = 1, .attack = 1, .armor = 0, .speed = 100, .range = 1, .xp = 1 });
+    const gold = s.gold;
+    s.killEnemy(0);
+    try std.testing.expect(s.cleared_chunks[4]);
+    try std.testing.expect(s.gold >= gold + 30);
+    const paid = s.gold;
+    s.checkChunkClear();
+    try std.testing.expectEqual(paid, s.gold);
 }
 
 test "run sim: 3x3 chunk slice preserves arena state" {

@@ -2036,6 +2036,7 @@ pub const RunGame = struct {
             .chunk_map_open = self.chunk_map_open,
             .chunk = self.sim.chunk,
             .chunk_visited = self.sim.visited_chunks,
+            .chunk_cleared = self.sim.cleared_chunks,
             .record_best_floor = self.records.best_floor,
             .record_best_turn = self.records.best_turn,
             .potions = potion_count,
