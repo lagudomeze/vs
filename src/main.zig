@@ -43,6 +43,7 @@ const Options = struct {
     shrine_screen: bool = false,
     settings_screen: bool = false,
     remap_screen: bool = false,
+    map_screen: bool = false,
     shop_screen: bool = false,
 };
 
@@ -85,6 +86,7 @@ fn usage() void {
         \\  --chunks          enable experimental two-chunk edge gates
         \\  --settings        open the settings panel (screenshot/QA)
         \\  --remap           open the key-remap panel (screenshot/QA)
+        \\  --map             open the 3x3 chunk map (screenshot/QA)
         \\  --help            this text
         \\
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
@@ -179,6 +181,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.settings_screen = true;
         } else if (std.mem.eql(u8, a, "--remap")) {
             o.remap_screen = true;
+        } else if (std.mem.eql(u8, a, "--map")) {
+            o.map_screen = true;
         } else if (std.mem.eql(u8, a, "--shop")) {
             o.shop_screen = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
@@ -436,6 +440,11 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             }
             platform.playSound(.ui);
         }
+        if (pin.map and game.sim.chunks_enabled) {
+            game.chunk_map_open = !game.chunk_map_open;
+            game.hud_state.chunk_map_open = game.chunk_map_open;
+            platform.playSound(.ui);
+        }
         if (game.settings_open) {
             if (game.settings_key_mode) {
                 if (pin.escape) {
@@ -543,6 +552,9 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         if (pin.escape) {
             if (game.settings_open) {
                 game.settings_open = false;
+            } else if (game.chunk_map_open) {
+                game.chunk_map_open = false;
+                game.hud_state.chunk_map_open = false;
             } else if (game.slot_menu != .none) {
                 game.closeSlotMenu();
                 slot_frame = true;
@@ -779,7 +791,11 @@ pub fn main(init: std.process.Init.Minimal) !void {
         game.hud_state.keys_mode = true;
         game.hud_state.keys_index = 0;
     }
-    if (options.chunks) game.setChunks(true);
+    if (options.chunks or options.map_screen) game.setChunks(true);
+    if (options.map_screen) {
+        game.chunk_map_open = true;
+        game.hud_state.chunk_map_open = true;
+    }
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
     game.show_world_labels = !options.hide_labels;

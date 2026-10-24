@@ -69,6 +69,9 @@ pub const State = struct {
     keys_index: u8 = 0,
     keys_error: bool = false,
     settings_chunks: bool = false,
+    chunk_map_open: bool = false,
+    chunk: u8 = 4,
+    chunk_visited: [9]bool = @splat(false),
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -167,7 +170,7 @@ const help_lines = [_][]const u8{
     "SHOP/SHRINE  1-6 select",
     "Esc 取消瞄准 / 关闭面板 / 退出",
     "存档 F5  读档 F9 槽  自动档 F10",
-    "相机 Q/E/右键   滚轮 WHEEL ZOOM",
+    "相机 Q/E/右键   滚轮 WHEEL ZOOM   M CHUNK MAP",
     "升级 C 面板 1-6 加点  R 重开",
     "目标  击杀第 3 层深渊守卫",
     "楼梯在 Boss 存活时被封印",
@@ -181,6 +184,47 @@ const aim_hint = "空格/同键/左键确认  Esc取消  Tab换目标";
 
 /// Pre-run class selection. A checkerboard dim keeps the 3D dungeon visible
 /// behind the cards while the title and card panels stay fully readable.
+fn drawChunkMap(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
+    const pw: i32 = 340;
+    const ph: i32 = 286;
+    const px = @divTrunc(w - pw, 2);
+    const py = @divTrunc(h - ph, 2);
+    r.fillRect(0, 0, w, h, palette.deep);
+    r.fillRect(px, py, pw, ph, palette.panel);
+    r.strokeRect(px, py, pw, ph, palette.gold);
+    const title = "CHUNK MAP";
+    const tw = renderer.Renderer.textWidth(title, 2);
+    r.drawText(px + @divTrunc(pw - tw, 2), py + 12, title, palette.gold_light, 2, true);
+
+    const cell_w: i32 = 88;
+    const cell_h: i32 = 62;
+    const gap: i32 = 8;
+    const ox = px + @divTrunc(pw - (cell_w * 3 + gap * 2), 2);
+    const oy = py + 48;
+    var buf: [32]u8 = undefined;
+    var visited: u8 = 0;
+    for (0..9) |i| {
+        if (state.chunk_visited[i]) visited += 1;
+        const cx = ox + @as(i32, @intCast(i % 3)) * (cell_w + gap);
+        const cy = oy + @as(i32, @intCast(i / 3)) * (cell_h + gap);
+        const is_now = i == state.chunk;
+        const seen = state.chunk_visited[i];
+        r.fillRect(cx, cy, cell_w, cell_h, if (is_now) palette.gold else if (seen) palette.border else palette.deep);
+        r.strokeRect(cx, cy, cell_w, cell_h, if (is_now) palette.gold_light else palette.muted);
+        const label = fmt(&buf, "{d}", .{i + 1});
+        r.drawText(cx + 6, cy + 5, label, if (is_now or seen) palette.deep else palette.muted, 1, false);
+        if (is_now) {
+            r.drawText(cx + 14, cy + 30, "YOU", palette.deep, 1, false);
+        } else if (seen) {
+            r.drawText(cx + 14, cy + 30, "VISITED", palette.deep, 1, false);
+        } else {
+            r.drawText(cx + 14, cy + 30, "???", palette.muted, 1, false);
+        }
+    }
+    const foot = fmt(&buf, "VISITED {d}/9   M CLOSE", .{visited});
+    r.drawText(px + 16, py + ph - 20, foot, palette.cream, 1, false);
+}
+
 fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     var y: i32 = 0;
     while (y < h) : (y += 2) {
@@ -290,6 +334,10 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     }
     if (state.help) {
         drawHelp(r, w, h);
+        return;
+    }
+    if (state.chunk_map_open and !state.settings_open and !state.shop_open and !state.shrine_open) {
+        drawChunkMap(r, state, w, h);
         return;
     }
 
