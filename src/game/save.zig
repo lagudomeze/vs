@@ -203,6 +203,7 @@ const ArenaSave = struct {
 const ChunksSave = struct {
     chunk: u8,
     arenas: []ArenaSave,
+    visited: [9]bool = @splat(false),
 };
 
 const SaveRoot = struct {
@@ -445,7 +446,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             for (a.enemies[0..n], 0..) |e, j| arena_enemies[ai][j] = enemyToSave(e);
             arena_saves[ai] = .{ .map = arena_maps[ai], .enemies = arena_enemies[ai][0..n] };
         }
-        chunks_opt = .{ .chunk = sim.chunk, .arenas = arena_saves[0..9] };
+        chunks_opt = .{ .chunk = sim.chunk, .arenas = arena_saves[0..9], .visited = sim.visited_chunks };
     }
 
     const root = SaveRoot{
@@ -841,6 +842,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
         if (cs.chunk > 8 or cs.arenas.len != 9) return error.InvalidValue;
         sim.chunks_enabled = true;
         sim.chunk = cs.chunk;
+        sim.visited_chunks = cs.visited;
         for (cs.arenas, 0..) |*a, i| sim.arenas[i] = try arenaFromSave(&sim, a);
     }
     return sim;

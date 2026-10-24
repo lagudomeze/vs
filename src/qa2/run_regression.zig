@@ -852,6 +852,7 @@ test "qa2: 3x3 chunks round-trip arenas and v3 saves" {
             const loaded = try save_mod.loadAlloc(alloc, bytes);
             alloc.free(bytes);
             if (!loaded.chunks_enabled or loaded.chunk != s.chunk) return error.ChunkSaveMismatch;
+            if (!std.mem.eql(bool, &loaded.visited_chunks, &s.visited_chunks)) return error.ChunkVisitedMismatch;
         }
     }
 }
@@ -877,6 +878,7 @@ test "qa2: 3x3 chunk long run stays invariant" {
             const loaded = try save_mod.loadAlloc(alloc, bytes);
             alloc.free(bytes);
             if (!loaded.chunks_enabled or loaded.chunk != s.chunk) return error.ChunkSaveMismatch;
+            if (!std.mem.eql(bool, &loaded.visited_chunks, &s.visited_chunks)) return error.ChunkVisitedMismatch;
         }
     }
 }
