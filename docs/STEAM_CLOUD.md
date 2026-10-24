@@ -40,6 +40,7 @@ vx.exe --save-info
 - Byte quota per user：建议 5 MB（当前存档 < 100 KB）。
 - Number of files：64。
 - 只同步 saves 下的小文件，不把日志/截图放进云路径。
+- .save.bak 不匹配 *.save，留在本机作损坏回退。
 
 ## 测试
 

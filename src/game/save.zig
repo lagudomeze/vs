@@ -897,27 +897,53 @@ fn rebuildDungeon(sim: *const Sim, entrance: sim_mod.GridPos) dungeon_mod.Dungeo
 
 // -------------------------------------------------------------- files
 
-/// Write a save file. The path may be relative to the process cwd or absolute;
-/// parent directories must already exist.
-pub fn saveFile(io: std.Io, alloc: std.mem.Allocator, path: []const u8, sim: *const Sim) !void {
-    const bytes = try saveAlloc(alloc, sim);
-    defer alloc.free(bytes);
-
-    var atomic = if (std.fs.path.isAbsolute(path))
-        try std.Io.Dir.cwd().createFileAtomic(io, path, .{ .replace = true })
-    else
-        try std.Io.Dir.cwd().createFileAtomic(io, path, .{ .replace = true });
+fn writeBytes(io: std.Io, path: []const u8, bytes: []const u8) !void {
+    var atomic = try std.Io.Dir.cwd().createFileAtomic(io, path, .{ .replace = true });
     defer atomic.deinit(io);
     try atomic.file.writeStreamingAll(io, bytes);
     try atomic.replace(io);
 }
 
-/// Read and validate a save file. The file is opened read-only; a bad save is
-/// left on disk exactly as it was.
-pub fn loadFile(io: std.Io, alloc: std.mem.Allocator, path: []const u8) !Sim {
-    const bytes = try std.Io.Dir.cwd().readFileAlloc(io, path, alloc, .limited(max_save_bytes));
+/// Write a save file. The path may be relative to the process cwd or absolute;
+/// parent directories must already exist. The previous file is kept as
+/// path + ".bak" before replacement, as a local fallback for Auto-Cloud
+/// overwrites. Auto-Cloud only matches *.save, so .bak stays local.
+pub fn saveFile(io: std.Io, alloc: std.mem.Allocator, path: []const u8, sim: *const Sim) !void {
+    const bytes = try saveAlloc(alloc, sim);
     defer alloc.free(bytes);
-    return loadAlloc(alloc, bytes);
+
+    const bak = try std.fmt.allocPrint(alloc, "{s}.bak", .{path});
+    defer alloc.free(bak);
+    if (std.Io.Dir.cwd().readFileAlloc(io, path, alloc, .limited(max_save_bytes))) |old| {
+        defer alloc.free(old);
+        writeBytes(io, bak, old) catch {};
+    } else |_| {}
+
+    try writeBytes(io, path, bytes);
+}
+
+fn loadBackup(io: std.Io, alloc: std.mem.Allocator, path: []const u8, original: anyerror) !Sim {
+    const bak = try std.fmt.allocPrint(alloc, "{s}.bak", .{path});
+    defer alloc.free(bak);
+    const bytes = std.Io.Dir.cwd().readFileAlloc(io, bak, alloc, .limited(max_save_bytes)) catch |err| {
+        return if (err == error.FileNotFound) original else err;
+    };
+    defer alloc.free(bytes);
+    return loadAlloc(alloc, bytes) catch return original;
+}
+
+/// Read and validate a save file. The file is opened read-only; a bad save is
+/// left on disk exactly as it was. If it is missing/corrupt, a valid .bak is
+/// used, so a bad cloud overwrite does not strand the player.
+pub fn loadFile(io: std.Io, alloc: std.mem.Allocator, path: []const u8) !Sim {
+    const bytes = std.Io.Dir.cwd().readFileAlloc(io, path, alloc, .limited(max_save_bytes)) catch |err| {
+        if (err != error.FileNotFound) return err;
+        return loadBackup(io, alloc, path, err);
+    };
+    defer alloc.free(bytes);
+    return loadAlloc(alloc, bytes) catch |err| {
+        return loadBackup(io, alloc, path, err);
+    };
 }
 
 // ------------------------------------------------------------------ tests
@@ -1305,6 +1331,27 @@ test "load: out-of-range run state is rejected field by field" {
         defer alloc.free(bad);
         try testing.expectError(case[1], loadAlloc(alloc, bad));
     }
+}
+
+test "save file: .bak survives overwrite and loads after corruption" {
+    const alloc = testing.allocator;
+    const io = testing.io;
+    var tmp = testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const path = try std.fs.path.join(alloc, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "slot.bak-test.save" });
+    defer alloc.free(path);
+
+    var first = Sim.init(11, .warrior);
+    first.hero.vitals.val = 77;
+    try saveFile(io, alloc, path, &first);
+
+    var second = Sim.init(12, .mage);
+    second.hero.vitals.val = 88;
+    try saveFile(io, alloc, path, &second);
+
+    try writeBytes(io, path, "corrupt");
+    const loaded = try loadFile(io, alloc, path);
+    try testing.expectApproxEqAbs(@as(f32, 77), loaded.hero.vitals.val, 0.01);
 }
 
 test "save file: round-trip and a corrupt file is rejected without overwriting" {
