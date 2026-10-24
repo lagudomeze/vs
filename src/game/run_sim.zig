@@ -105,7 +105,7 @@ pub const class_roles = attributes.class_roles;
 pub const class_talent_descs = [class_count][3][]const u8{
     .{ "近战2.2倍伤害", "4格内1.5倍", "3回合攻击+30%" },
     .{ "5格2.5倍+范围", "1.8倍+减速", "传送3-5格" },
-    .{ "2.0倍+减速", "1.2倍+停2回合", "回到上一格" },
+    .{ "2.0倍+减速", "1.2倍+停2减速", "REWIND 3" },
 };
 
 /// Deterministic reseed used after the player picks a class: the menu preview
@@ -193,6 +193,9 @@ pub const Hero = struct {
     difficulty: Difficulty = .normal,
     pos: GridPos = .{ .x = 6, .y = 11 },
     last_pos: GridPos = .{ .x = 6, .y = 11 },
+    /// Recent positions, oldest first; used by the chronomancer rewind.
+    history: [4]GridPos = .{ .{ .x = 6, .y = 11 }, .{ .x = 6, .y = 11 }, .{ .x = 6, .y = 11 }, .{ .x = 6, .y = 11 } },
+    history_len: u8 = 0,
     sheet: HeroSheet = .{},
     vitals: numeric.Health = .{},
     resource: numeric.Resource = .{},
@@ -786,6 +789,7 @@ pub const Sim = struct {
 
         self.hero.pos = .{ .x = self.map.entrance.x, .y = self.map.entrance.y };
         self.hero.last_pos = self.hero.pos;
+        self.hero.history_len = 0;
         self.stairs = .{ .x = self.map.stairs.x, .y = self.map.stairs.y };
 
         self.chest_alive = .{ false, false, false, false };
@@ -907,6 +911,29 @@ pub const Sim = struct {
         return self.isFinalFloor() and self.hasLivingBoss();
     }
 
+    fn pushHistory(self: *Sim) void {
+        if (self.hero.history_len < self.hero.history.len) {
+            self.hero.history[self.hero.history_len] = self.hero.pos;
+            self.hero.history_len += 1;
+            return;
+        }
+        var i: usize = 1;
+        while (i < self.hero.history.len) : (i += 1) {
+            self.hero.history[i - 1] = self.hero.history[i];
+        }
+        self.hero.history[self.hero.history.len - 1] = self.hero.pos;
+    }
+
+    fn rewindTarget(self: *const Sim) ?GridPos {
+        if (self.hero.history_len == 0) return null;
+        var i: usize = 0;
+        while (i < self.hero.history_len) : (i += 1) {
+            const p = self.hero.history[i];
+            if (self.isFree(p.x, p.y)) return p;
+        }
+        return null;
+    }
+
     pub fn move(self: *Sim, dx: i32, dy: i32) bool {
         if (self.state != .playing) return false;
         if (dx == 0 and dy == 0) return false;
@@ -922,6 +949,7 @@ pub const Sim = struct {
             self.endTurn();
             return true;
         }
+        self.pushHistory();
         self.hero.last_pos = self.hero.pos;
         self.hero.pos = .{ .x = nx, .y = ny };
         self.pickupAt(nx, ny);
@@ -1449,6 +1477,7 @@ pub const Sim = struct {
                         const x = self.hero.pos.x + self.rng.random().intRangeLessThan(i32, -5, 6);
                         const y = self.hero.pos.y + self.rng.random().intRangeLessThan(i32, -5, 6);
                         if (self.isFree(x, y) and dist(.{ .x = x, .y = y }, self.hero.pos) >= 3) {
+                            self.pushHistory();
                             self.hero.last_pos = self.hero.pos;
                             self.hero.pos = .{ .x = x, .y = y };
                             self.hero.resource.val -= @floatFromInt(cost);
@@ -1474,10 +1503,16 @@ pub const Sim = struct {
             },
             .chronomancer => {
                 if (i == 2) {
-                    self.hero.pos = self.hero.last_pos;
+                    const back = self.rewindTarget() orelse return false;
                     self.hero.resource.val -= @floatFromInt(cost);
                     self.hero.talents.cooldowns[i] = self.talentCooldown(i);
-                    self.pushLog("回溯到上一格", .{});
+                    self.pushHistory();
+                    self.hero.last_pos = self.hero.pos;
+                    self.hero.pos = back;
+                    self.hero.status.cleanseDebuffs();
+                    self.hero.vitals.val = @min(self.hero.vitals.full, self.hero.vitals.val + self.hero.vitals.full * 0.08);
+                    self.hero.history_len = 0;
+                    self.pushLog("时间回溯", .{});
                     self.endTurn();
                     return true;
                 }
@@ -1489,9 +1524,9 @@ pub const Sim = struct {
                     if (self.enemies[idx].life.alive and !self.enemies[idx].status.applySlow(2)) self.pushLog("Boss 免疫减速", .{});
                 } else {
                     self.playerAttack(idx, 1.2);
+                    if (self.enemies[idx].life.alive) _ = self.enemies[idx].status.applySlow(2);
                     if (!self.enemies[idx].status.applyStun(2)) {
                         if (self.enemies[idx].life.alive) {
-                            _ = self.enemies[idx].status.applySlow(2);
                             self.playerAttack(idx, 0.5);
                             self.pushLog("Boss 抗眩晕 减速+反噬", .{});
                         }
@@ -2082,6 +2117,56 @@ test "run sim: deferred enemy phase waits for resolution" {
     s.resolvePendingEnemyPhase();
     try std.testing.expect(!s.enemy_phase_pending);
     try std.testing.expect(s.hero.vitals.val < hp or s.state == .dead);
+}
+
+test "run sim: chronomancer rewind returns three steps and cleanses" {
+    var s = Sim.init(96, .chronomancer);
+    var spots: [3]GridPos = undefined;
+    var n: usize = 0;
+    var y: i32 = 0;
+    while (y < grid_h and n < 3) : (y += 1) {
+        var x: i32 = 0;
+        while (x < grid_w and n < 3) : (x += 1) {
+            if (!s.isFree(x, y)) continue;
+            if (x == s.hero.pos.x and y == s.hero.pos.y) continue;
+            spots[n] = .{ .x = x, .y = y };
+            n += 1;
+        }
+    }
+    try std.testing.expectEqual(@as(usize, 3), n);
+    for (spots) |p| {
+        s.hero.pos = p;
+        s.pushHistory();
+    }
+    s.hero.status.burn_turns = 2;
+    s.hero.vitals.val = 40;
+    s.hero.resource.val = 100;
+    try std.testing.expect(s.useTalent(2));
+    try std.testing.expect(s.hero.pos.eql(spots[0]));
+    try std.testing.expectEqual(@as(u16, 0), s.hero.status.burn_turns);
+    try std.testing.expect(s.hero.vitals.val > 40);
+    try std.testing.expectEqual(@as(u8, 0), s.hero.history_len);
+}
+
+test "run sim: time stop applies stun and slow" {
+    var s = Sim.init(97, .chronomancer);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{
+        .kind = 0,
+        .name = "骷髅兵",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 200,
+        .hp_max = 200,
+        .attack = 8,
+        .armor = 4,
+        .speed = 100,
+        .range = 1,
+        .xp = 20,
+    });
+    s.hero.resource.val = 100;
+    try std.testing.expect(s.useTalent(1));
+    try std.testing.expect(s.enemies[0].status.stun_turns > 0);
+    try std.testing.expect(s.enemies[0].status.slow_turns > 0);
 }
 
 test "run sim: boss AOE resolves on the telegraphed turn" {

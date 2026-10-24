@@ -299,3 +299,47 @@ probe_entity {}
 - QA 内容数量断言。
 
 所以顺序必须是：反射 -> ContentWorld -> DefCatalog -> 替换，而不是先删结构。
+
+## 12. Phase 0b：Prefab 继承/覆盖实测（2026-10-24）
+
+结论：**Prefab + IsA 可作为内容组合层，但 FlecsScript 反射仍未打通。**
+
+最小实验：src/game/flecs_prefab_probe.zig
+
+~~~zig
+ecs.COMPONENT(world, Stats);
+const prefab = ecs.new_prefab(world, "EnemyPrefab");
+_ = ecs.set(world, prefab, Stats, .{ .hp = 10, .speed = 100 });
+
+const instance = ecs.new_w_pair(world, ecs.IsA, prefab);
+// get(instance) -> hp=10, speed=100
+_ = ecs.set(world, instance, Stats, .{ .hp = 25, .speed = 100 });
+// get(instance).hp == 25；get(prefab).hp 仍为 10
+~~~
+
+已验证：
+
+- prefab 通过 ecs.new_prefab 创建；
+- 实例通过 ecs.new_w_pair(world, ecs.IsA, prefab) 创建；
+- 组件值可继承，并可按实例覆盖；
+- 覆盖不会回写 prefab。
+
+最佳实践：
+
+1. **Prefab 是 authoring 源**：一个 Item/Skill/Enemy 一个 prefab，实例只覆盖差异字段。
+2. **多 Modifier 用子实体**：不要在 prefab 上塞 []Modifier 胖组件；每个词条一个 child，或 (Modifier, Stat) pair。
+3. **DefId 必须稳定**：存档/DefCatalog 只存 u32，不存 entity_t。
+4. **查询后构建只读 view**：ContentWorld -> DefCatalog -> Sim/HUD；不要让 Sim 直接吃 entity_t。
+5. **反射是前置条件**：组件字段赋值仍受 zflecs 反射缺失限制；Phase 0 未通过前不要删 ItemDef/SkillDef。
+
+不推荐：
+
+- 把 Sim 整体迁到 zflecs；
+- 在运行时给实例挂临时 script 组件再序列化；
+- 依赖 ECS 迭代顺序做确定性逻辑。
+
+下一步（Phase 1 前置）：
+
+- 用 C 侧注册带字段的组件，或用 zflecs 的 ecs.struct_init 打通反射；
+- 做一个 items.flecs 只读内容 world，与现有 JSON 做数值 diff；
+- 通过后，才考虑 DefCatalog 替换。
