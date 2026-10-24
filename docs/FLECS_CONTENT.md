@@ -343,3 +343,34 @@ _ = ecs.set(world, instance, Stats, .{ .hp = 25, .speed = 100 });
 - 用 C 侧注册带字段的组件，或用 zflecs 的 ecs.struct_init 打通反射；
 - 做一个 items.flecs 只读内容 world，与现有 JSON 做数值 diff；
 - 通过后，才考虑 DefCatalog 替换。
+
+## 13. Phase 0c：Zig struct_init 实测（2026-10-24）
+
+结论：**仍然阻塞，阻塞点从“没有反射数据”收敛为“脚本无法解析组件类型”。**
+
+尝试：
+
+- ecs.COMPONENT(world, ProbeCost) 成功，组件 id=14；
+- 用 ecs.struct_desc_t + ecs.struct_init 注册 value 字段（f32、offset、use_offset）；
+- 尝试 set_name/set_symbol/set_alias 为 ProbeCost；
+- FlecsScript：probe_cost { ProbeCost: { value: 25 } }。
+
+结果：
+
+- ecs.lookup(world, "ProbeCost") = 0；
+- ecs.lookup(world, "game.flecs_reflect_probe.ProbeCost") = 0；
+- script_run 返回 rc=-1，error_ 为 null；
+- 组件实体本身没有可解析的脚本名字。
+
+C shim 尝试：
+
+- 用 flecs.h 在独立 C 文件注册 ECS_COMPONENT_DEFINE + ecs_struct；
+- 与 flecs.lib 链接时出现大量重复全局符号（FLECS_IDEcsMemberID_ 等），
+  不能直接和 zflecs 预编译库共存。
+
+判断：
+
+- 反射数据本身可以注册，但 zflecs 的 COMPONENT 命名/符号暴露没有打通；
+- 继续在应用层加 shim 价值低，应该向 zflecs 上游提 issue 或改用自定义 flecs 编译；
+- 在此之前不删除 ItemDef/SkillDef，不迁移 ContentWorld；
+- src/game/flecs_reflect_probe.zig 故意断言当前失败，若上游修复，该测试会失败并提醒更新结论。

@@ -41,6 +41,7 @@ test {
     std.testing.refAllDecls(@This());
     _ = @import("game/flecs_script_probe.zig");
     _ = @import("game/flecs_prefab_probe.zig");
+    _ = @import("game/flecs_reflect_probe.zig");
     _ = @import("game/numeric_ecs.zig");
 }
 
