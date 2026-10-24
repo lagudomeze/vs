@@ -6,10 +6,12 @@ pub const Settings = struct {
     fullscreen: bool = false,
     scale: u8 = 3,
     vsync: bool = true,
+    volume: f32 = 0.55,
 
     pub fn sanitized(self: Settings) Settings {
         var s = self;
         s.scale = @min(@max(s.scale, 2), 4);
+        s.volume = std.math.clamp(s.volume, 0, 1);
         return s;
     }
 };
@@ -49,7 +51,7 @@ test "settings round-trip, defaults and clamp" {
     defer tmp.cleanup();
     const path = try std.fs.path.join(alloc, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "settings.json" });
     defer alloc.free(path);
-    const want = Settings{ .fullscreen = true, .scale = 4, .vsync = false };
+    const want = Settings{ .fullscreen = true, .scale = 4, .vsync = false, .volume = 0.8 };
     try save(io, alloc, path, want);
     try std.testing.expectEqual(want, try load(io, alloc, path));
     try std.testing.expectEqual(@as(u8, 4), (Settings{ .scale = 99 }).sanitized().scale);

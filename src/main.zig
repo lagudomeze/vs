@@ -349,9 +349,11 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     defer platform.deinit();
     platform.setVSync(settings.vsync);
     platform.setFullscreen(settings.fullscreen);
+    platform.setAudioVolume(settings.volume);
     game.settings_fullscreen = settings.fullscreen;
     game.settings_scale = settings.scale;
     game.settings_vsync = settings.vsync;
+    game.settings_volume = settings.volume;
 
     const freq: f64 = @floatFromInt(vx.platform.performanceFrequency());
     var last = vx.platform.performanceNow();
@@ -373,13 +375,17 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
 
         const pin = platform.poll(dt);
         if (pin.toggle_fullscreen) {
+            platform.playSound(.ui);
             _ = platform.toggleFullscreen();
             game.settings_fullscreen = platform.fullscreen;
             settings.fullscreen = platform.fullscreen;
             vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
         }
         if (pin.feedback) _ = vx.platform.openUrl("https://github.com/lagudomeze/vs/issues/new?template=feedback.yml");
-        if (pin.settings) game.settings_open = !game.settings_open;
+        if (pin.settings) {
+            game.settings_open = !game.settings_open;
+            platform.playSound(.ui);
+        }
         if (game.settings_open) {
             var settings_dirty = false;
             if (pin.talent_1) {
@@ -401,10 +407,20 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                 platform.setWindowScale(game.settings_scale);
                 settings_dirty = true;
             }
+            if (pin.stat == 3) {
+                game.settings_volume = switch (@as(i32, @intFromFloat(game.settings_volume * 100.0))) {
+                    0 => 0.55,
+                    55 => 1.0,
+                    else => 0.0,
+                };
+                platform.setAudioVolume(game.settings_volume);
+                settings_dirty = true;
+            }
             if (settings_dirty) {
                 settings.fullscreen = game.settings_fullscreen;
                 settings.vsync = game.settings_vsync;
                 settings.scale = game.settings_scale;
+                settings.volume = game.settings_volume;
                 vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
             }
         }
@@ -484,7 +500,20 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             input.zoom_delta = pin.zoom_delta;
         }
 
+        const hp_before = game.sim.hero.vitals.val;
+        const turn_before = game.sim.turn;
+        const kills_before = game.sim.kills;
+        const state_before = game.sim.state;
         game.update(input, dt);
+        if (game.sim.state == .dead and state_before != .dead) {
+            platform.playSound(.death);
+        } else if (game.sim.hero.vitals.val < hp_before - 0.01) {
+            platform.playSound(.hit);
+        } else if (game.sim.kills > kills_before) {
+            platform.playSound(.pickup);
+        } else if (game.sim.turn > turn_before) {
+            if (input.talent >= 0) platform.playSound(.cast) else platform.playSound(.step);
+        }
         if (game.records_dirty) _ = game.saveRecords(io);
         if (game.autosave_pending) game.flushAutosave(io);
         game.render();

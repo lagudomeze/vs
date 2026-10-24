@@ -12,8 +12,8 @@
 | 构建 | 已加 --version / package.ps1 / SteamPipe 模板 | SteamPipe appid、depot、启动项 |
 | Steam 集成 | Auto-Cloud 路径已配；无 SDK | SteamAPI_Init、Overlay、成就（可选） |
 | 存档路径 | 已改 SDL_GetPrefPath；旧 saves 自动迁移；--portable 保留 cwd | Cloud 白名单 |
-| 声音 | 无 | 至少 BGM/命中/UI 音效与音量设置 |
-| 设置 | 无 | 全屏/窗口、分辨率缩放、音量、键位 |
+| 声音 | 程序化 SFX + 音量；无 BGM | 至少 BGM/环境音 |
+| 设置 | 全屏/窗口/VSync/倍率/音量已可调 | 键位、语言、音频设备 |
 | 手柄 | 键鼠 | Steam Input / 手柄导航 |
 | 本地化 | 中文 | 英文商店页 + 英文本地化（至少 UI/日志） |
 | 商店素材 | 占位 Capsule + 1920 截图已生成 | 正式 key art、5 张截图、预告片 |

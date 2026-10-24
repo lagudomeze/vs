@@ -11,6 +11,8 @@ pub fn prefPath(alloc: std.mem.Allocator) ![]u8 {
     return alloc.dupe(u8, std.mem.span(raw));
 }
 
+pub const Sound = enum(u8) { step, hit, cast, pickup, death, ui };
+
 pub const FrameInput = struct {
     quit: bool = false,
     escape: bool = false,
@@ -60,6 +62,8 @@ pub const Platform = struct {
     logical_height: u32 = 216,
     window_width: u32 = 0,
     fullscreen: bool = false,
+    audio: ?*c.SDL_AudioStream = null,
+    audio_volume: f32 = 0.55,
     window_scale: u8 = 3,
     window_height: u32 = 0,
     mouse_x: f32 = 0,
@@ -69,6 +73,7 @@ pub const Platform = struct {
     pub fn init(title: [:0]const u8, width: u32, height: u32, window_scale: u32) !Platform {
         if (!c.SDL_Init(@intCast(c.SDL_INIT_VIDEO))) return error.SdlInitFailed;
         errdefer c.SDL_Quit();
+        _ = c.SDL_InitSubSystem(@intCast(c.SDL_INIT_AUDIO));
 
         const win_w: c_int = @intCast(width * window_scale);
         const win_h: c_int = @intCast(height * window_scale);
@@ -97,7 +102,13 @@ pub const Platform = struct {
             @intCast(c.SDL_LOGICAL_PRESENTATION_INTEGER_SCALE),
         );
 
+        var audio_spec = c.SDL_AudioSpec{ .format = c.SDL_AUDIO_F32, .channels = 1, .freq = 22050 };
+        const audio = c.SDL_OpenAudioDeviceStream(c.SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &audio_spec, null, null);
+        if (audio) |stream| _ = c.SDL_ResumeAudioStreamDevice(stream);
+        errdefer if (audio) |stream| c.SDL_DestroyAudioStream(stream);
+
         return .{
+            .audio = audio,
             .window = win,
             .renderer = ren,
             .texture = tex,
@@ -120,6 +131,47 @@ pub const Platform = struct {
         return self.fullscreen;
     }
 
+    pub fn setAudioVolume(self: *Platform, volume: f32) void {
+        self.audio_volume = std.math.clamp(volume, 0, 1);
+        if (self.audio) |stream| _ = c.SDL_SetAudioStreamGain(stream, self.audio_volume);
+    }
+
+    pub fn playSound(self: *Platform, kind: Sound) void {
+        const stream = self.audio orelse return;
+        if (c.SDL_GetAudioStreamQueued(stream) > 24000) return;
+
+        var buf: [8192]f32 = undefined;
+        var n: usize = 0;
+        const freq: f32, const dur: f32 = switch (kind) {
+            .step => .{ 190, 0.045 },
+            .hit => .{ 115, 0.085 },
+            .cast => .{ 480, 0.12 },
+            .pickup => .{ 740, 0.11 },
+            .death => .{ 120, 0.32 },
+            .ui => .{ 880, 0.035 },
+        };
+        const count: usize = @intFromFloat(@as(f32, 22050) * dur);
+        const total = @min(count, buf.len);
+        var rng = std.Random.DefaultPrng.init(@intCast(total));
+        while (n < total) : (n += 1) {
+            const t = @as(f32, @floatFromInt(n)) / 22050.0;
+            const phase = t * freq;
+            const attack = @min(1.0, t / 0.006);
+            const release = @max(0.0, 1.0 - t / dur);
+            const env = attack * release;
+            const wave = switch (kind) {
+                .step, .hit => if (@mod(phase, 1.0) < 0.5) @as(f32, 1.0) else -1.0,
+                .death => @sin(phase * std.math.tau * (1.0 - t / dur * 0.7)),
+                .cast => @sin(phase * std.math.tau),
+                .pickup => @sin(phase * std.math.tau * 2.0),
+                .ui => @sin(phase * std.math.tau),
+            };
+            const noise = if (kind == .hit) (rng.random().float(f32) * 2.0 - 1.0) * 0.35 else 0.0;
+            buf[n] = (wave * 0.55 + noise) * env * 0.35;
+        }
+        _ = c.SDL_PutAudioStreamData(stream, &buf, @intCast(total * @sizeOf(f32)));
+    }
+
     pub fn setVSync(self: *Platform, on: bool) void {
         if (self.renderer) |ren| _ = c.SDL_SetRenderVSync(ren, if (on) 1 else 0);
     }
@@ -136,6 +188,7 @@ pub const Platform = struct {
     }
 
     pub fn deinit(self: *Platform) void {
+        if (self.audio) |stream| c.SDL_DestroyAudioStream(stream);
         if (self.texture != null) c.SDL_DestroyTexture(self.texture);
         if (self.renderer) |r| c.SDL_DestroyRenderer(r);
         if (self.window) |w| c.SDL_DestroyWindow(w);
