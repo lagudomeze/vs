@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | 账号/费用 | 无 Steamworks 后台 | 注册 Steamworks，支付 100 USD/产品；等待 30 天 |
 | 商店页 | 无 Coming Soon | 提前至少 2 周公开 Coming Soon |
-| 构建 | zig build 本地产物 | Windows x64、SteamPipe depot、appid、启动项 |
+| 构建 | 已加 --version / tools/package.ps1 | SteamPipe depot、appid、启动项 |
 | Steam 集成 | 无 | SteamAPI_Init、Overlay、Cloud、成就（可选） |
 | 存档路径 | 已改 SDL_GetPrefPath；--portable 保留 cwd | 旧 saves/ 迁移、Cloud 白名单 |
 | 声音 | 无 | 至少 BGM/命中/UI 音效与音量设置 |

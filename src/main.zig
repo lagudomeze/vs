@@ -33,6 +33,7 @@ const Options = struct {
     hide_hud: bool = false,
     help: bool = false,
     portable: bool = false,
+    version: bool = false,
     help_screen: bool = false,
     shrine_screen: bool = false,
     shop_screen: bool = false,
@@ -70,6 +71,7 @@ fn usage() void {
         \\  --lineup          class showcase camera (for documentation shots)
         \\  --hide-hud        render without the HUD
         \\  --portable        keep saves in the current directory (development)
+        \\  --version         print version
         \\  --help            this text
         \\
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
@@ -165,6 +167,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.hide_hud = true;
         } else if (std.mem.eql(u8, a, "--portable")) {
             o.portable = true;
+        } else if (std.mem.eql(u8, a, "--version") or std.mem.eql(u8, a, "-v")) {
+            o.version = true;
         } else if (std.mem.eql(u8, a, "--help") or std.mem.eql(u8, a, "-h")) {
             o.help = true;
         } else {
@@ -452,6 +456,10 @@ pub fn main(init: std.process.Init.Minimal) !void {
         error.MissingValue, error.BadResolution, error.UnknownOption => return err,
         else => return err,
     };
+    if (options.version) {
+        std.debug.print("vx 0.1.0\n", .{});
+        return;
+    }
     if (options.help) {
         usage();
         return;
