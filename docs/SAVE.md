@@ -109,3 +109,10 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 4. **地图**由 blocked + stairs/chests/traps 重建，装饰不跨档；不影响 LOS/A*。
 5. **R/重开**：`restart()` 重新 `Sim.reset`，与读档互不影响。
 6. **成对提交**：新槽位使用单文件容器，run/gear 一次写入；只有回退旧双文件档时才是两次写。
+
+## v3（2026-10-24）
+
+- 新增可选 chunks.arenas[9]：每个 Arena 保存 blocked、楼梯、宝箱/陷阱、祭坛/商店、敌人。
+- chunks.chunk 保存当前九宫格坐标（0..8）。
+- v2 存档仍读取为单图；v1 拒绝。
+- 单文件上限提高到 1 MiB。

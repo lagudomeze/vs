@@ -5,11 +5,11 @@
 //! helpers, so the windowed game, headless QA and unit tests all use the same
 //! code path.
 //!
-//! Format v2
+//! Format v3
 //! ---------
 //! One minified `std.json` document:
 //!
-//!   {"format":"vx-run-save","version":2,"seed":12345,"class":"warrior",
+//!   {"format":"vx-run-save","version":3,"seed":12345,"class":"warrior",
 //!    "floor":1,"floors":3,"turn":42,"state":"playing","kills":2,
 //!    "chest_loot":1,"kill_loot":2,"rng":[u64,u64,u64,u64],
 //!    "hero":{...},"enemies":[...],"map":{...},"log":["...",...]}
@@ -52,12 +52,12 @@ const Enemy = sim_mod.Enemy;
 
 /// Current on-disk format. Bump whenever a field changes meaning or the RNG
 /// representation changes.
-pub const save_version: u16 = 2;
+pub const save_version: u16 = 3;
 pub const format_name = "vx-run-save";
 
 /// Hard cap for `loadAlloc` / `loadFile`. A real v2 save is a few
 /// kilobytes; anything larger is treated as a bad file instead of being parsed.
-pub const max_save_bytes: usize = 256 * 1024;
+pub const max_save_bytes: usize = 1024 * 1024;
 
 const grid_w = sim_mod.grid_w;
 const grid_h = sim_mod.grid_h;
@@ -194,6 +194,16 @@ const MapSave = struct {
     boss_summoned: bool = false,
 };
 
+const ArenaSave = struct {
+    map: MapSave,
+    enemies: []EnemySave,
+};
+
+const ChunksSave = struct {
+    chunk: u8,
+    arenas: []ArenaSave,
+};
+
 const SaveRoot = struct {
     format: []const u8,
     version: u16,
@@ -211,6 +221,7 @@ const SaveRoot = struct {
     hero: HeroSave,
     enemies: []EnemySave,
     map: MapSave,
+    chunks: ?ChunksSave = null,
     log: []const []const u8,
 };
 
@@ -279,6 +290,70 @@ fn rngNonZero(state: [4]u64) bool {
 
 /// Build the RunState document. The caller owns the returned slice and frees
 /// it with `alloc`.
+fn enemyToSave(e: Enemy) EnemySave {
+    return .{
+        .kind = e.identity.kind,
+        .affix = @backingInt(e.affix),
+        .name = e.identity.name,
+        .pos = savePos(e.pos),
+        .hp = e.vitals.val,
+        .hp_max = e.vitals.full,
+        .attack = e.combat.attack.val,
+        .armor = e.combat.armor.val,
+        .speed = @intFromFloat(e.combat.speed.val),
+        .range = e.combat.range,
+        .xp = e.reward.xp,
+        .stun_turns = e.status.stun_turns,
+        .slow_turns = e.status.slow_turns,
+        .alive = e.life.alive,
+        .energy = e.action.energy,
+        .special_cd = e.action.special_cd,
+        .burn_turns = e.status.burn_turns,
+        .burn_damage = e.status.burn_damage,
+        .burn_stacks = e.status.burn_stacks,
+        .vulnerable_turns = e.status.vulnerable_turns,
+        .vulnerable_pct = e.status.vulnerable_pct,
+        .guard_turns = e.status.guard_turns,
+    };
+}
+
+fn arenaMapSave(sim: *const Sim, a: *const sim_mod.Arena) MapSave {
+    var chests: [chest_slots]GridPosSave = undefined;
+    var chest_alive: [chest_slots]bool = undefined;
+    for (a.chests, a.chest_alive, 0..) |p, alive, i| {
+        chests[i] = savePos(p);
+        chest_alive[i] = alive;
+    }
+    var traps: [trap_slots]GridPosSave = undefined;
+    var trap_alive: [trap_slots]bool = undefined;
+    for (a.traps, a.trap_alive, 0..) |p, alive, i| {
+        traps[i] = savePos(p);
+        trap_alive[i] = alive;
+    }
+    return .{
+        .blocked = a.blocked,
+        .entrance = savePos(a.map.entrance),
+        .stairs = savePos(a.stairs),
+        .chests = chests,
+        .chest_alive = chest_alive,
+        .chest_cursed = a.chest_cursed,
+        .traps = traps,
+        .trap_alive = trap_alive,
+        .aoe_target = savePos(a.aoe_target),
+        .aoe_armed = a.aoe_armed,
+        .boss_enraged = a.boss_enraged,
+        .shrine = savePos(a.shrine),
+        .shrine_active = a.shrine_active,
+        .shrine_used = a.shrine_used,
+        .floor_mod = @backingInt(sim.floor_mod),
+        .gold = sim.gold,
+        .shop = savePos(a.shop),
+        .shop_active = a.shop_active,
+        .shop_used = a.shop_used,
+        .boss_summoned = a.boss_summoned,
+    };
+}
+
 pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
     if (sim.enemy_count > max_enemies) return error.InvalidState;
     if (sim.log_total > log_lines_max) return error.InvalidState;
@@ -356,6 +431,22 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
         trap_alive[i] = alive;
     }
 
+    var arena_saves: [9]ArenaSave = undefined;
+    var arena_maps: [9]MapSave = undefined;
+    var arena_enemies: [9][max_enemies]EnemySave = undefined;
+    var chunks_opt: ?ChunksSave = null;
+    if (sim.chunks_enabled) {
+        var ai: usize = 0;
+        while (ai < 9) : (ai += 1) {
+            const a = &sim.arenas[ai];
+            arena_maps[ai] = arenaMapSave(sim, a);
+            const n = @min(a.enemy_count, max_enemies);
+            for (a.enemies[0..n], 0..) |e, j| arena_enemies[ai][j] = enemyToSave(e);
+            arena_saves[ai] = .{ .map = arena_maps[ai], .enemies = arena_enemies[ai][0..n] };
+        }
+        chunks_opt = .{ .chunk = sim.chunk, .arenas = arena_saves[0..9] };
+    }
+
     const root = SaveRoot{
         .format = format_name,
         .version = save_version,
@@ -407,6 +498,7 @@ pub fn saveAlloc(alloc: std.mem.Allocator, sim: *const Sim) ![]u8 {
             .eff_stats = hero.sheet.eff_stats,
         },
         .enemies = enemy_buf[0..sim.enemy_count],
+        .chunks = chunks_opt,
         .map = .{
             .blocked = sim.blocked,
             .entrance = savePos(sim.map.entrance),
@@ -468,9 +560,85 @@ pub fn loadAlloc(alloc: std.mem.Allocator, bytes: []const u8) LoadError!Sim {
     return buildSim(&root);
 }
 
+fn arenaFromSave(sim: *const Sim, a: *const ArenaSave) SaveError!sim_mod.Arena {
+    const map = &a.map;
+    if (!inBounds(map.entrance) or !inBounds(map.stairs) or !inBounds(map.aoe_target) or !inBounds(map.shrine) or !inBounds(map.shop)) {
+        return error.InvalidCoordinate;
+    }
+    if (a.enemies.len > max_enemies) return error.TooManyEnemies;
+
+    var out = sim_mod.Arena{};
+    out.blocked = map.blocked;
+    out.stairs = loadPos(map.stairs);
+    out.aoe_target = loadPos(map.aoe_target);
+    out.aoe_armed = map.aoe_armed;
+    out.boss_enraged = map.boss_enraged;
+    out.boss_summoned = map.boss_summoned;
+    out.shrine = loadPos(map.shrine);
+    out.shrine_active = map.shrine_active;
+    out.shrine_used = map.shrine_used;
+    out.shop = loadPos(map.shop);
+    out.shop_active = map.shop_active;
+    out.shop_used = map.shop_used;
+    out.chest_alive = map.chest_alive;
+    out.chest_cursed = map.chest_cursed;
+    out.trap_alive = map.trap_alive;
+
+    var chests_alive: usize = 0;
+    for (map.chests, 0..) |p, i| {
+        out.chests[i] = loadPos(p);
+        if (map.chest_alive[i]) chests_alive += 1;
+    }
+    var traps_alive: usize = 0;
+    for (map.traps, 0..) |p, i| {
+        out.traps[i] = loadPos(p);
+        if (map.trap_alive[i]) traps_alive += 1;
+    }
+    out.chest_count = chests_alive;
+    out.trap_count = traps_alive;
+
+    out.enemies = @splat(.{});
+    for (a.enemies, 0..) |e, i| {
+        if (@as(usize, e.kind) >= enemy_names.len) return error.InvalidEnemyKind;
+        if (!std.mem.eql(u8, e.name, enemy_names[e.kind])) return error.InvalidEnemyName;
+        if (!inBounds(e.pos)) return error.InvalidCoordinate;
+        out.enemies[i] = enemyFromSave(e);
+    }
+    out.enemy_count = a.enemies.len;
+
+    var tmp = sim.*;
+    tmp.blocked = map.blocked;
+    tmp.stairs = out.stairs;
+    for (out.chests, 0..) |p, i| tmp.chests[i] = p;
+    tmp.chest_alive = out.chest_alive;
+    for (out.traps, 0..) |p, i| tmp.traps[i] = p;
+    tmp.trap_alive = out.trap_alive;
+    out.map = rebuildDungeon(&tmp, loadPos(map.entrance));
+    return out;
+}
+
+fn enemyFromSave(e: EnemySave) Enemy {
+    return .{
+        .identity = .{ .kind = e.kind, .name = enemy_names[e.kind] },
+        .affix = @fromBackingInt(@intCast(e.affix)),
+        .pos = loadPos(e.pos),
+        .vitals = numeric.gaugeAt(numeric.Health, e.hp_max, e.hp),
+        .life = .{ .alive = e.alive },
+        .combat = .{
+            .attack = numeric.valueOf(numeric.Attack, e.attack),
+            .armor = numeric.valueOf(numeric.Armor, e.armor),
+            .speed = numeric.valueOf(numeric.Speed, @floatFromInt(e.speed)),
+            .range = e.range,
+        },
+        .status = .{ .stun_immune = e.kind == intent_mod.boss_kind, .stun_turns = e.stun_turns, .slow_turns = e.slow_turns, .burn_turns = e.burn_turns, .burn_damage = e.burn_damage, .burn_stacks = e.burn_stacks, .vulnerable_turns = e.vulnerable_turns, .vulnerable_pct = e.vulnerable_pct, .guard_turns = e.guard_turns },
+        .reward = .{ .xp = e.xp },
+        .action = .{ .energy = e.energy, .special_cd = e.special_cd },
+    };
+}
+
 fn buildSim(root: *const SaveRoot) SaveError!Sim {
     if (!std.mem.eql(u8, root.format, format_name)) return error.NotSaveFormat;
-    if (root.version != save_version) return error.UnsupportedVersion;
+    if (root.version < 2 or root.version > save_version) return error.UnsupportedVersion;
     if (root.floors == 0) return error.InvalidValue;
     if (root.difficulty > @backingInt(sim_mod.Difficulty.easy)) return error.InvalidValue;
     if (root.map.floor_mod > @backingInt(sim_mod.FloorMod.miasma)) return error.InvalidValue;
@@ -506,16 +674,16 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     }
     if (!rngNonZero(root.rng)) return error.InvalidRng;
 
-    // Closed outer border: the dungeon generator guarantees it and the renderer
-    // / pathfinding assume it.
-    var edge: usize = 0;
-    while (edge < grid_w) : (edge += 1) {
-        if (!map.blocked[edge] or
-            !map.blocked[cell_count - grid_w + edge] or
-            !map.blocked[edge * grid_w] or
-            !map.blocked[edge * grid_w + grid_w - 1])
-        {
-            return error.InconsistentMap;
+    if (root.chunks == null) {
+        var edge: usize = 0;
+        while (edge < grid_w) : (edge += 1) {
+            if (!map.blocked[edge] or
+                !map.blocked[cell_count - grid_w + edge] or
+                !map.blocked[edge * grid_w] or
+                !map.blocked[edge * grid_w + grid_w - 1])
+            {
+                return error.InconsistentMap;
+            }
         }
     }
     if (mapBlocked(map, map.entrance)) return error.InconsistentMap;
@@ -652,22 +820,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
 
     sim.enemies = @splat(.{});
     for (root.enemies, 0..) |e, i| {
-        sim.enemies[i] = .{
-            .identity = .{ .kind = e.kind, .name = enemy_names[e.kind] },
-            .affix = @fromBackingInt(@intCast(e.affix)),
-            .pos = loadPos(e.pos),
-            .vitals = numeric.gaugeAt(numeric.Health, e.hp_max, e.hp),
-            .life = .{ .alive = e.alive },
-            .combat = .{
-                .attack = numeric.valueOf(numeric.Attack, e.attack),
-                .armor = numeric.valueOf(numeric.Armor, e.armor),
-                .speed = numeric.valueOf(numeric.Speed, @floatFromInt(e.speed)),
-                .range = e.range,
-            },
-            .status = .{ .stun_immune = e.kind == intent_mod.boss_kind, .stun_turns = e.stun_turns, .slow_turns = e.slow_turns, .burn_turns = e.burn_turns, .burn_damage = e.burn_damage, .burn_stacks = e.burn_stacks, .vulnerable_turns = e.vulnerable_turns, .vulnerable_pct = e.vulnerable_pct, .guard_turns = e.guard_turns },
-            .reward = .{ .xp = e.xp },
-            .action = .{ .energy = e.energy, .special_cd = e.special_cd },
-        };
+        sim.enemies[i] = enemyFromSave(e);
     }
     sim.enemy_count = root.enemies.len;
 
@@ -680,6 +833,12 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     sim.log_head = root.log.len % log_lines_max;
 
     sim.map = rebuildDungeon(&sim, loadPos(map.entrance));
+    if (root.chunks) |cs| {
+        if (cs.chunk > 8 or cs.arenas.len != 9) return error.InvalidValue;
+        sim.chunks_enabled = true;
+        sim.chunk = cs.chunk;
+        for (cs.arenas, 0..) |*a, i| sim.arenas[i] = try arenaFromSave(&sim, a);
+    }
     return sim;
 }
 
@@ -940,7 +1099,7 @@ test "save: fresh run round-trips (short log, no events)" {
 
     const bytes = try saveAlloc(alloc, &sim);
     defer alloc.free(bytes);
-    try testing.expect(std.mem.startsWith(u8, bytes, "{\"format\":\"vx-run-save\",\"version\":2,"));
+    try testing.expect(std.mem.startsWith(u8, bytes, "{\"format\":\"vx-run-save\",\"version\":3,"));
     try testing.expect(std.mem.indexOfScalar(u8, bytes, '\n') == null);
 
     var loaded = try loadAlloc(alloc, bytes);
@@ -1010,6 +1169,22 @@ test "load: empty, truncated and garbage input returns an error" {
         "{\"format\":\"vx-run-save\"}",
     };
     for (garbage) |text| try expectLoadFails(alloc, text);
+}
+
+test "save: 3x3 chunk run round-trips all arenas" {
+    const alloc = testing.allocator;
+    var sim = Sim.init(85, .warrior);
+    sim.enableChunks();
+    sim.enterChunk(.north);
+    const before1 = sim.enemy_count;
+    const bytes = try saveAlloc(alloc, &sim);
+    defer alloc.free(bytes);
+    const loaded = try loadAlloc(alloc, bytes);
+    try testing.expect(loaded.chunks_enabled);
+    try testing.expectEqual(@as(u8, 1), loaded.chunk);
+    try testing.expectEqual(before1, loaded.enemy_count);
+    try testing.expectEqual(before1, loaded.arenas[1].enemy_count);
+    try testing.expectEqual(@as(usize, 9), loaded.arenas.len);
 }
 
 test "save: chunk run freezes active arena and round-trips" {
@@ -1139,7 +1314,7 @@ test "save file: round-trip and a corrupt file is rejected without overwriting" 
     var loaded = try loadFile(io, alloc, save_path);
     try expectSameRun(&sim, &loaded);
 
-    const corrupt = "{\"format\":\"vx-run-save\",\"version\":2,";
+    const corrupt = "{\"format\":\"vx-run-save\",\"version\":3,";
     try tmp.dir.writeFile(io, .{ .sub_path = "run.json", .data = corrupt });
     const before = try tmp.dir.readFileAlloc(io, "run.json", alloc, .limited(max_save_bytes));
     defer alloc.free(before);

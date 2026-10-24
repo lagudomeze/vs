@@ -21,7 +21,7 @@
 
 目标：验证“边缘门 → 邻接图 → 返回”是否好玩，先不做 3×3。
 
-当前状态：--chunks 启用 3×3 九宫格；中心 chunk 起始，Arena 快照 + 四向边缘门 + 往返状态保留已实现并有单测；边界门只朝存在的邻居开；minimap 四向金点标记存在的邻居（截图 docs/screenshots/chunk_hud.png）。限制：默认关闭；保存时冻结为当前 Arena 单图（关闭边缘门），其它 chunk 不持久化；完整 3×3 存档 v3 尚未实现。
+当前状态：--chunks 启用 3×3 九宫格；中心 chunk 起始，Arena 快照 + 四向边缘门 + 往返状态保留已实现并有单测；边界门只朝存在的邻居开；minimap 四向金点标记存在的邻居（截图 docs/screenshots/chunk_hud.png）。限制：默认关闭；v3 存档已包含 9 个 Arena 与当前 chunk（v2 单图仍可读）；存档体积上限 1 MiB。
 
 1. Sim 增加 chunk: GridPos（先支持 0/1 两张）。
 2. 当前地图/敌人/宝箱/陷阱打包成 Arena 值类型（已完成）：
@@ -46,7 +46,7 @@
 - 相机、minimap、QA 不崩。
 - 单测：enterChunk 往返后 hero 位置/Arena 状态一致。
 
-## 阶段 C：3×3 + 持久化（3×3 已完成，存档待做）
+## 阶段 C：3×3 + 持久化（已完成）
 
 - chunk: GridPos 支持 -1..1；visited bitmask。
 - 存档 v3：Arena 数组 + chunk 坐标；旧档拒绝并提示。
