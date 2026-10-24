@@ -103,6 +103,9 @@ pub const State = struct {
     log_count: usize = 0,
     minimap: [169]u8 = @splat(0),
     has_minimap: bool = false,
+    chunks_enabled: bool = false,
+    chunk_x: i8 = 1,
+    chunk_y: i8 = 1,
     panel: Panel = .none,
     attrs: [6]i32 = .{ 0, 0, 0, 0, 0, 0 },
     pending_points: u8 = 0,
@@ -366,6 +369,14 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                 };
                 r.fillRect(mx0 + @as(i32, @intCast(mx)) * 2, my0 + @as(i32, @intCast(my)) * 2, 2, 2, c);
             }
+        }
+        if (state.chunks_enabled) {
+            const cx = mx0 + 6;
+            const cy = my0 + 6;
+            if (state.chunk_y > -1) r.fillRect(cx - 2, my0 - 3, 4, 2, palette.gold_light);
+            if (state.chunk_y < 1) r.fillRect(cx - 2, my0 + 28, 4, 2, palette.gold_light);
+            if (state.chunk_x > -1) r.fillRect(mx0 - 3, cy - 2, 2, 4, palette.gold_light);
+            if (state.chunk_x < 1) r.fillRect(mx0 + 27, cy - 2, 2, 4, palette.gold_light);
         }
         r.strokeRect(mx0, my0, 26, 26, palette.border);
     }
