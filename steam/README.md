@@ -40,11 +40,15 @@ pwsh -File tools/steam_check.ps1
 
 检查包、版本、steam_appid.txt 泄漏、Auto-Cloud 路径。
 
-## 5. Auto-Cloud
+## 5. Steam Input
+
+模板见 [steam_input_manifest.vdf.example](steam_input_manifest.vdf.example) 与 [docs/STEAM_INPUT.md](../docs/STEAM_INPUT.md)。当前未接 SDK，构建仍用 SDL gamepad。
+
+## 6. Auto-Cloud
 
 见 [docs/STEAM_CLOUD.md](../docs/STEAM_CLOUD.md)。不需要 Steamworks SDK。
 
-## 6. 不要提交
+## 7. 不要提交
 
 - steam/app_build.vdf
 - steam/depot_build.vdf
