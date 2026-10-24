@@ -574,6 +574,11 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         }
     }
 
+    if (state.bombs > 0) {
+        var bbuf: [32]u8 = undefined;
+        r.drawText(w - 92, h - 18, fmt(&bbuf, "B BOMB x{d}", .{state.bombs}), palette.gold_light, 1, false);
+    }
+
     // death / victory overlay; keep the last log line as the cause
     if (state.dead or state.victory) {
         const title = if (state.victory) "胜利" else "死亡";
