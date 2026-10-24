@@ -42,7 +42,7 @@ pwsh -File tools/steam_check.ps1
 
 ## 5. Steam Input
 
-模板见 [steam_input_manifest.vdf.example](steam_input_manifest.vdf.example) 与 [docs/STEAM_INPUT.md](../docs/STEAM_INPUT.md)。当前未接 SDK，构建仍用 SDL gamepad。
+模板见 [steam_input_manifest.vdf.example](steam_input_manifest.vdf.example) 与 [docs/STEAM_INPUT.md](../docs/STEAM_INPUT.md)。预检：pwsh -File tools/steam_input_check.ps1。当前未接 SDK，构建仍用 SDL gamepad。
 
 ## 6. Auto-Cloud
 
