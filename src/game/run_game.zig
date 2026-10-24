@@ -378,6 +378,11 @@ pub const RunGame = struct {
     }
 
     pub fn setChunks(self: *RunGame, enabled: bool) void {
+        if (self.demo and enabled) {
+            self.settings_chunks = false;
+            self.sim.pushLog("DEMO: NO CHUNKS", .{});
+            return;
+        }
         self.settings_chunks = enabled;
         if (enabled) {
             if (!self.sim.chunks_enabled) {
@@ -2471,6 +2476,16 @@ test "run game: demo locks non-warrior classes" {
     g.selectClass(.mage);
     try std.testing.expectEqual(sim_mod.Class.warrior, g.class);
     try std.testing.expect(!g.started);
+}
+
+test "run game: demo refuses chunks" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.demo = true;
+    g.setChunks(true);
+    try std.testing.expect(!g.sim.chunks_enabled);
+    try std.testing.expect(!g.settings_chunks);
 }
 
 test "run game: demo ends at the stairs and skips records" {
