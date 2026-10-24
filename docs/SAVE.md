@@ -78,6 +78,10 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 - 默认：SDL_GetPrefPath("lagudomeze","vx")，Windows 为 %APPDATA%\\lagudomeze\\vx\\。
 - 开发/CI：--portable 保持当前工作目录；--out 在切换目录前解析为绝对路径。
 
+## 设置文件
+
+- saves/settings.json：fullscreen/scale/vsync；与 run 存档分开，坏档不影响读档。
+
 ## 战绩文件
 
 - saves/records.json 独立于 run save；损坏时回退为空战绩，不影响读档。
