@@ -11,6 +11,7 @@ const palette = @import("../core/palette.zig");
 const font = @import("../core/font.zig");
 const model_mod = @import("model.zig");
 const arena_mesh = @import("arena_mesh.zig");
+const icons = @import("icons.zig");
 
 pub const max_lights = 18;
 
@@ -620,6 +621,23 @@ pub const Renderer = struct {
         self.fillRect(x + w - 1, y, 1, h, c);
     }
 
+    pub fn drawIcon(self: *Renderer, icon: icons.Icon, x: i32, y: i32, c: u32, scale: i32) void {
+        const rows = icons.rows(icon);
+        for (rows, 0..) |bits, row| {
+            var col: usize = 0;
+            while (col < 12) : (col += 1) {
+                if ((bits & (@as(u16, 1) << @intCast(11 - col))) == 0) continue;
+                self.fillRect(
+                    x + @as(i32, @intCast(col)) * scale,
+                    y + @as(i32, @intCast(row)) * scale,
+                    scale,
+                    scale,
+                    c,
+                );
+            }
+        }
+    }
+
     pub fn drawText(self: *Renderer, x: i32, y: i32, text: []const u8, c: u32, scale: i32, shadow: bool) void {
         if (shadow) self.drawTextRaw(x + scale, y + scale, text, palette.outline, scale);
         self.drawTextRaw(x, y, text, c, scale);
@@ -696,4 +714,16 @@ test "renderer allocates and clears" {
     try std.testing.expectEqual(@as(usize, 0), r.light_count);
     r.resolve();
     try std.testing.expect(r.color_buf[0] != 0);
+}
+
+test "hud icon atlas has silhouettes and blank margins" {
+    const all = [_]icons.Icon{ .bag, .hero, .coin, .sword, .shield, .potion, .time, .fire, .skull, .heart, .gear };
+    for (all) |icon| {
+        const rows = icons.rows(icon);
+        var bits: usize = 0;
+        for (rows) |row| bits += @popCount(row);
+        try std.testing.expect(bits > 8);
+    }
+    try std.testing.expectEqual(@as(u16, 0), icons.rows(.bag)[0]);
+    try std.testing.expectEqual(@as(u16, 0), icons.rows(.bag)[11]);
 }

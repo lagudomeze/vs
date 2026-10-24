@@ -284,7 +284,8 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     // top-left: class / HP / resource / turn / floor
     backPanel(r, 6, 5, 160, 58);
     var buf: [64]u8 = undefined;
-    r.drawText(10, 8, state.class_name, palette.gold, 1, false);
+    r.drawIcon(.hero, 10, 7, palette.gold, 1);
+    r.drawText(26, 8, state.class_name, palette.gold, 1, false);
     if (state.difficulty == 1) r.drawText(130, 8, "HARD", palette.red, 1, false);
     if (state.difficulty == 2) r.drawText(136, 8, "EASY", palette.cyan_light, 1, false);
     const lv = fmt(&buf, "{d}级  XP {d}/{d}", .{ state.level, state.xp, state.xp_next });
@@ -330,6 +331,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         fmt(&buf, "敌人 {d}  {s}  G{d}", .{ state.enemies_left, state.floor_mod_label, state.gold })
     else
         fmt(&buf, "敌人 {d}  G{d}", .{ state.enemies_left, state.gold });
+    r.drawIcon(.coin, w - 168, 22, palette.gold, 1);
     r.drawText(w - 154, 23, enemies, palette.cream, 1, false);
     const turn = if (state.enemy_phase) "敌人行动" else fmt(&buf, "玩家回合 {d}", .{state.turn});
     r.drawText(w - 154, 37, turn, if (state.enemy_phase) palette.red else palette.gold_light, 1, false);
@@ -457,7 +459,8 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         r.strokeRect(ix, iy, iw, ih, palette.border);
         r.fillRect(ix + 2, iy + 2, 54, 2, palette.gold);
         const title = if (state.panel == .inventory) "背包" else "角色";
-        r.drawText(ix + 12, iy + 10, title, palette.gold, 1, false);
+        r.drawIcon(if (state.panel == .inventory) .bag else .hero, ix + 12, iy + 5, palette.gold, 2);
+        r.drawText(ix + 42, iy + 10, title, palette.gold, 1, false);
         r.drawText(ix + iw - 62, iy + 10, "关闭", palette.muted, 1, false);
 
         if (state.panel == .character) {
@@ -561,7 +564,9 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         r.fillRect(0, @divTrunc(h, 2) - 29, w, 1, palette.gold);
         r.fillRect(0, @divTrunc(h, 2) + 41, w, 1, palette.gold);
         const tw = renderer.Renderer.textWidth(title, 2);
-        r.drawText(@divTrunc(w, 2) - @divTrunc(tw, 2), @divTrunc(h, 2) - 22, title, if (state.victory) palette.gold_light else palette.red, 2, true);
+        const tx = @divTrunc(w, 2) - @divTrunc(tw, 2);
+        r.drawIcon(if (state.victory) .hero else .skull, tx - 18, @divTrunc(h, 2) - 22, if (state.victory) palette.gold_light else palette.red, 1);
+        r.drawText(tx, @divTrunc(h, 2) - 22, title, if (state.victory) palette.gold_light else palette.red, 2, true);
         const mw = renderer.Renderer.textWidth(summary, 1);
         r.drawText(@divTrunc(w, 2) - @divTrunc(mw, 2), @divTrunc(h, 2) - 4, summary, palette.gold_light, 1, true);
         if (cause.len > 0) {
@@ -614,6 +619,7 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     r.strokeRect(px, py, pw, ph, palette.gold);
     r.fillRect(px + 2, py + 2, pw - 4, 2, palette.gold_light);
 
+    r.drawIcon(.gear, px + 14, py + 6, palette.gold, 2);
     const title = "SETTINGS";
     const tw = renderer.Renderer.textWidth(title, 2);
     r.drawText(px + @divTrunc(pw - tw, 2), py + 12, title, palette.gold_light, 2, true);
@@ -652,6 +658,7 @@ fn drawShop(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const tw = renderer.Renderer.textWidth(title, 2);
     r.drawText(px + @divTrunc(pw - tw, 2), py + 10, title, palette.gold_light, 2, true);
     var gold_buf: [32]u8 = undefined;
+    r.drawIcon(.coin, px + 16, py + 32, palette.gold, 2);
     const gold = fmt(&gold_buf, "GOLD {d}", .{state.gold});
     const gw = renderer.Renderer.textWidth(gold, 1);
     r.drawText(px + @divTrunc(pw - gw, 2), py + 38, gold, palette.gold, 1, false);
