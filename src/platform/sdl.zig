@@ -33,6 +33,7 @@ pub const FrameInput = struct {
     inventory: bool = false,
     reset: bool = false,
     toggle_debug: bool = false,
+    toggle_fullscreen: bool = false,
     screenshot: bool = false,
     save_slot: bool = false,
     load_slot: bool = false,
@@ -56,6 +57,7 @@ pub const Platform = struct {
     logical_width: u32 = 384,
     logical_height: u32 = 216,
     window_width: u32 = 0,
+    fullscreen: bool = false,
     window_height: u32 = 0,
     mouse_x: f32 = 0,
     mouse_y: f32 = 0,
@@ -101,6 +103,18 @@ pub const Platform = struct {
             .window_width = @intCast(win_w),
             .window_height = @intCast(win_h),
         };
+    }
+
+    pub fn setFullscreen(self: *Platform, on: bool) void {
+        if (self.window) |win| {
+            _ = c.SDL_SetWindowFullscreen(win, on);
+            self.fullscreen = on;
+        }
+    }
+
+    pub fn toggleFullscreen(self: *Platform) bool {
+        self.setFullscreen(!self.fullscreen);
+        return self.fullscreen;
     }
 
     pub fn deinit(self: *Platform) void {
@@ -158,6 +172,7 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_I))) input.inventory = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_R))) input.reset = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F1))) input.toggle_debug = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F11))) input.toggle_fullscreen = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F12))) input.screenshot = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F5))) input.save_slot = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F9))) input.load_slot = true;

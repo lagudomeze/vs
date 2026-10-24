@@ -159,6 +159,7 @@ const help_lines = [_][]const u8{
     "状态 STUN/SLOW/BURN/VULN/GUARD/BUFF",
     "BURN max 3 stacks; VULN +20% dmg",
     "ENEMY: GOLEM QUAKE / WRAITH DRAIN / SKEL GUARD",
+    "F11 FULLSCREEN   F12 SCREENSHOT",
 };
 const aim_hint = "空格/同键/左键确认  Esc取消  Tab换目标";
 

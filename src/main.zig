@@ -34,6 +34,7 @@ const Options = struct {
     help: bool = false,
     portable: bool = false,
     version: bool = false,
+    fullscreen: bool = false,
     help_screen: bool = false,
     shrine_screen: bool = false,
     shop_screen: bool = false,
@@ -72,6 +73,7 @@ fn usage() void {
         \\  --hide-hud        render without the HUD
         \\  --portable        keep saves in the current directory (development)
         \\  --version         print version
+        \\  --fullscreen      start fullscreen (F11 toggles)
         \\  --help            this text
         \\
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
@@ -169,6 +171,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.portable = true;
         } else if (std.mem.eql(u8, a, "--version") or std.mem.eql(u8, a, "-v")) {
             o.version = true;
+        } else if (std.mem.eql(u8, a, "--fullscreen")) {
+            o.fullscreen = true;
         } else if (std.mem.eql(u8, a, "--help") or std.mem.eql(u8, a, "-h")) {
             o.help = true;
         } else {
@@ -221,6 +225,7 @@ fn runWindow(game: *vx.Game, io: std.Io, options: Options) !void {
         return err;
     };
     defer platform.deinit();
+    if (options.fullscreen) platform.setFullscreen(true);
 
     const freq: f64 = @floatFromInt(vx.platform.performanceFrequency());
     var last = vx.platform.performanceNow();
@@ -240,6 +245,7 @@ fn runWindow(game: *vx.Game, io: std.Io, options: Options) !void {
         elapsed += dt;
 
         const pin = platform.poll(dt);
+        if (pin.toggle_fullscreen) _ = platform.toggleFullscreen();
         if (pin.quit or pin.escape) break;
         if (pin.toggle_debug) game.debug = !game.debug;
 
@@ -322,6 +328,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         return err;
     };
     defer platform.deinit();
+    if (options.fullscreen) platform.setFullscreen(true);
 
     const freq: f64 = @floatFromInt(vx.platform.performanceFrequency());
     var last = vx.platform.performanceNow();
@@ -342,6 +349,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         elapsed += dt;
 
         const pin = platform.poll(dt);
+        if (pin.toggle_fullscreen) _ = platform.toggleFullscreen();
         if (pin.quit) break;
         // Escape is hierarchical: cancel aim first (never lose the run just
         // for cancelling a target), then close a modal panel, then quit.
