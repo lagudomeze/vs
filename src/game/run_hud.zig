@@ -56,6 +56,8 @@ pub const State = struct {
     record_wins: u32 = 0,
     record_best_floor: u8 = 1,
     record_best_turn: u32 = 0,
+    record_best_kills: u32 = 0,
+    record_best_gold: u32 = 0,
     gold: u32 = 0,
     shop_open: bool = false,
     settings_open: bool = false,
@@ -299,7 +301,7 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     if (h >= 300) {
         var rbuf: [48]u8 = undefined;
         const rec = if (state.record_wins > 0)
-            fmt(&rbuf, "BEST F{d} T{d} W{d}", .{ state.record_best_floor, state.record_best_turn, state.record_wins })
+            fmt(&rbuf, "BEST F{d} T{d} K{d} G{d} W{d}", .{ state.record_best_floor, state.record_best_turn, state.record_best_kills, state.record_best_gold, state.record_wins })
         else
             fmt(&rbuf, "BEST --", .{});
         const rw = renderer.Renderer.textWidth(rec, 1);
@@ -642,9 +644,9 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     // death / victory overlay; keep the last log line as the cause
     if (state.dead or state.victory) {
         const title = if (state.victory) "胜利" else "死亡";
-        var best_buf: [48]u8 = undefined;
+        var best_buf: [96]u8 = undefined;
         const sub = if (state.record_wins > 0)
-            fmt(&best_buf, "BEST F{d} T{d}   R 重开", .{ state.record_best_floor, state.record_best_turn })
+            fmt(&best_buf, "BEST F{d} T{d} K{d} G{d}   R 重开", .{ state.record_best_floor, state.record_best_turn, state.record_best_kills, state.record_best_gold })
         else
             "按 R 重开 同职业";
         const cause = if (state.log_count > 0) state.log_lines[state.log_count - 1] else "";
