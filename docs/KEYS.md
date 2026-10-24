@@ -1,8 +1,17 @@
 # 按键重绑（settings.json）
 
-状态：配置文件级重绑。**没有按键捕获 UI**；修改后重启游戏生效。
+状态：游戏内按键捕获 UI + 配置文件双通道。F2 → 8 REMAP 可逐个动作捕获；也可直接编辑 settings.json。
 
 文件：%APPDATA%\lagudomeze\vx\saves\settings.json（portable 模式为 ./saves/settings.json）
+
+## 游戏内重绑
+
+1. F2 打开设置
+2. 按 8 进入 REMAP KEYS
+3. 依次按新键：CONFIRM / POTION / BOMB / INVENTORY / CHARACTER / TALENT 1-3
+4. ESC 取消；每绑定一个动作立即保存
+
+截图：docs/screenshots/key_remap.png
 
 ## 可重绑动作
 
@@ -49,8 +58,8 @@
 
 - 1 ≤ scancode ≤ 300；ESC(41) 会被拒绝并回退默认。
 - 允许重复绑定，但同一键会同时触发多个动作，不推荐。
-- 修改后重启游戏；设置面板 F2 的其他项会保存整个 keys 对象。
-- 这是 v1 折中方案；按键捕获 UI/Steam Input 官方配置仍待做。
+- 游戏内捕获会立即保存；手动编辑文件后重启生效。
+- Steam Input 官方配置仍待做；捕获 UI 不支持鼠标键。
 
 ## 常见 scancode
 

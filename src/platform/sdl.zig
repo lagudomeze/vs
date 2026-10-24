@@ -59,6 +59,7 @@ pub const FrameInput = struct {
     difficulty: bool = false,
     use_item: bool = false,
     use_bomb: bool = false,
+    key_code: u32 = 0,
     mouse_x: f32 = 0,
     mouse_y: f32 = 0,
     click: bool = false,
@@ -432,6 +433,7 @@ pub const Platform = struct {
                     }
                 } else {
                     const sc = ev.key.scancode;
+                    input.key_code = @intCast(sc);
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_ESCAPE))) input.escape = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_TAB))) input.toggle_hero = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.confirm))) {
@@ -455,6 +457,8 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_4))) input.stat = 3;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_5))) input.stat = 4;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_6))) input.stat = 5;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_7))) input.stat = 6;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_8))) input.stat = 7;
                     if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.character))) input.character = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F))) input.interrupt = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.inventory))) input.inventory = true;
