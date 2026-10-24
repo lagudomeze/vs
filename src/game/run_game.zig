@@ -514,6 +514,11 @@ pub const RunGame = struct {
     }
 
     pub fn saveSlot(self: *RunGame, io: std.Io, slot: usize) void {
+        if (self.sim.chunks_enabled) {
+            self.sim.pushLog("CHUNKS: SAVE DISABLED", .{});
+            self.slot_menu = .none;
+            return;
+        }
         if (slot >= self.slot_files.len) return;
         if (self.sim.enemy_phase_pending) {
             self.sim.resolvePendingEnemyPhase();
@@ -556,6 +561,10 @@ pub const RunGame = struct {
     }
 
     pub fn flushAutosave(self: *RunGame, io: std.Io) void {
+        if (self.sim.chunks_enabled) {
+            self.autosave_pending = false;
+            return;
+        }
         if (!self.autosave_pending) return;
         self.autosave_pending = false;
         if (self.sim.enemy_phase_pending) {
