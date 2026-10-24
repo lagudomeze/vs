@@ -740,19 +740,27 @@ pub fn main(init: std.process.Init.Minimal) !void {
                 const cwd_raw = std.c.getcwd(&cwd_buf, cwd_buf.len) orelse cwd_buf[0..0].ptr;
                 options.out = try std.fs.path.resolve(gpa, &.{ std.mem.sliceTo(cwd_raw, 0), out });
             }
+            const demo_mode = options.demo or options.demo_end_screen;
+            const save_root = if (demo_mode)
+                try std.fs.path.join(gpa, &.{ pref, "demo" })
+            else
+                pref;
+            defer if (demo_mode) gpa.free(save_root);
+            std.Io.Dir.cwd().createDirPath(io, save_root) catch {};
+
             var legacy: ?[]u8 = null;
             defer if (legacy) |p| gpa.free(p);
-            {
+            if (!demo_mode) {
                 var cwd_buf: [4096]u8 = undefined;
                 const cwd_raw = std.c.getcwd(&cwd_buf, cwd_buf.len) orelse cwd_buf[0..0].ptr;
                 legacy = std.fs.path.resolve(gpa, &.{ std.mem.sliceTo(cwd_raw, 0), "saves" }) catch null;
             }
-            const pref_z = try gpa.dupeSentinel(u8, pref, 0);
-            defer gpa.free(pref_z);
-            if (std.c.chdir(pref_z.ptr) != 0) {
-                std.debug.print("vx: could not enter save directory {s}; saves stay in cwd\n", .{pref});
+            const root_z = try gpa.dupeSentinel(u8, save_root, 0);
+            defer gpa.free(root_z);
+            if (std.c.chdir(root_z.ptr) != 0) {
+                std.debug.print("vx: could not enter save directory {s}; saves stay in cwd\n", .{save_root});
             } else {
-                std.debug.print("vx: saves -> {s}\n", .{pref});
+                std.debug.print("vx: saves -> {s}\n", .{save_root});
                 if (legacy) |old_path| {
                     var old_dir = std.Io.Dir.openDirAbsolute(io, old_path, .{ .iterate = true }) catch null;
                     if (old_dir) |*src| {
