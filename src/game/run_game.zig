@@ -194,6 +194,8 @@ pub const RunGame = struct {
     demo_end: bool = false,
     pause_open: bool = false,
     pause_confirm_quit: bool = false,
+    victory_hold: f32 = 0,
+    skip_victory_banner: bool = false,
     toast_text: []const u8 = "",
     toast_time: f32 = 0,
     hero_vis: Visual = .{},
@@ -336,6 +338,7 @@ pub const RunGame = struct {
         self.demo_end = false;
         self.pause_open = false;
         self.pause_confirm_quit = false;
+        self.victory_hold = 0;
         self.inventory = items_mod.Inventory.init();
         self.mods.clear();
         self.loot_rng = std.Random.DefaultPrng.init(self.seed ^ 0x9e3779b97f4a7c15);
@@ -480,6 +483,10 @@ pub const RunGame = struct {
             }
             self.records.chunk_clears +|= clears;
             self.records_dirty = true;
+            if (self.sim.state == .victory and !self.demo_end and !self.skip_victory_banner) {
+                self.victory_hold = 1.4;
+                self.hud_state.victory_hold = true;
+            }
         }
         self.last_state = self.sim.state;
     }
@@ -1085,6 +1092,12 @@ pub const RunGame = struct {
                 self.toast_text = "";
                 self.hud_state.toast = "";
             }
+        }
+        if (self.victory_hold > 0) {
+            self.victory_hold = @max(0, self.victory_hold - dt);
+            if (input.confirm or input.wait) self.victory_hold = 0;
+            if (self.victory_hold == 0) self.hud_state.victory_hold = false;
+            return;
         }
         if (self.chunk_map_open or self.pause_open) return;
         self.camera.yaw += input.yaw_delta;
@@ -2153,6 +2166,7 @@ pub const RunGame = struct {
             .demo = self.demo,
             .pause_open = self.pause_open,
             .pause_confirm_quit = self.pause_confirm_quit,
+            .victory_hold = self.victory_hold > 0,
             .boss_active = boss_active,
             .boss_hp = boss_hp,
             .boss_hp_max = boss_hp_max,
@@ -2463,6 +2477,10 @@ test "run game: victory updates class and chunk records" {
     try std.testing.expectEqual(@as(u32, 2), g.records.chunk_clears);
     try std.testing.expectEqual(@as(u32, 1), g.records.flawless_wins);
     try std.testing.expect(std.mem.startsWith(u8, g.hud_state.toast, "BADGE:"));
+    try std.testing.expect(g.hud_state.victory_hold);
+    var hold_frames: usize = 0;
+    while (hold_frames < 30) : (hold_frames += 1) g.update(.{}, 0.05);
+    try std.testing.expect(!g.hud_state.victory_hold);
 }
 
 test "run game: sim notice becomes a HUD toast" {

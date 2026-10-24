@@ -52,6 +52,7 @@ const Options = struct {
     boss_screen: bool = false,
     pause_screen: bool = false,
     quit_confirm_screen: bool = false,
+    boss_defeat_screen: bool = false,
     shop_screen: bool = false,
 };
 
@@ -103,6 +104,7 @@ fn usage() void {
         \\  --boss            jump to the floor-3 boss (screenshot/QA)
         \\  --pause           show the pause menu (screenshot/QA)
         \\  --quit-confirm    show the quit confirmation (screenshot/QA)
+        \\  --boss-defeat     show the boss defeat banner (screenshot/QA)
         \\  --help            this text
         \\
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
@@ -215,6 +217,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.pause_screen = true;
         } else if (std.mem.eql(u8, a, "--quit-confirm")) {
             o.quit_confirm_screen = true;
+        } else if (std.mem.eql(u8, a, "--boss-defeat")) {
+            o.boss_defeat_screen = true;
         } else if (std.mem.eql(u8, a, "--shop")) {
             o.shop_screen = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
@@ -888,6 +892,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
         game.sim.state = .victory;
         game.sim.hero.vitals.val = game.sim.hero.vitals.full;
         game.sim.pushLog("VICTORY", .{});
+        game.skip_victory_banner = true;
     }
     if (options.demo or options.demo_end_screen) {
         game.demo = true;
@@ -912,6 +917,16 @@ pub fn main(init: std.process.Init.Minimal) !void {
     if (options.quit_confirm_screen) {
         game.pause_confirm_quit = true;
         game.hud_state.pause_confirm_quit = true;
+    }
+    if (options.boss_defeat_screen) {
+        game.started = true;
+        game.last_state = .playing;
+        game.sim.state = .victory;
+        game.sim.pushLog("BOSS DEFEATED", .{});
+        game.victory_hold = 1.4;
+        game.hud_state.victory = true;
+        game.hud_state.dead = false;
+        game.hud_state.victory_hold = true;
     }
     if (options.boss_screen) {
         game.started = true;
