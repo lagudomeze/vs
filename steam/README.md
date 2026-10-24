@@ -24,6 +24,14 @@ Copy-Item steam/depot_build.vdf.example steam/depot_build.vdf
 
 保持路径使用正斜杠，避免 VDF 转义问题。
 
+## 2b. 包体预检
+
+~~~powershell
+pwsh -File tools/steam_package_check.ps1
+~~~
+
+检查 dist 包、vx.exe、--version、steam_appid 泄漏、VDF ContentRoot/递归/排除项、包是否比 zig-out 旧。AppID/DepotID 仍为占位时只 WARN。
+
 ## 3. 上传
 
 ~~~powershell
