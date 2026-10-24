@@ -708,7 +708,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
 fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     if (state.keys_mode) {
         const kw: i32 = 320;
-        const kh: i32 = 250;
+        const kh: i32 = 270;
         const kx = @divTrunc(w - kw, 2);
         const ky = @divTrunc(h - kh, 2);
         r.fillRect(0, 0, w, h, palette.deep);

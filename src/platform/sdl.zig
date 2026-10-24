@@ -24,6 +24,7 @@ pub const Bindings = struct {
     talent1: u32 = 30,
     talent2: u32 = 31,
     talent3: u32 = 32,
+    help: u32 = 11,
 };
 
 pub const FrameInput = struct {
@@ -480,7 +481,7 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F5))) input.save_slot = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F9))) input.load_slot = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F10))) input.load_auto = true;
-                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_H))) input.help = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.help))) input.help = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_M))) input.map = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_D))) input.difficulty = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.potion))) input.use_item = true;
