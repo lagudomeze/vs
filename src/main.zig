@@ -46,6 +46,7 @@ const Options = struct {
     map_screen: bool = false,
     toast_screen: bool = false,
     death_screen: bool = false,
+    victory_screen: bool = false,
     shop_screen: bool = false,
 };
 
@@ -91,6 +92,7 @@ fn usage() void {
         \\  --map             open the 3x3 chunk map (screenshot/QA)
         \\  --toast           show a sample event toast (screenshot/QA)
         \\  --death           show the death summary (screenshot/QA)
+        \\  --victory         show the victory summary (screenshot/QA)
         \\  --help            this text
         \\
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
@@ -191,6 +193,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.toast_screen = true;
         } else if (std.mem.eql(u8, a, "--death")) {
             o.death_screen = true;
+        } else if (std.mem.eql(u8, a, "--victory")) {
+            o.victory_screen = true;
         } else if (std.mem.eql(u8, a, "--shop")) {
             o.shop_screen = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
@@ -816,6 +820,13 @@ pub fn main(init: std.process.Init.Minimal) !void {
         game.sim.state = .dead;
         game.sim.hero.vitals.val = 0;
         game.sim.pushLog("深渊守卫攻击", .{});
+    }
+    if (options.victory_screen) {
+        game.started = true;
+        game.last_state = .playing;
+        game.sim.state = .victory;
+        game.sim.hero.vitals.val = game.sim.hero.vitals.full;
+        game.sim.pushLog("VICTORY", .{});
     }
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
