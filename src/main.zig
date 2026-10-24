@@ -17,6 +17,7 @@ const Options = struct {
     width: u32 = 640,
     height: u32 = 360,
     scale: u32 = 3,
+    scale_set: bool = false,
     run_seconds: f32 = 0,
     walk: bool = false,
     cast: bool = false,
@@ -135,6 +136,7 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.height = r.h;
         } else if (std.mem.eql(u8, a, "--scale")) {
             o.scale = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
+            o.scale_set = true;
         } else if (std.mem.eql(u8, a, "--run-seconds")) {
             o.run_seconds = try std.fmt.parseFloat(f32, try argAt(argv, &i));
         } else if (std.mem.eql(u8, a, "--walk")) {
@@ -327,15 +329,21 @@ fn runRunHeadless(game: *vx.RunGame, io: std.Io, options: Options) !void {
 }
 
 fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
-    var platform = vx.platform.Platform.init("VX - Aether Keep: Depths", options.width, options.height, options.scale) catch |err| {
+    var settings = vx.settings.load(io, game.gpa, vx.settings.default_path) catch vx.settings.Settings{};
+    if (options.fullscreen) settings.fullscreen = true;
+    if (options.scale_set) settings.scale = @intCast(@min(options.scale, 8));
+    settings = settings.sanitized();
+
+    var platform = vx.platform.Platform.init("VX - Aether Keep: Depths", options.width, options.height, settings.scale) catch |err| {
         std.debug.print("vx: could not open a window ({s}); use --headless for an off-screen capture.\n", .{@errorName(err)});
         return err;
     };
     defer platform.deinit();
-    if (options.fullscreen) platform.setFullscreen(true);
-    game.settings_fullscreen = platform.fullscreen;
-    game.settings_scale = @intCast(@min(options.scale, 8));
-    game.settings_vsync = true;
+    platform.setVSync(settings.vsync);
+    platform.setFullscreen(settings.fullscreen);
+    game.settings_fullscreen = settings.fullscreen;
+    game.settings_scale = settings.scale;
+    game.settings_vsync = settings.vsync;
 
     const freq: f64 = @floatFromInt(vx.platform.performanceFrequency());
     var last = vx.platform.performanceNow();
@@ -359,16 +367,21 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         if (pin.toggle_fullscreen) {
             _ = platform.toggleFullscreen();
             game.settings_fullscreen = platform.fullscreen;
+            settings.fullscreen = platform.fullscreen;
+            vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
         }
         if (pin.settings) game.settings_open = !game.settings_open;
         if (game.settings_open) {
+            var settings_dirty = false;
             if (pin.talent_1) {
                 game.settings_fullscreen = !game.settings_fullscreen;
                 platform.setFullscreen(game.settings_fullscreen);
+                settings_dirty = true;
             }
             if (pin.talent_2) {
                 game.settings_vsync = !game.settings_vsync;
                 platform.setVSync(game.settings_vsync);
+                settings_dirty = true;
             }
             if (pin.talent_3) {
                 game.settings_scale = switch (game.settings_scale) {
@@ -377,6 +390,13 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                     else => 2,
                 };
                 platform.setWindowScale(game.settings_scale);
+                settings_dirty = true;
+            }
+            if (settings_dirty) {
+                settings.fullscreen = game.settings_fullscreen;
+                settings.vsync = game.settings_vsync;
+                settings.scale = game.settings_scale;
+                vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
             }
         }
         if (pin.quit) break;
