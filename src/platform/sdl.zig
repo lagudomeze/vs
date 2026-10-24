@@ -34,6 +34,7 @@ pub const FrameInput = struct {
     reset: bool = false,
     toggle_debug: bool = false,
     toggle_fullscreen: bool = false,
+    settings: bool = false,
     screenshot: bool = false,
     save_slot: bool = false,
     load_slot: bool = false,
@@ -58,6 +59,7 @@ pub const Platform = struct {
     logical_height: u32 = 216,
     window_width: u32 = 0,
     fullscreen: bool = false,
+    window_scale: u8 = 3,
     window_height: u32 = 0,
     mouse_x: f32 = 0,
     mouse_y: f32 = 0,
@@ -117,6 +119,21 @@ pub const Platform = struct {
         return self.fullscreen;
     }
 
+    pub fn setVSync(self: *Platform, on: bool) void {
+        if (self.renderer) |ren| _ = c.SDL_SetRenderVSync(ren, if (on) 1 else 0);
+    }
+
+    pub fn setWindowScale(self: *Platform, scale: u8) void {
+        if (self.fullscreen) return;
+        const s: u32 = @min(@as(u32, scale), 8);
+        if (self.window) |win| {
+            _ = c.SDL_SetWindowSize(win, @intCast(self.logical_width * s), @intCast(self.logical_height * s));
+            self.window_width = self.logical_width * s;
+            self.window_height = self.logical_height * s;
+            self.window_scale = @intCast(s);
+        }
+    }
+
     pub fn deinit(self: *Platform) void {
         if (self.texture != null) c.SDL_DestroyTexture(self.texture);
         if (self.renderer) |r| c.SDL_DestroyRenderer(r);
@@ -172,6 +189,7 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_I))) input.inventory = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_R))) input.reset = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F1))) input.toggle_debug = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F2))) input.settings = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F11))) input.toggle_fullscreen = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F12))) input.screenshot = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F5))) input.save_slot = true;

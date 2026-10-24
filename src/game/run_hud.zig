@@ -56,6 +56,10 @@ pub const State = struct {
     record_best_turn: u32 = 0,
     gold: u32 = 0,
     shop_open: bool = false,
+    settings_open: bool = false,
+    settings_fullscreen: bool = false,
+    settings_vsync: bool = true,
+    settings_scale: u8 = 3,
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -159,7 +163,7 @@ const help_lines = [_][]const u8{
     "状态 STUN/SLOW/BURN/VULN/GUARD/BUFF",
     "BURN max 3 stacks; VULN +20% dmg",
     "ENEMY: GOLEM QUAKE / WRAITH DRAIN / SKEL GUARD",
-    "F11 FULLSCREEN   F12 SCREENSHOT",
+    "F2 SETTINGS   F11 FULLSCREEN   F12 SHOT",
 };
 const aim_hint = "空格/同键/左键确认  Esc取消  Tab换目标";
 
@@ -570,6 +574,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
 
     if (state.shrine_open) drawShrine(r, state, w, h);
     if (state.shop_open) drawShop(r, state, w, h);
+    if (state.settings_open) drawSettings(r, state, w, h);
 
     // save / load slot modal, on top of everything
     if (state.slot_mode != 0) {
@@ -597,6 +602,40 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         }
         r.drawText(px + 16, py + ph - 24, "1/2/3 选择   Esc 取消", palette.muted, 1, true);
     }
+}
+
+fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
+    const pw: i32 = 320;
+    const ph: i32 = 158;
+    const px = @divTrunc(w - pw, 2);
+    const py = @divTrunc(h - ph, 2);
+    r.fillRect(0, 0, w, h, palette.deep);
+    r.fillRect(px, py, pw, ph, palette.panel);
+    r.strokeRect(px, py, pw, ph, palette.gold);
+    r.fillRect(px + 2, py + 2, pw - 4, 2, palette.gold_light);
+
+    const title = "SETTINGS";
+    const tw = renderer.Renderer.textWidth(title, 2);
+    r.drawText(px + @divTrunc(pw - tw, 2), py + 12, title, palette.gold_light, 2, true);
+
+    const lines = [_][]const u8{
+        "1 FULLSCREEN    ON/OFF",
+        "2 VSYNC         ON/OFF",
+        "3 WINDOW SCALE  2x/3x/4x",
+    };
+    for (lines, 0..) |line, i| {
+        r.drawText(px + 28, py + 54 + @as(i32, @intCast(i)) * 22, line, palette.cream, 1, false);
+    }
+
+    var vbuf: [64]u8 = undefined;
+    const values = fmt(&vbuf, "FULL {s}   VSYNC {s}   SCALE {d}x", .{
+        if (state.settings_fullscreen) "ON" else "OFF",
+        if (state.settings_vsync) "ON" else "OFF",
+        state.settings_scale,
+    });
+    const vw = renderer.Renderer.textWidth(values, 1);
+    r.drawText(px + @divTrunc(pw - vw, 2), py + 124, values, palette.cyan_light, 1, false);
+    r.drawText(px + 16, py + ph - 18, "Esc CLOSE   F2 TOGGLE", palette.muted, 1, false);
 }
 
 fn drawShop(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
