@@ -479,7 +479,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                         game.hud_state.keys_error = true;
                         platform.playSound(.hit);
                     } else {
-                        vx.settings.assignKey(&settings.keys, game.settings_key_index, pin.key_code);
+                        _ = vx.settings.assignKey(&settings.keys, game.settings_key_index, pin.key_code);
                         settings = settings.sanitized();
                         platform.setBindings(bindingsFor(settings));
                         vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
@@ -487,7 +487,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                         game.hud_state.keys_error = false;
                         game.settings_key_index += 1;
                         game.hud_state.keys_index = game.settings_key_index;
-                        if (game.settings_key_index >= 8) {
+                        if (game.settings_key_index >= vx.settings.binding_defs.len) {
                             game.settings_key_mode = false;
                             game.hud_state.keys_mode = false;
                         }
