@@ -9,6 +9,7 @@ pub const Settings = struct {
     volume: f32 = 0.55,
     ambient: bool = true,
     pad_swap: bool = false,
+    esdf: bool = false,
 
     pub fn sanitized(self: Settings) Settings {
         var s = self;
@@ -53,7 +54,7 @@ test "settings round-trip, defaults and clamp" {
     defer tmp.cleanup();
     const path = try std.fs.path.join(alloc, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "settings.json" });
     defer alloc.free(path);
-    const want = Settings{ .fullscreen = true, .scale = 4, .vsync = false, .volume = 0.8, .ambient = false, .pad_swap = true };
+    const want = Settings{ .fullscreen = true, .scale = 4, .vsync = false, .volume = 0.8, .ambient = false, .pad_swap = true, .esdf = true };
     try save(io, alloc, path, want);
     try std.testing.expectEqual(want, try load(io, alloc, path));
     try std.testing.expectEqual(@as(u8, 4), (Settings{ .scale = 99 }).sanitized().scale);

@@ -370,12 +370,14 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     platform.setAudioVolume(settings.volume);
     platform.setAmbient(settings.ambient);
     platform.setPadSwap(settings.pad_swap);
+    platform.setEsdf(settings.esdf);
     game.settings_fullscreen = settings.fullscreen;
     game.settings_scale = settings.scale;
     game.settings_vsync = settings.vsync;
     game.settings_volume = settings.volume;
     game.settings_ambient = settings.ambient;
     game.settings_pad_swap = settings.pad_swap;
+    game.settings_esdf = settings.esdf;
 
     const freq: f64 = @floatFromInt(vx.platform.performanceFrequency());
     var last = vx.platform.performanceNow();
@@ -448,6 +450,11 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                 platform.setPadSwap(game.settings_pad_swap);
                 settings_dirty = true;
             }
+            if (pin.stat == 6) {
+                game.settings_esdf = !game.settings_esdf;
+                platform.setEsdf(game.settings_esdf);
+                settings_dirty = true;
+            }
             if (settings_dirty) {
                 settings.fullscreen = game.settings_fullscreen;
                 settings.vsync = game.settings_vsync;
@@ -455,6 +462,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                 settings.volume = game.settings_volume;
                 settings.ambient = game.settings_ambient;
                 settings.pad_swap = game.settings_pad_swap;
+                settings.esdf = game.settings_esdf;
                 vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
             }
         }

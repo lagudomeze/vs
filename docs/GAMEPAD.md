@@ -38,3 +38,5 @@ Steam Input 可把手柄映射成标准 XInput 布局；不需要额外配置即
 
 - 编译器/单测覆盖 API 调用；实机需 Steam Deck 或 XInput 手柄。
 - 若手柄未连接，全部逻辑跳过，键鼠不受影响。
+
+键盘布局：F2 第 7 项在 WASD / ESDF 间切换，方向键与小键盘始终可用；settings.json 持久化 esdf。
