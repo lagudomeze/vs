@@ -24,7 +24,7 @@ pub const shop_vitality_cost: u32 = 60;
 pub const shop_cleanse_cost: u32 = 20;
 pub const shop_loot_cost: u32 = 80;
 
-pub const Affix = enum(u8) { none, swift, armored, vampiric, explosive, split };
+pub const Affix = enum(u8) { none, swift, armored, vampiric, explosive, split, frost };
 
 pub const FloorMod = enum(u8) {
     none,
@@ -256,6 +256,11 @@ pub const StatusSet = struct {
 
     pub fn slowDamageScale(self: StatusSet) f32 {
         return if (self.slow_turns > 0) 0.55 else 1.0;
+    }
+
+    /// Hero-facing slow is milder than the enemy slow used by talents.
+    pub fn heroSlowDamageScale(self: StatusSet) f32 {
+        return if (self.slow_turns > 0) 0.78 else 1.0;
     }
 
     /// Returns the percentage that just expired, or 0.
@@ -1059,9 +1064,10 @@ pub const Sim = struct {
         const roll = rng.random().float(f32);
         if (roll < 0.05) return .swift;
         if (roll < 0.10) return .armored;
-        if (roll < 0.15) return .vampiric;
-        if (roll < 0.19) return .explosive;
-        if (roll < 0.21 and floor >= 3) return .split;
+        if (roll < 0.14) return .vampiric;
+        if (roll < 0.18) return .explosive;
+        if (roll < 0.20 and floor >= 3) return .split;
+        if (roll < 0.23) return .frost;
         return .none;
     }
 
@@ -1305,6 +1311,7 @@ pub const Sim = struct {
             if (cd.* > 0) cd.* -= 1;
         }
         _ = self.hero.status.tickBuff();
+        self.hero.status.consumeSlow();
         var vi: usize = 0;
         while (vi < self.enemy_count) : (vi += 1) {
             self.enemies[vi].status.tickVulnerable();
@@ -1501,6 +1508,10 @@ pub const Sim = struct {
         const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount * self.hero.status.damageTakenScale();
         self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
         if (e.affix == .vampiric and dmg > 0) e.vitals.set(e.vitals.val + dmg * 0.20);
+        if (e.affix == .frost and dmg > 0) {
+            _ = self.hero.status.applySlow(2);
+            self.pushLog("FROST 减速", .{});
+        }
         if (e.identity.kind == 6 and dmg > 0) {
             self.hero.status.applyBurnFresh(2, e.combat.attack.val * 0.10 * self.floor_mod.burnScale());
         }
@@ -1515,6 +1526,7 @@ pub const Sim = struct {
         if (!e.life.alive) return;
         var raw = self.hero.combat.attack.val * mult;
         raw *= self.hero.status.attackScale();
+        raw *= self.hero.status.heroSlowDamageScale();
         const crit = self.rng.random().float(f32) < self.hero.combat.crit.val;
         const result = combat.resolve(.{ .raw = raw, .crit = crit }, .{ .armor = e.combat.armor.val });
         const dealt = result.amount * e.status.damageTakenScale();
@@ -2036,6 +2048,29 @@ test "run sim: chunk save freeze closes gates" {
     s.freezeForSave();
     try std.testing.expect(!s.chunks_enabled);
     try std.testing.expect(s.isBlocked(@divTrunc(@as(i32, grid_w), 2), 0));
+}
+
+test "run sim: frost affix slows the hero and reduces player damage" {
+    var s = Sim.init(86, .warrior);
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{
+        .kind = 0,
+        .name = "骷髅兵",
+        .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y },
+        .hp = 100,
+        .hp_max = 100,
+        .attack = 10,
+        .armor = 0,
+        .speed = 100,
+        .range = 1,
+        .xp = 10,
+        .affix = .frost,
+    });
+    s.enemyAttack(0);
+    try std.testing.expect(s.hero.status.slow_turns > 0);
+    const hp = s.enemies[0].vitals.val;
+    s.playerAttack(0, 1.0);
+    try std.testing.expect(s.enemies[0].vitals.val < hp);
 }
 
 test "run sim: split spawns a 40% echo once" {

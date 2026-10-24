@@ -130,7 +130,7 @@ cells(shape, origin, dir) []Cell
 当前债：
 
 - Sim 的 Hero/Enemy 已拆为组件聚合；渲染 zflecs 的 Hero/Enemy 仍是场景聚合，待投影拆分。
-- 敌人 kind 同时承担模型、AI、Boss 判定、掉落表，多个机制读同一个裸 u8；精英词缀已作为 Enemy.affix 独立枚举（SWIFT/ARM/VAMP/VOL 第2层起约19%；SPLIT 第3层1%，死亡生成20%HP/眩晕1的回响）。
+- 敌人 kind 同时承担模型、AI、Boss 判定、掉落表，多个机制读同一个裸 u8；精英词缀已作为 Enemy.affix 独立枚举（SWIFT/ARM/VAMP/VOL/FROST 第2层起约22%；SPLIT 第3层2%，死亡生成20%HP/眩晕1的回响）。
 
 ### M4 属性
 
