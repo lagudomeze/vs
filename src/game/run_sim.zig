@@ -1058,7 +1058,8 @@ pub const Sim = struct {
         if (first_visit) {
             self.hero.vitals.val = @min(self.hero.vitals.full, self.hero.vitals.val + self.hero.vitals.full * 0.20);
             self.hero.resource.val = @min(self.hero.resource.full, self.hero.resource.val + self.hero.resource.full * 0.20);
-            self.pushLog("CHUNK REST +20%", .{});
+            self.gold += 25;
+            self.pushLog("CHUNK CACHE +25G", .{});
         }
 
         var entry = entryFor(edge);
@@ -2109,12 +2110,18 @@ test "run sim: 3x3 chunk slice preserves arena state" {
     try std.testing.expect(!s.visited_chunks[1]);
     const before = s.enemy_count;
     const chest_before = s.chest_alive;
+    const gold_before = s.gold;
     s.enterChunk(.north);
+    try std.testing.expectEqual(gold_before + 25, s.gold);
     try std.testing.expectEqual(@as(u8, 1), s.chunk);
     try std.testing.expect(s.visited_chunks[1]);
     try std.testing.expect(s.enemy_count <= 4);
     s.enterChunk(.south);
     try std.testing.expectEqual(@as(u8, 4), s.chunk);
+    const gold_after_first = s.gold;
+    s.enterChunk(.north);
+    try std.testing.expectEqual(gold_after_first, s.gold); // repeat visits pay once
+    s.enterChunk(.south);
     try std.testing.expectEqual(before, s.enemy_count);
     try std.testing.expectEqual(chest_before, s.chest_alive);
 }
