@@ -192,6 +192,7 @@ pub const RunGame = struct {
     chunk_map_open: bool = false,
     demo: bool = false,
     demo_end: bool = false,
+    pause_open: bool = false,
     toast_text: []const u8 = "",
     toast_time: f32 = 0,
     hero_vis: Visual = .{},
@@ -822,6 +823,7 @@ pub const RunGame = struct {
         self.started = true;
         self.shrine_open = self.sim.atShrine();
         self.settings_chunks = self.sim.chunks_enabled;
+        self.pause_open = false;
         self.shop_open = self.sim.atShop();
         self.rebuildMesh();
         self.resetVisuals();
@@ -1079,7 +1081,7 @@ pub const RunGame = struct {
                 self.hud_state.toast = "";
             }
         }
-        if (self.chunk_map_open) return;
+        if (self.chunk_map_open or self.pause_open) return;
         self.camera.yaw += input.yaw_delta;
         self.camera.distance = std.math.clamp(self.camera.distance - input.zoom_delta * 0.35, 10.0, 28.0);
         self.step_cooldown = @max(0, self.step_cooldown - dt);
@@ -2144,6 +2146,7 @@ pub const RunGame = struct {
             .chunk_map_open = self.chunk_map_open,
             .demo_end = self.demo_end,
             .demo = self.demo,
+            .pause_open = self.pause_open,
             .boss_active = boss_active,
             .boss_hp = boss_hp,
             .boss_hp_max = boss_hp_max,
@@ -2510,6 +2513,20 @@ test "run game: demo ends at the stairs and skips records" {
     try std.testing.expect(g.demo_end);
     try std.testing.expectEqual(sim_mod.State.victory, g.sim.state);
     try std.testing.expectEqual(@as(u32, 0), g.records.wins);
+}
+
+test "run game: pause blocks world movement" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.started = true;
+    g.pause_open = true;
+    const pos = g.sim.hero.pos;
+    const turn = g.sim.turn;
+    g.update(.{ .step_x = 1 }, 0.016);
+    try std.testing.expectEqual(pos.x, g.sim.hero.pos.x);
+    try std.testing.expectEqual(pos.y, g.sim.hero.pos.y);
+    try std.testing.expectEqual(turn, g.sim.turn);
 }
 
 test "run game: chunk map blocks world movement" {
