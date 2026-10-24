@@ -534,6 +534,10 @@ pub fn main(init: std.process.Init.Minimal) !void {
         }
     }
 
+    var threaded: std.Io.Threaded = .init(gpa, .{});
+    defer threaded.deinit();
+    const io = threaded.io();
+
     if (!options.portable) {
         if (vx.platform.prefPath(gpa)) |pref| {
             defer gpa.free(pref);
@@ -544,20 +548,37 @@ pub fn main(init: std.process.Init.Minimal) !void {
                 const cwd_raw = std.c.getcwd(&cwd_buf, cwd_buf.len) orelse cwd_buf[0..0].ptr;
                 options.out = try std.fs.path.resolve(gpa, &.{ std.mem.sliceTo(cwd_raw, 0), out });
             }
+            var legacy: ?[]u8 = null;
+            defer if (legacy) |p| gpa.free(p);
+            {
+                var cwd_buf: [4096]u8 = undefined;
+                const cwd_raw = std.c.getcwd(&cwd_buf, cwd_buf.len) orelse cwd_buf[0..0].ptr;
+                legacy = std.fs.path.resolve(gpa, &.{ std.mem.sliceTo(cwd_raw, 0), "saves" }) catch null;
+            }
             const pref_z = try gpa.dupeSentinel(u8, pref, 0);
             defer gpa.free(pref_z);
             if (std.c.chdir(pref_z.ptr) != 0) {
                 std.debug.print("vx: could not enter save directory {s}; saves stay in cwd\n", .{pref});
             } else {
                 std.debug.print("vx: saves -> {s}\n", .{pref});
+                if (legacy) |old_path| {
+                    var old_dir = std.Io.Dir.openDirAbsolute(io, old_path, .{ .iterate = true }) catch null;
+                    if (old_dir) |*src| {
+                        defer src.close(io);
+                        std.Io.Dir.cwd().createDirPath(io, "saves") catch {};
+                        var dst = std.Io.Dir.cwd().openDir(io, "saves", .{}) catch null;
+                        if (dst) |*d| {
+                            defer d.close(io);
+                            const moved = vx.save_migrate.migrateAll(io, src.*, d.*) catch 0;
+                            if (moved > 0) std.debug.print("vx: migrated {d} legacy save files\n", .{moved});
+                        }
+                    }
+                }
             }
         } else |_| {
             std.debug.print("vx: no per-user save path; saves stay in cwd\n", .{});
         }
     }
-    var threaded: std.Io.Threaded = .init(gpa, .{});
-    defer threaded.deinit();
-    const io = threaded.io();
 
     if (options.arena) {
         const game = try vx.Game.create(gpa, options.width, options.height);
