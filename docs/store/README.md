@@ -7,12 +7,21 @@
 ~~~powershell
 python tools/store_assets.py
 python tools/store_screens.py
+python tools/key_art.py
 ~~~
 
 源图：
 
 - docs/store/screenshots/*.png：由真实 CLI 场景生成的 5 张 1920×1080 商店截图
-- docs/screenshots/store_clean.png：--hide-hud --hide-labels 的干净场景，用于 Capsule 底图
+- docs/screenshots/store_clean.png：--hide-hud --hide-labels 的干净场景，用于 Capsule 底图与 key art
+
+## Key art
+
+| 文件 | 尺寸 | 说明 |
+| --- | --- | --- |
+| key_art_1920x1080.png | 1920x1080 | 占位主视觉：干净场景 + VX/AETHER KEEP 标题排版 |
+
+仍不是正式手绘 key art；上架前替换为专门构图。
 
 ## 商店截图（5 张，16:9）
 
