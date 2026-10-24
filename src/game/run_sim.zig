@@ -25,7 +25,7 @@ pub const shop_cleanse_cost: u32 = 20;
 pub const shop_loot_cost: u32 = 80;
 pub const shop_bomb_cost: u32 = 40;
 
-pub const Affix = enum(u8) { none, swift, armored, vampiric, explosive, split, frost };
+pub const Affix = enum(u8) { none, swift, armored, vampiric, explosive, split, frost, berserk };
 
 pub const FloorMod = enum(u8) {
     none,
@@ -1078,6 +1078,7 @@ pub const Sim = struct {
         if (roll < 0.18) return .explosive;
         if (roll < 0.20 and floor >= 3) return .split;
         if (roll < 0.23) return .frost;
+        if (roll < 0.27) return .berserk;
         return .none;
     }
 
@@ -1514,6 +1515,7 @@ pub const Sim = struct {
     fn enemyAttack(self: *Sim, idx: usize) void {
         const e = &self.enemies[idx];
         var raw = e.combat.attack.val * 0.72;
+        if (e.affix == .berserk and e.vitals.val < e.vitals.full * 0.5) raw *= 1.25;
         raw *= e.status.slowDamageScale();
         const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount * self.hero.status.damageTakenScale();
         self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
@@ -2095,6 +2097,23 @@ test "run sim: bomb hits enemies in radius and spends a turn" {
     try std.testing.expect(!s.enemies[1].life.alive);
     try std.testing.expect(s.enemies[2].life.alive);
     try std.testing.expect(s.turn > turn);
+}
+
+test "run sim: berserk affix hits harder below half hp" {
+    var low = Sim.init(88, .warrior);
+    low.enemy_count = 1;
+    low.enemies[0] = enemyFromParts(.{ .kind = 0, .name = "骷髅兵", .pos = .{ .x = low.hero.pos.x + 1, .y = low.hero.pos.y }, .hp = 19, .hp_max = 40, .attack = 20, .armor = 0, .speed = 100, .range = 1, .xp = 5, .affix = .berserk });
+    const hp0 = low.hero.vitals.val;
+    low.enemyAttack(0);
+    const low_dmg = hp0 - low.hero.vitals.val;
+
+    var high = Sim.init(88, .warrior);
+    high.enemy_count = 1;
+    high.enemies[0] = enemyFromParts(.{ .kind = 0, .name = "骷髅兵", .pos = .{ .x = high.hero.pos.x + 1, .y = high.hero.pos.y }, .hp = 40, .hp_max = 40, .attack = 20, .armor = 0, .speed = 100, .range = 1, .xp = 5, .affix = .berserk });
+    const hp1 = high.hero.vitals.val;
+    high.enemyAttack(0);
+    const high_dmg = hp1 - high.hero.vitals.val;
+    try std.testing.expect(low_dmg > high_dmg);
 }
 
 test "run sim: frost affix slows the hero and reduces player damage" {

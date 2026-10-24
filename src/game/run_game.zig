@@ -1689,6 +1689,7 @@ pub const RunGame = struct {
                     .explosive => "VOL",
                     .split => "SPLIT",
                     .frost => "FROST",
+                    .berserk => "BRSK",
                     else => "",
                 };
                 if (affix_label.len > 0) {
