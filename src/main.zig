@@ -277,6 +277,7 @@ fn runWindow(game: *vx.Game, io: std.Io, options: Options) !void {
         game.update(input, dt);
         game.render();
         platform.present(game.renderer.color_buf);
+        platform.updateAmbient();
 
         if (pin.screenshot) {
             const path = std.fmt.allocPrint(std.heap.page_allocator, "shots/capture-{d}.png", .{game.frame}) catch "shots/capture.png";
@@ -350,10 +351,12 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     platform.setVSync(settings.vsync);
     platform.setFullscreen(settings.fullscreen);
     platform.setAudioVolume(settings.volume);
+    platform.setAmbient(settings.ambient);
     game.settings_fullscreen = settings.fullscreen;
     game.settings_scale = settings.scale;
     game.settings_vsync = settings.vsync;
     game.settings_volume = settings.volume;
+    game.settings_ambient = settings.ambient;
 
     const freq: f64 = @floatFromInt(vx.platform.performanceFrequency());
     var last = vx.platform.performanceNow();
@@ -416,11 +419,17 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                 platform.setAudioVolume(game.settings_volume);
                 settings_dirty = true;
             }
+            if (pin.stat == 4) {
+                game.settings_ambient = !game.settings_ambient;
+                platform.setAmbient(game.settings_ambient);
+                settings_dirty = true;
+            }
             if (settings_dirty) {
                 settings.fullscreen = game.settings_fullscreen;
                 settings.vsync = game.settings_vsync;
                 settings.scale = game.settings_scale;
                 settings.volume = game.settings_volume;
+                settings.ambient = game.settings_ambient;
                 vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
             }
         }

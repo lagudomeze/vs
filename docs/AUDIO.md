@@ -2,7 +2,7 @@
 
 ## 现状
 
-程序化音效，无外部音频文件：
+程序化音效 + 低频环境音，无外部音频文件：
 
 - step：短方波
 - hit：低频方波 + 噪声
@@ -10,6 +10,8 @@
 - pickup：高音
 - death：下降音
 - ui：短提示音
+
+环境音：55/82.41/110Hz 三层正弦 + 慢 LFO，约 2048 样本一块，队列低于 10000 字节时补充；与 SFX 共用一条 stream。
 
 实现：src/platform/sdl.zig
 
@@ -21,8 +23,9 @@
 ## 音量
 
 - F2 设置面板：4 VOLUME 循环 0 / 55 / 100%
-- settings.json 持久化 volume
-- 启动时 SDL_SetAudioStreamGain
+- settings.json 持久化 volume/ambient
+- 启动时 SDL_SetAudioStreamGain / setAmbient
+- F2 第 5 项开关环境音
 
 ## 触发
 
@@ -39,7 +42,7 @@
 
 ## 未做
 
-- BGM/环境音
+- 有旋律的 BGM（当前只是氛围 drone）
 - 空间音频/声像
 - 音频设备选择
 - 音量淡入淡出/限幅

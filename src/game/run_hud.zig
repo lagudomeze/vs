@@ -61,6 +61,7 @@ pub const State = struct {
     settings_vsync: bool = true,
     settings_scale: u8 = 3,
     settings_volume: f32 = 0.55,
+    settings_ambient: bool = true,
     seed: u64 = 0,
     buff_turns: u16 = 0,
     buff_pct: f32 = 0,
@@ -620,7 +621,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
 
 fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const pw: i32 = 320;
-    const ph: i32 = 182;
+    const ph: i32 = 220;
     const px = @divTrunc(w - pw, 2);
     const py = @divTrunc(h - ph, 2);
     r.fillRect(0, 0, w, h, palette.deep);
@@ -638,20 +639,22 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         "2 VSYNC         ON/OFF",
         "3 WINDOW SCALE  2x/3x/4x",
         "4 VOLUME        0/55/100%",
+        "5 AMBIENT       ON/OFF",
     };
     for (lines, 0..) |line, i| {
         r.drawText(px + 28, py + 54 + @as(i32, @intCast(i)) * 22, line, palette.cream, 1, false);
     }
 
     var vbuf: [64]u8 = undefined;
-    const values = fmt(&vbuf, "FULL {s}  VSYNC {s}  SCALE {d}x  VOL {d}%", .{
+    const values = fmt(&vbuf, "F {s}  VS {s}  {d}x  VOL {d}%  AMB {s}", .{
         if (state.settings_fullscreen) "ON" else "OFF",
         if (state.settings_vsync) "ON" else "OFF",
         state.settings_scale,
         @as(i32, @intFromFloat(state.settings_volume * 100.0)),
+        if (state.settings_ambient) "ON" else "OFF",
     });
     const vw = renderer.Renderer.textWidth(values, 1);
-    r.drawText(px + @divTrunc(pw - vw, 2), py + 146, values, palette.cyan_light, 1, false);
+    r.drawText(px + @divTrunc(pw - vw, 2), py + 168, values, palette.cyan_light, 1, false);
     r.drawText(px + 16, py + ph - 18, "Esc CLOSE   F2 TOGGLE", palette.muted, 1, false);
 }
 
