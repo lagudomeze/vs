@@ -28,6 +28,7 @@ pub const intent = @import("game/intent.zig");
 pub const run_regression = @import("qa2/run_regression.zig");
 pub const run_hud = @import("game/run_hud.zig");
 pub const settings = @import("game/settings.zig");
+pub const save_migrate = @import("game/save_migrate.zig");
 pub const run_game = @import("game/run_game.zig");
 pub const RunGame = @import("game/run_game.zig").RunGame;
 pub const systems = @import("game/systems.zig");
