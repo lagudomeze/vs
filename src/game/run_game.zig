@@ -203,6 +203,7 @@ pub const RunGame = struct {
     hud_state: hud.State = .{},
     time: f32 = 0,
     shake: f32 = 0,
+    shake_pulse: f32 = 0,
     dt: f32 = 0,
     frame: u32 = 0,
     fps: f32 = 60,
@@ -1548,10 +1549,16 @@ pub const RunGame = struct {
         const hero_loss = hero_before - self.sim.hero.vitals.val;
         if (hero_loss > 0.5) {
             self.hero_vis.flash = 0.22;
-            if (self.settings_shake) self.shake = @min(1.0, self.shake + 0.35);
+            if (self.settings_shake) {
+                self.shake = @min(1.0, self.shake + 0.35);
+                self.shake_pulse = @max(self.shake_pulse, 0.55);
+            }
             self.spawnFloat(self.hero_vis.pos, -@as(i32, @intFromFloat(hero_loss)), palette.red);
         }
-        if (self.sim.state == .victory and self.settings_shake) self.shake = 1.0;
+        if (self.sim.state == .victory and self.settings_shake) {
+            self.shake = 1.0;
+            self.shake_pulse = 1.0;
+        }
         var i: usize = 0;
         while (i < enemies_before.len and i < self.sim.enemy_count) : (i += 1) {
             const loss = enemies_before[i] - self.sim.enemies[i].vitals.val;
