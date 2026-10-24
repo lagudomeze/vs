@@ -668,7 +668,9 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             game.shake_pulse = 0;
         }
         platform.setAmbience(ambienceFor(game));
-        if (game.sim.state == .dead and state_before != .dead) {
+        if (game.sim.state == .victory and state_before != .victory) {
+            platform.playSound(.victory);
+        } else if (game.sim.state == .dead and state_before != .dead) {
             platform.playSound(.death);
         } else if (game.sim.hero.vitals.val < hp_before - 0.01) {
             platform.playSound(.hit);

@@ -11,7 +11,7 @@ pub fn prefPath(alloc: std.mem.Allocator) ![]u8 {
     return alloc.dupe(u8, std.mem.span(raw));
 }
 
-pub const Sound = enum(u8) { step, hit, cast, pickup, death, ui };
+pub const Sound = enum(u8) { step, hit, cast, pickup, death, victory, ui };
 
 pub const Ambience = enum { explore, danger, shop, death, victory };
 
@@ -344,6 +344,7 @@ pub const Platform = struct {
             .cast => .{ 480, 0.12 },
             .pickup => .{ 740, 0.11 },
             .death => .{ 120, 0.32 },
+            .victory => .{ 440, 0.48 },
             .ui => .{ 880, 0.035 },
         };
         const count: usize = @intFromFloat(@as(f32, 22050) * dur);
@@ -358,6 +359,11 @@ pub const Platform = struct {
             const wave = switch (kind) {
                 .step, .hit => if (@mod(phase, 1.0) < 0.5) @as(f32, 1.0) else -1.0,
                 .death => @sin(phase * std.math.tau * (1.0 - t / dur * 0.7)),
+                .victory => blk: {
+                    const step: f32 = @floor(t / 0.14);
+                    const f = 440.0 * std.math.pow(f32, 2.0, step * 2.0 / 12.0);
+                    break :blk @sin(t * f * std.math.tau);
+                },
                 .cast => @sin(phase * std.math.tau),
                 .pickup => @sin(phase * std.math.tau * 2.0),
                 .ui => @sin(phase * std.math.tau),
