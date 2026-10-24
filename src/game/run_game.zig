@@ -85,6 +85,7 @@ pub const Input = struct {
     difficulty: bool = false,
     /// Inventory panel: consume a healing item.
     use_item: bool = false,
+    use_bomb: bool = false,
     /// Space while aiming confirms the pending talent.
     confirm: bool = false,
     wait: bool = false,
@@ -227,6 +228,8 @@ pub const RunGame = struct {
         self.sim = sim_mod.Sim.initWithDifficulty(self.seed, self.class, self.difficulty);
         self.sim.setEnemyDefs(self.content.enemies);
         self.sim.reset(self.seed, self.class);
+        self.inventory = items_mod.Inventory.init();
+        if (self.content.itemIndex("fire_bomb")) |bomb| _ = self.inventory.pickup(bomb);
         self.last_state = .playing;
         self.camera = .{
             .target = math.Vec3.init(0, 0.55, 0),
@@ -316,6 +319,7 @@ pub const RunGame = struct {
     fn resetRun(self: *RunGame) void {
         self.sim.reset(self.seed, self.class);
         self.inventory = items_mod.Inventory.init();
+        if (self.content.itemIndex("fire_bomb")) |bomb| _ = self.inventory.pickup(bomb);
         self.mods.clear();
         self.loot_rng = std.Random.DefaultPrng.init(self.seed ^ 0x9e3779b97f4a7c15);
         self.chest_loot_seen = 0;
@@ -887,6 +891,38 @@ pub const RunGame = struct {
         return score;
     }
 
+    fn useBomb(self: *RunGame) bool {
+        if (self.panel != .none or self.sim.state != .playing) return false;
+        for (self.inventory.slice()) |id| {
+            if (id >= self.content.items.len) continue;
+            const def = &self.content.items[id];
+            const use = def.use() orelse continue;
+            if (use.bomb <= 0) continue;
+            var target = false;
+            var i: usize = 0;
+            while (i < self.sim.enemy_count) : (i += 1) {
+                const e = &self.sim.enemies[i];
+                if (!e.life.alive) continue;
+                const dx = @abs(e.pos.x - self.sim.hero.pos.x);
+                const dy = @abs(e.pos.y - self.sim.hero.pos.y);
+                if (@as(f32, @floatFromInt(dx + dy)) <= use.bomb_radius) {
+                    target = true;
+                    break;
+                }
+            }
+            if (!target) {
+                self.sim.pushLog("BOMB NO TARGET", .{});
+                return false;
+            }
+            if (!self.inventory.remove(id)) continue;
+            self.clearAim();
+            const hits = self.sim.detonate(use.bomb, use.bomb_radius);
+            self.sim.pushLog("{s} HIT {d}", .{ def.name, hits });
+            return true;
+        }
+        return false;
+    }
+
     fn usePotion(self: *RunGame, allow_resource: bool) bool {
         for (self.inventory.slice()) |id| {
             if (id >= self.content.items.len) continue;
@@ -1101,6 +1137,9 @@ pub const RunGame = struct {
         var used_potion = false;
         if (self.panel == .none and self.sim.state == .playing and input.use_item) {
             used_potion = self.usePotion(true);
+        }
+        if (!used_potion and self.panel == .none and self.sim.state == .playing and input.use_bomb) {
+            used_potion = self.useBomb();
         }
         if (!used_potion and self.panel == .none and self.sim.state == .playing and self.sim.hero.vitals.val < self.sim.hero.vitals.full * 0.35) {
             used_potion = self.usePotion(false);
@@ -1950,9 +1989,12 @@ pub const RunGame = struct {
         self.trackRunEnd();
         const initiative = self.initiativeNames();
         var potion_count: u8 = 0;
+        var bomb_count: u8 = 0;
         for (self.inventory.slice()) |id| {
             if (id >= self.content.items.len) continue;
-            if (self.content.items[id].use() != null) potion_count +|= 1;
+            if (self.content.items[id].use()) |use| {
+                if (use.bomb > 0) bomb_count +|= 1 else potion_count +|= 1;
+            }
         }
         self.hud_state = .{
             .menu = !self.started,
@@ -1974,6 +2016,7 @@ pub const RunGame = struct {
             .record_best_floor = self.records.best_floor,
             .record_best_turn = self.records.best_turn,
             .potions = potion_count,
+            .bombs = bomb_count,
             .floor_mod_label = self.sim.floor_mod.label(),
             .seed = self.sim.seed,
             .buff_turns = self.sim.hero.status.buff_turns,
@@ -2239,6 +2282,37 @@ test "run game: P quaffs a potion outside the inventory" {
     g.update(.{ .use_item = true }, 1.0 / 60.0);
     try std.testing.expect(g.sim.hero.vitals.val > 10);
     try std.testing.expectEqual(before - 1, g.inventory.count());
+}
+
+test "run game: B throws a fire bomb" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    const id = g.content.itemIndex("fire_bomb") orelse return error.MissingBomb;
+    _ = g.inventory.remove(id); // consume the starting bomb, then test one
+    try std.testing.expect(g.inventory.pickup(id));
+    g.started = true;
+    g.sim.state = .playing;
+    g.sim.enemy_count = 1;
+    g.sim.enemies[0] = sim_mod.enemyFromParts(.{
+        .kind = 0,
+        .name = "骷髅兵",
+        .pos = .{ .x = g.sim.hero.pos.x + 1, .y = g.sim.hero.pos.y },
+        .hp = 10,
+        .hp_max = 10,
+        .attack = 5,
+        .armor = 0,
+        .speed = 100,
+        .range = 1,
+        .xp = 5,
+    });
+    g.fillHudState();
+    try std.testing.expect(g.hud_state.bombs > 0);
+    const turn = g.sim.turn;
+    g.update(.{ .use_bomb = true }, 1.0 / 60.0);
+    try std.testing.expect(!g.sim.enemies[0].life.alive);
+    try std.testing.expectEqual(@as(usize, 0), g.inventory.count());
+    try std.testing.expect(g.sim.turn > turn);
 }
 
 test "run game: inventory comparison marks equippable items" {
@@ -2640,6 +2714,7 @@ test "run game: save/load round-trips the sim and gear" {
     g.sim.hero.vitals.val = 77;
     if (g.content.items.len == 0) return error.SkipZigTest;
     if (!g.inventory.pickup(0)) return error.SkipZigTest;
+    const item_count = g.inventory.len;
     const turn = g.sim.turn;
     const rng_state = g.loot_rng.s;
     g.saveRun(io, sim_path, gear_path);
@@ -2649,7 +2724,7 @@ test "run game: save/load round-trips the sim and gear" {
     g.loadRun(io, sim_path, gear_path);
     try std.testing.expectEqual(@as(f32, 77), g.sim.hero.vitals.val);
     try std.testing.expectEqual(turn, g.sim.turn);
-    try std.testing.expectEqual(@as(usize, 1), g.inventory.len);
+    try std.testing.expectEqual(item_count, g.inventory.len);
     try std.testing.expect(std.meta.eql(rng_state, g.loot_rng.s));
 }
 

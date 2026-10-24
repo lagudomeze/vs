@@ -58,6 +58,10 @@ pub const Use = struct {
     heal: f32 = 0,
     /// 资源回复（精力 / 法力 / 悖论）。
     resource: f32 = 0,
+    /// 对英雄周围敌人造成的范围伤害；0 表示不是炸弹。
+    bomb: f32 = 0,
+    /// 炸弹半径（曼哈顿格）。
+    bomb_radius: f32 = 0,
 };
 
 /// Loot-only metadata. Kept out of the kind union because every droppable

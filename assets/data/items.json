@@ -223,6 +223,17 @@
       "description": "恢复 40 生命；背包面板按 P 使用。"
     },
     {
+      "id": "fire_bomb",
+      "name": "FIRE BOMB",
+      "quality": "common",
+      "weight": 0,
+      "use": {
+        "bomb": 45,
+        "bomb_radius": 2
+      },
+      "description": "B: 2-cell AoE, 45 damage."
+    },
+    {
       "id": "gear_sigil",
       "name": "齿轮印记",
       "slot": "trinket",
