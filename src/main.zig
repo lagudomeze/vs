@@ -443,6 +443,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     var quit = false;
     var captured = false;
     var slot_frame = false;
+    var audio_gain: f32 = game.settings_volume;
     std.debug.print("run: {d}x{d} logical, {d}x scale - class menu 1/2/3, WASD step, 1/2/3 aim, SPACE confirm, ESC cancel, I/C panels, Q/E orbit, R restart\n", .{
         options.width, options.height, options.scale,
     });
@@ -687,7 +688,14 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         const kills_before = game.sim.kills;
         const state_before = game.sim.state;
         game.update(input, dt);
-        platform.setAudioVolume(if (game.pause_open) 0 else game.settings_volume);
+        const audio_target = if (game.pause_open) 0 else game.settings_volume;
+        const audio_step = dt * 8.0;
+        if (audio_gain < audio_target) {
+            audio_gain = @min(audio_target, audio_gain + audio_step);
+        } else {
+            audio_gain = @max(audio_target, audio_gain - audio_step);
+        }
+        platform.setAudioVolume(audio_gain);
         if (game.shake_pulse > 0) {
             platform.rumble(game.shake_pulse, 160);
             game.shake_pulse = 0;
