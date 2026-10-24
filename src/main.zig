@@ -50,6 +50,7 @@ const Options = struct {
     demo: bool = false,
     demo_end_screen: bool = false,
     boss_screen: bool = false,
+    pause_screen: bool = false,
     shop_screen: bool = false,
 };
 
@@ -99,6 +100,7 @@ fn usage() void {
         \\  --demo            demo mode: first floor only
         \\  --demo-end        show the demo end screen (screenshot/QA)
         \\  --boss            jump to the floor-3 boss (screenshot/QA)
+        \\  --pause           show the pause menu (screenshot/QA)
         \\  --help            this text
         \\
         \\Controls: WASD move, 1/2/3 aim talent, SPACE or same key confirm,
@@ -207,6 +209,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.demo_end_screen = true;
         } else if (std.mem.eql(u8, a, "--boss")) {
             o.boss_screen = true;
+        } else if (std.mem.eql(u8, a, "--pause")) {
+            o.pause_screen = true;
         } else if (std.mem.eql(u8, a, "--shop")) {
             o.shop_screen = true;
         } else if (std.mem.eql(u8, a, "--hide-hud")) {
@@ -580,6 +584,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             }
         }
         if (pin.quit) break;
+        if (game.pause_open and pin.key_code == 20) break;
         // Escape is hierarchical: cancel aim first (never lose the run just
         // for cancelling a target), then close a modal panel, then quit.
         if (pin.escape) {
@@ -600,6 +605,12 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                     game.show_help = false;
                 } else if (game.panel != .none) {
                     game.panel = .none;
+                } else if (game.pause_open) {
+                    game.pause_open = false;
+                    game.hud_state.pause_open = false;
+                } else if (game.started and game.sim.state == .playing) {
+                    game.pause_open = true;
+                    game.hud_state.pause_open = true;
                 } else {
                     break;
                 }
@@ -870,6 +881,11 @@ pub fn main(init: std.process.Init.Minimal) !void {
         game.demo_end = true;
         game.sim.state = .victory;
         game.sim.pushLog("DEMO END", .{});
+    }
+    if (options.pause_screen) {
+        game.started = true;
+        game.pause_open = true;
+        game.hud_state.pause_open = true;
     }
     if (options.boss_screen) {
         game.started = true;

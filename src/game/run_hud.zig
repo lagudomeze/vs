@@ -84,6 +84,7 @@ pub const State = struct {
     chunk_cleared: [9]bool = @splat(false),
     demo_end: bool = false,
     demo: bool = false,
+    pause_open: bool = false,
     boss_active: bool = false,
     boss_hp: f32 = 0,
     boss_hp_max: f32 = 1,
@@ -184,7 +185,7 @@ const help_lines = [_][]const u8{
     "等待  5 / .     背包 I     角色 C",
     "P POTION  anytime, no cost at full",
     "SHOP/SHRINE  1-6 select",
-    "Esc 取消瞄准 / 关闭面板 / 退出",
+    "Esc 取消/暂停   Q 暂停菜单退出",
     "存档 F5  读档 F9 槽  自动档 F10",
     "相机 Q/E/右键   滚轮 WHEEL ZOOM   M CHUNK MAP",
     "升级 C 面板 1-6 加点  R 重开",
@@ -200,6 +201,22 @@ const aim_hint = "空格/同键/左键确认  Esc取消  Tab换目标";
 
 /// Pre-run class selection. A checkerboard dim keeps the 3D dungeon visible
 /// behind the cards while the title and card panels stay fully readable.
+fn drawPause(r: *renderer.Renderer, w: i32, h: i32) void {
+    r.fillRect(0, 0, w, h, palette.deep);
+    const pw: i32 = 260;
+    const ph: i32 = 150;
+    const px = @divTrunc(w - pw, 2);
+    const py = @divTrunc(h - ph, 2);
+    backPanel(r, px, py, pw, ph);
+    const title = "PAUSED";
+    const tw = renderer.Renderer.textWidth(title, 2);
+    r.drawText(px + @divTrunc(pw - tw, 2), py + 20, title, palette.gold_light, 2, true);
+    r.drawText(px + 30, py + 64, "ESC  RESUME", palette.cream, 1, false);
+    r.drawText(px + 30, py + 84, "F2   SETTINGS", palette.cream, 1, false);
+    r.drawText(px + 30, py + 104, "Q    QUIT", palette.muted, 1, false);
+    r.drawText(px + 30, py + ph - 22, "F4 COPY DIAGNOSTICS", palette.gold, 1, false);
+}
+
 fn drawChunkMap(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const pw: i32 = 340;
     const ph: i32 = 286;
@@ -376,6 +393,10 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     }
     if (state.chunk_map_open and !state.settings_open and !state.shop_open and !state.shrine_open) {
         drawChunkMap(r, state, w, h);
+        return;
+    }
+    if (state.pause_open and !state.settings_open and !state.shop_open and !state.shrine_open) {
+        drawPause(r, w, h);
         return;
     }
 
