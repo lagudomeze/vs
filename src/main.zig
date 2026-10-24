@@ -358,6 +358,21 @@ fn bindingsFor(settings: vx.settings.Settings) vx.platform.Bindings {
     };
 }
 
+fn keyConflict(settings: vx.settings.Settings, index: u8, code: u32) bool {
+    const k = settings.keys;
+    return switch (index) {
+        0 => code == k.potion or code == k.bomb or code == k.inventory or code == k.character or code == k.talent1 or code == k.talent2 or code == k.talent3,
+        1 => code == k.confirm or code == k.bomb or code == k.inventory or code == k.character or code == k.talent1 or code == k.talent2 or code == k.talent3,
+        2 => code == k.confirm or code == k.potion or code == k.inventory or code == k.character or code == k.talent1 or code == k.talent2 or code == k.talent3,
+        3 => code == k.confirm or code == k.potion or code == k.bomb or code == k.character or code == k.talent1 or code == k.talent2 or code == k.talent3,
+        4 => code == k.confirm or code == k.potion or code == k.bomb or code == k.inventory or code == k.talent1 or code == k.talent2 or code == k.talent3,
+        5 => code == k.confirm or code == k.potion or code == k.bomb or code == k.inventory or code == k.character or code == k.talent2 or code == k.talent3,
+        6 => code == k.confirm or code == k.potion or code == k.bomb or code == k.inventory or code == k.character or code == k.talent1 or code == k.talent3,
+        7 => code == k.confirm or code == k.potion or code == k.bomb or code == k.inventory or code == k.character or code == k.talent1 or code == k.talent2,
+        else => false,
+    };
+}
+
 fn applyBinding(settings: *vx.settings.Settings, index: u8, code: u32) void {
     switch (index) {
         0 => settings.keys.confirm = code,
@@ -442,7 +457,9 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             game.settings_open = !game.settings_open;
             if (!game.settings_open) {
                 game.settings_key_mode = false;
+                game.settings_key_error = false;
                 game.hud_state.keys_mode = false;
+                game.hud_state.keys_error = false;
             }
             platform.playSound(.ui);
         }
@@ -451,24 +468,43 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                 if (pin.escape) {
                     game.settings_key_mode = false;
                     game.hud_state.keys_mode = false;
-                } else if (pin.key_code != 0 and pin.key_code != 41) {
-                    applyBinding(&settings, game.settings_key_index, pin.key_code);
+                    game.settings_key_error = false;
+                } else if (pin.key_code == 42) {
+                    settings.keys = .{};
                     settings = settings.sanitized();
                     platform.setBindings(bindingsFor(settings));
                     vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
-                    game.settings_key_index += 1;
-                    game.hud_state.keys_index = game.settings_key_index;
-                    if (game.settings_key_index >= 8) {
-                        game.settings_key_mode = false;
-                        game.hud_state.keys_mode = false;
-                    }
+                    game.settings_key_error = false;
+                    game.hud_state.keys_error = false;
                     platform.playSound(.ui);
+                } else if (pin.key_code != 0 and pin.key_code != 41) {
+                    if (keyConflict(settings, game.settings_key_index, pin.key_code)) {
+                        game.settings_key_error = true;
+                        game.hud_state.keys_error = true;
+                        platform.playSound(.hit);
+                    } else {
+                        applyBinding(&settings, game.settings_key_index, pin.key_code);
+                        settings = settings.sanitized();
+                        platform.setBindings(bindingsFor(settings));
+                        vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
+                        game.settings_key_error = false;
+                        game.hud_state.keys_error = false;
+                        game.settings_key_index += 1;
+                        game.hud_state.keys_index = game.settings_key_index;
+                        if (game.settings_key_index >= 8) {
+                            game.settings_key_mode = false;
+                            game.hud_state.keys_mode = false;
+                        }
+                        platform.playSound(.ui);
+                    }
                 }
             } else if (pin.stat == 7) {
                 game.settings_key_mode = true;
                 game.settings_key_index = 0;
+                game.settings_key_error = false;
                 game.hud_state.keys_mode = true;
                 game.hud_state.keys_index = 0;
+                game.hud_state.keys_error = false;
                 platform.playSound(.ui);
             } else {
                 var settings_dirty = false;
