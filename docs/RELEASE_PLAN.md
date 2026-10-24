@@ -38,7 +38,7 @@
 - 不含第 2/3 层、Boss、3×3
 - 存档独立，不继承到正式版（或明确说明）
 
-已实现：--demo 只开放第 1 层，踩未封印楼梯显示 DEMO END + WISHLIST；存档隔离到 vx/demo；tools/demo_pack.ps1 生成 zip。未限制职业/3×3，未创建独立 Steam Demo App/Depot。详见 [DEMO.md](DEMO.md)。
+已实现：--demo 只开放第 1 层，踩未封印楼梯显示 DEMO END + WISHLIST；存档隔离到 vx/demo；tools/demo_pack.ps1 生成 zip。已限制为狂战士（2/3 显示 DEMO LOCKED）；未限制 3×3，未创建独立 Steam Demo App/Depot。详见 [DEMO.md](DEMO.md)。
 
 ## 4. 8 周相对计划
 

@@ -14,7 +14,7 @@ pwsh -File tools/demo_pack.ps1
 
 ## 内容
 
-- vx.exe（完整程序，--demo 门禁）
+- vx.exe（完整程序，--demo 门禁；仅狂战士）
 - PLAY_DEMO.cmd：start "" "%~dp0vx.exe" --demo
 - DEMO_README.txt：只开第 1 层、独立存档、F2/F3/F4
 - README/CREDITS/OFL
@@ -51,7 +51,8 @@ pwsh -File tools/demo_pack.ps1
 
 ## 未完成
 
+- ~~Demo 只开一个职业~~（已实现：仅狂战士，2/3 显示 DEMO LOCKED）
+
 - 独立 Demo App/Depot
 - Demo 商店页/预告片
-- Demo 只开一个职业
 - 从 Demo 导入愿望单/进度
