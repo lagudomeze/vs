@@ -1012,6 +1012,19 @@ test "load: empty, truncated and garbage input returns an error" {
     for (garbage) |text| try expectLoadFails(alloc, text);
 }
 
+test "save: chunk run freezes active arena and round-trips" {
+    const alloc = testing.allocator;
+    var sim = Sim.init(84, .warrior);
+    sim.enableChunks();
+    sim.freezeForSave();
+    const bytes = try saveAlloc(alloc, &sim);
+    defer alloc.free(bytes);
+    const loaded = try loadAlloc(alloc, bytes);
+    try testing.expect(!loaded.chunks_enabled);
+    try testing.expectEqual(sim.enemy_count, loaded.enemy_count);
+    try testing.expectEqual(sim.hero.pos.x, loaded.hero.pos.x);
+}
+
 test "load: strict version, format, trailing data and enum checks" {
     const alloc = testing.allocator;
     var sim = Sim.init(99, .mage);
