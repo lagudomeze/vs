@@ -592,9 +592,27 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                 }
             }
         }
-        if (pin.quit) break;
+        if (pin.quit) {
+            if (game.autosave_pending) game.flushAutosave(io);
+            if (game.records_dirty) _ = game.saveRecords(io);
+            break;
+        }
         if (game.pause_open and pin.key_code == 20) {
-            if (game.pause_confirm_quit) break;
+            if (game.pause_confirm_quit) {
+                if (game.autosave_pending) game.flushAutosave(io);
+                if (game.records_dirty) _ = game.saveRecords(io);
+                break;
+            }
+            game.pause_confirm_quit = true;
+            game.hud_state.pause_confirm_quit = true;
+            platform.playSound(.ui);
+        }
+        if (game.pause_open and pin.help) {
+            if (game.pause_confirm_quit) {
+                if (game.autosave_pending) game.flushAutosave(io);
+                if (game.records_dirty) _ = game.saveRecords(io);
+                break;
+            }
             game.pause_confirm_quit = true;
             game.hud_state.pause_confirm_quit = true;
             platform.playSound(.ui);
