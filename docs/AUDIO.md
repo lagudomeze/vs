@@ -11,7 +11,15 @@
 - death：下降音
 - ui：短提示音
 
-环境音：55/82.41/110Hz 三层正弦 + 慢 LFO；另加 220–392Hz 五声音阶 motif（每 0.55s 换音，正弦包络），约 2048 样本一块，队列低于 10000 字节时补充；与 SFX 共用一条 stream。
+环境音：55/82.41/110Hz 三层正弦 + 慢 LFO；五声音阶 motif 按场景切换：
+
+- explore：220–392Hz，0.55s/音
+- danger：110–196Hz，0.40s/音，drone 更重
+- shop：大调 261–523Hz，0.80s/音，更轻
+- death：82–110Hz，1.10s/音
+- victory：大调 261–659Hz，0.50s/音
+
+约 2048 样本一块，队列低于 10000 字节时补充；与 SFX 共用一条 stream。
 
 实现：src/platform/sdl.zig
 
@@ -26,6 +34,10 @@
 - settings.json 持久化 volume/ambient
 - 启动时 SDL_SetAudioStreamGain / setAmbient
 - F2 第 5 项开关环境音
+
+## 氛围切换
+
+主窗口 RunGame 循环每帧根据状态选择 mood：死亡/胜利/商店/Boss 或低血量危险/普通探索；旧演示 Game 循环不再承担正式音频。
 
 ## 触发
 

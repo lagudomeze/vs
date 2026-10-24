@@ -341,6 +341,19 @@ fn runRunHeadless(game: *vx.RunGame, io: std.Io, options: Options) !void {
     );
 }
 
+fn ambienceFor(game: *const vx.RunGame) vx.platform.Ambience {
+    if (game.sim.state == .dead) return .death;
+    if (game.sim.state == .victory) return .victory;
+    if (game.shop_open) return .shop;
+    if (game.sim.hero.vitals.val < game.sim.hero.vitals.full * 0.35) return .danger;
+    var i: usize = 0;
+    while (i < game.sim.enemy_count) : (i += 1) {
+        const e = &game.sim.enemies[i];
+        if (e.life.alive and e.identity.kind == vx.intent.boss_kind) return .danger;
+    }
+    return .explore;
+}
+
 fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     var settings = vx.settings.load(io, game.gpa, vx.settings.default_path) catch vx.settings.Settings{};
     if (options.fullscreen) settings.fullscreen = true;
@@ -526,6 +539,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         const kills_before = game.sim.kills;
         const state_before = game.sim.state;
         game.update(input, dt);
+        platform.setAmbience(ambienceFor(game));
         if (game.sim.state == .dead and state_before != .dead) {
             platform.playSound(.death);
         } else if (game.sim.hero.vitals.val < hp_before - 0.01) {
@@ -539,6 +553,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         if (game.autosave_pending) game.flushAutosave(io);
         game.render();
         platform.present(game.renderer.color_buf);
+        platform.updateAmbient();
 
         if (pin.screenshot) {
             const path = std.fmt.allocPrint(std.heap.page_allocator, "shots/run-{d}.png", .{game.frame}) catch "shots/run.png";
