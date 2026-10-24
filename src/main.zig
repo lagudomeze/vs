@@ -434,6 +434,12 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
         }
         if (pin.feedback) _ = vx.platform.openUrl("https://github.com/lagudomeze/vs/issues/new?template=feedback.yml");
+        if (pin.diagnostics) {
+            var dbuf: [512:0]u8 = undefined;
+            platform.setClipboard(game.diagnostics(&dbuf));
+            game.sim.notice = "DIAGNOSTICS COPIED";
+            platform.playSound(.ui);
+        }
         if (pin.settings) {
             game.settings_open = !game.settings_open;
             if (!game.settings_open) {

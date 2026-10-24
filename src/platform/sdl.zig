@@ -61,6 +61,7 @@ pub const FrameInput = struct {
     use_bomb: bool = false,
     key_code: u32 = 0,
     map: bool = false,
+    diagnostics: bool = false,
     mouse_x: f32 = 0,
     mouse_y: f32 = 0,
     click: bool = false,
@@ -237,6 +238,11 @@ pub const Platform = struct {
     pub fn toggleFullscreen(self: *Platform) bool {
         self.setFullscreen(!self.fullscreen);
         return self.fullscreen;
+    }
+
+    pub fn setClipboard(self: *Platform, text: [:0]const u8) void {
+        _ = self;
+        _ = c.SDL_SetClipboardText(text.ptr);
     }
 
     pub fn setBindings(self: *Platform, bindings: Bindings) void {
@@ -468,6 +474,7 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F1))) input.toggle_debug = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F2))) input.settings = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F3))) input.feedback = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F4))) input.diagnostics = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F11))) input.toggle_fullscreen = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F12))) input.screenshot = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F5))) input.save_slot = true;
