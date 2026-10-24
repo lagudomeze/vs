@@ -216,9 +216,9 @@ fn drawPause(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     r.drawText(px + 30, py + 64, "ESC  RESUME", palette.cream, 1, false);
     r.drawText(px + 30, py + 84, "F2   SETTINGS", palette.cream, 1, false);
     if (state.pause_confirm_quit) {
-        r.drawText(px + 30, py + 104, "Q AGAIN TO QUIT", palette.red, 1, false);
+        r.drawText(px + 30, py + 104, "Q/START AGAIN TO QUIT", palette.red, 1, false);
     } else {
-        r.drawText(px + 30, py + 104, "Q    QUIT", palette.muted, 1, false);
+        r.drawText(px + 30, py + 104, "Q/START  QUIT", palette.muted, 1, false);
     }
     r.drawText(px + 30, py + ph - 22, "F4 COPY DIAGNOSTICS", palette.gold, 1, false);
 }
