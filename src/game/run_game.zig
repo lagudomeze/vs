@@ -233,7 +233,6 @@ pub const RunGame = struct {
         self.sim.setEnemyDefs(self.content.enemies);
         self.sim.reset(self.seed, self.class);
         self.inventory = items_mod.Inventory.init();
-        if (self.content.itemIndex("fire_bomb")) |bomb| _ = self.inventory.pickup(bomb);
         self.last_state = .playing;
         self.camera = .{
             .target = math.Vec3.init(0, 0.55, 0),
@@ -323,7 +322,6 @@ pub const RunGame = struct {
     fn resetRun(self: *RunGame) void {
         self.sim.reset(self.seed, self.class);
         self.inventory = items_mod.Inventory.init();
-        if (self.content.itemIndex("fire_bomb")) |bomb| _ = self.inventory.pickup(bomb);
         self.mods.clear();
         self.loot_rng = std.Random.DefaultPrng.init(self.seed ^ 0x9e3779b97f4a7c15);
         self.chest_loot_seen = 0;
@@ -434,19 +432,9 @@ pub const RunGame = struct {
     }
 
     fn buyShopBomb(self: *RunGame) void {
-        if (self.inventory.count() >= items_mod.max_inventory) {
-            self.sim.pushLog("背包已满", .{});
-            return;
-        }
         if (!self.sim.buyShopBomb()) {
             self.sim.pushLog("金币不足", .{});
             return;
-        }
-        if (self.content.itemIndex("fire_bomb")) |id| {
-            if (!self.inventory.pickup(id)) {
-                self.sim.pushLog("背包已满", .{});
-                return;
-            }
         }
         self.shop_open = false;
         self.fillHudState();
@@ -916,34 +904,14 @@ pub const RunGame = struct {
 
     fn useBomb(self: *RunGame) bool {
         if (self.panel != .none or self.sim.state != .playing) return false;
-        for (self.inventory.slice()) |id| {
-            if (id >= self.content.items.len) continue;
-            const def = &self.content.items[id];
-            const use = def.use() orelse continue;
-            if (use.bomb <= 0) continue;
-            var target = false;
-            var i: usize = 0;
-            while (i < self.sim.enemy_count) : (i += 1) {
-                const e = &self.sim.enemies[i];
-                if (!e.life.alive) continue;
-                const dx = @abs(e.pos.x - self.sim.hero.pos.x);
-                const dy = @abs(e.pos.y - self.sim.hero.pos.y);
-                if (@as(f32, @floatFromInt(dx + dy)) <= use.bomb_radius) {
-                    target = true;
-                    break;
-                }
-            }
-            if (!target) {
-                self.sim.pushLog("BOMB NO TARGET", .{});
-                return false;
-            }
-            if (!self.inventory.remove(id)) continue;
-            self.clearAim();
-            const hits = self.sim.detonate(use.bomb, use.bomb_radius);
-            self.sim.pushLog("{s} HIT {d}", .{ def.name, hits });
-            return true;
+        const hits = self.sim.useBomb();
+        if (hits == 0) {
+            self.sim.pushLog("BOMB NO TARGET", .{});
+            return false;
         }
-        return false;
+        self.clearAim();
+        self.sim.pushLog("BOMB HIT {d}", .{hits});
+        return true;
     }
 
     fn usePotion(self: *RunGame, allow_resource: bool) bool {
@@ -2015,13 +1983,13 @@ pub const RunGame = struct {
         self.trackRunEnd();
         const initiative = self.initiativeNames();
         var potion_count: u8 = 0;
-        var bomb_count: u8 = 0;
         for (self.inventory.slice()) |id| {
             if (id >= self.content.items.len) continue;
             if (self.content.items[id].use()) |use| {
-                if (use.bomb > 0) bomb_count +|= 1 else potion_count +|= 1;
+                if (use.heal > 0 or use.resource > 0) potion_count +|= 1;
             }
         }
+        const bomb_count: u8 = self.sim.hero.bombs;
         self.hud_state = .{
             .menu = !self.started,
             .help = self.show_help,
@@ -2320,9 +2288,9 @@ test "run game: shop sells a replacement bomb" {
     defer g.destroy();
     g.debugShop();
     g.sim.hero.pos = g.sim.shop;
-    const before = g.inventory.count();
+    const before = g.sim.hero.bombs;
     g.buyShopBomb();
-    try std.testing.expectEqual(before + 1, g.inventory.count());
+    try std.testing.expectEqual(before + 1, g.sim.hero.bombs);
     try std.testing.expectEqual(@as(u32, 80), g.sim.gold);
     try std.testing.expect(!g.shop_open);
 }
@@ -2331,9 +2299,6 @@ test "run game: B throws a fire bomb" {
     const gpa = std.testing.allocator;
     const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
     defer g.destroy();
-    const id = g.content.itemIndex("fire_bomb") orelse return error.MissingBomb;
-    _ = g.inventory.remove(id); // consume the starting bomb, then test one
-    try std.testing.expect(g.inventory.pickup(id));
     g.started = true;
     g.sim.state = .playing;
     g.sim.enemy_count = 1;
@@ -2354,7 +2319,7 @@ test "run game: B throws a fire bomb" {
     const turn = g.sim.turn;
     g.update(.{ .use_bomb = true }, 1.0 / 60.0);
     try std.testing.expect(!g.sim.enemies[0].life.alive);
-    try std.testing.expectEqual(@as(usize, 0), g.inventory.count());
+    try std.testing.expectEqual(@as(u8, 0), g.sim.hero.bombs);
     try std.testing.expect(g.sim.turn > turn);
 }
 

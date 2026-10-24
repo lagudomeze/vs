@@ -24,6 +24,8 @@ pub const shop_vitality_cost: u32 = 60;
 pub const shop_cleanse_cost: u32 = 20;
 pub const shop_loot_cost: u32 = 80;
 pub const shop_bomb_cost: u32 = 40;
+pub const bomb_damage: f32 = 45;
+pub const bomb_radius: f32 = 2;
 
 pub const Affix = enum(u8) { none, swift, armored, vampiric, explosive, split, frost, berserk };
 
@@ -205,6 +207,8 @@ pub const Hero = struct {
     progression: HeroProgression = .{},
     status: StatusSet = .{},
     talents: TalentState = .{},
+    /// One-use area bombs; refilled by shops. Not an inventory item.
+    bombs: u8 = 1,
 };
 
 pub const EnemyIdentity = struct {
@@ -801,6 +805,7 @@ pub const Sim = struct {
         if (!self.atShop() or self.gold < shop_bomb_cost) return false;
         self.gold -= shop_bomb_cost;
         self.shop_used = true;
+        self.hero.bombs +|= 1;
         self.pushLog("SHOP BOMB", .{});
         return true;
     }
@@ -1533,6 +1538,23 @@ pub const Sim = struct {
         self.pushLog("{s} 造成 {d:.0} 伤害", .{ e.identity.name, dmg });
     }
 
+    /// Consume one hero bomb if at least one enemy is in radius.
+    pub fn useBomb(self: *Sim) usize {
+        if (self.state != .playing or self.hero.bombs == 0) return 0;
+        var targets: usize = 0;
+        var i: usize = 0;
+        while (i < self.enemy_count) : (i += 1) {
+            const e = &self.enemies[i];
+            if (!e.life.alive) continue;
+            const dx = @abs(e.pos.x - self.hero.pos.x);
+            const dy = @abs(e.pos.y - self.hero.pos.y);
+            if (@as(f32, @floatFromInt(dx + dy)) <= bomb_radius) targets += 1;
+        }
+        if (targets == 0) return 0;
+        self.hero.bombs -= 1;
+        return self.detonate(bomb_damage, bomb_radius);
+    }
+
     /// Hero-centred bomb: damages every living enemy within Manhattan radius,
     /// then spends the turn if anything was hit.
     pub fn detonate(self: *Sim, damage: f32, radius: f32) usize {
@@ -2084,6 +2106,19 @@ test "run sim: chunk save freeze closes gates" {
     try std.testing.expect(s.isBlocked(@divTrunc(@as(i32, grid_w), 2), 0));
 }
 
+test "run sim: hero bomb charge is consumed only with a target" {
+    var s = Sim.init(87, .warrior);
+    try std.testing.expectEqual(@as(u8, 1), s.hero.bombs);
+    try std.testing.expectEqual(@as(usize, 0), s.useBomb());
+    try std.testing.expectEqual(@as(u8, 1), s.hero.bombs);
+
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{ .kind = 0, .name = "骷髅兵", .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y }, .hp = 20, .hp_max = 20, .attack = 5, .armor = 0, .speed = 100, .range = 1, .xp = 5 });
+    try std.testing.expectEqual(@as(usize, 1), s.useBomb());
+    try std.testing.expectEqual(@as(u8, 0), s.hero.bombs);
+    try std.testing.expect(!s.enemies[0].life.alive);
+}
+
 test "run sim: bomb hits enemies in radius and spends a turn" {
     var s = Sim.init(87, .warrior);
     s.enemy_count = 3;
@@ -2378,6 +2413,7 @@ test "run sim: shop buys healing and permanent power" {
     try std.testing.expect(b.buyShopBomb());
     try std.testing.expectEqual(@as(u32, 0), b.gold);
     try std.testing.expect(b.shop_used);
+    try std.testing.expectEqual(@as(u8, 2), b.hero.bombs);
 }
 
 test "run sim: shrine grants one permanent stat choice" {

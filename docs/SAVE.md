@@ -114,5 +114,6 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 
 - 新增可选 chunks.arenas[9]：每个 Arena 保存 blocked、楼梯、宝箱/陷阱、祭坛/商店、敌人。
 - chunks.chunk 保存当前九宫格坐标（0..8）。
+- hero.bombs 保存英雄炸弹计数；v2 旧档缺失时默认 1。
 - v2 存档仍读取为单图；v1 拒绝。
 - 单文件上限提高到 1 MiB。
