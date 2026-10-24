@@ -663,6 +663,10 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         const kills_before = game.sim.kills;
         const state_before = game.sim.state;
         game.update(input, dt);
+        if (game.shake_pulse > 0) {
+            platform.rumble(game.shake_pulse, 160);
+            game.shake_pulse = 0;
+        }
         platform.setAmbience(ambienceFor(game));
         if (game.sim.state == .dead and state_before != .dead) {
             platform.playSound(.death);

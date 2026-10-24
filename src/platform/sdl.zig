@@ -251,6 +251,13 @@ pub const Platform = struct {
         return self.fullscreen;
     }
 
+    pub fn rumble(self: *Platform, strength: f32, duration_ms: u32) void {
+        if (self.gamepad) |pad| {
+            const s: u16 = @intFromFloat(std.math.clamp(strength, 0, 1) * 65535.0);
+            _ = c.SDL_RumbleGamepad(pad, s, s, duration_ms);
+        }
+    }
+
     pub fn setClipboard(self: *Platform, text: [:0]const u8) void {
         _ = self;
         _ = c.SDL_SetClipboardText(text.ptr);
