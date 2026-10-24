@@ -429,6 +429,25 @@ pub const RunGame = struct {
         self.fillHudState();
     }
 
+    fn buyShopBomb(self: *RunGame) void {
+        if (self.inventory.count() >= items_mod.max_inventory) {
+            self.sim.pushLog("背包已满", .{});
+            return;
+        }
+        if (!self.sim.buyShopBomb()) {
+            self.sim.pushLog("金币不足", .{});
+            return;
+        }
+        if (self.content.itemIndex("fire_bomb")) |id| {
+            if (!self.inventory.pickup(id)) {
+                self.sim.pushLog("背包已满", .{});
+                return;
+            }
+        }
+        self.shop_open = false;
+        self.fillHudState();
+    }
+
     fn buyShop(self: *RunGame, index: usize) void {
         if (index >= 4) return;
         const choice: sim_mod.ShopChoice = @fromBackingInt(@intCast(index));
@@ -1034,6 +1053,8 @@ pub const RunGame = struct {
                 self.buyShop(3);
             } else if (input.stat == 4) {
                 self.buyShopLoot();
+            } else if (input.stat == 5) {
+                self.buyShopBomb();
             }
             self.syncVisuals(false);
             self.updateVisuals(dt);
@@ -2282,6 +2303,19 @@ test "run game: P quaffs a potion outside the inventory" {
     g.update(.{ .use_item = true }, 1.0 / 60.0);
     try std.testing.expect(g.sim.hero.vitals.val > 10);
     try std.testing.expectEqual(before - 1, g.inventory.count());
+}
+
+test "run game: shop sells a replacement bomb" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.debugShop();
+    g.sim.hero.pos = g.sim.shop;
+    const before = g.inventory.count();
+    g.buyShopBomb();
+    try std.testing.expectEqual(before + 1, g.inventory.count());
+    try std.testing.expectEqual(@as(u32, 80), g.sim.gold);
+    try std.testing.expect(!g.shop_open);
 }
 
 test "run game: B throws a fire bomb" {

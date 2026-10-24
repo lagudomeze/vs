@@ -58,7 +58,7 @@ Loot is automatic and build-defining: weapons, armor, trinkets and consumables f
 - Three procedurally generated floors with bosses, shrines, shops, chests and traps.
 - Seed-based runs, deterministic combat, visible enemy intents.
 - Automatic equipment plus a small inventory; build through loot, not menus.
-- A starting fire bomb (B) gives every class a one-use area answer.
+- A starting fire bomb (B) gives every class a one-use area answer; shops refill it for 40 gold.
 - Elite affixes that change target priority: SWIFT / ARMORED / VAMPIRIC / VOLATILE / FROST / SPLIT.
 - Rotatable top-down camera, pixel-art software renderer, integer scaling.
 - Controller support (including A/B swap), keyboard and mouse.
