@@ -687,6 +687,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         const kills_before = game.sim.kills;
         const state_before = game.sim.state;
         game.update(input, dt);
+        platform.setAudioVolume(if (game.pause_open) 0 else game.settings_volume);
         if (game.shake_pulse > 0) {
             platform.rumble(game.shake_pulse, 160);
             game.shake_pulse = 0;
