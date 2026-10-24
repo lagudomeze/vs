@@ -10,6 +10,7 @@
 python tools/store_assets.py
 python tools/store_screens.py
 python tools/key_art.py
+python tools/pixel_logo.py
 ~~~
 
 源图：
@@ -21,9 +22,10 @@ python tools/key_art.py
 
 | 文件 | 尺寸 | 说明 |
 | --- | --- | --- |
-| key_art_1920x1080.png | 1920x1080 | 占位主视觉：干净场景 + VX/AETHER KEEP 标题排版 |
+| key_art_1920x1080.png | 1920x1080 | 占位主视觉：干净场景 + 像素 VX logo + 标题排版 |
+| logo_920x430.png | 920x430 | 像素 VX / AETHER KEEP 透明 logo |
 
-仍不是正式手绘 key art；上架前替换为专门构图。
+仍不是正式手绘 key art；上架前替换为专门构图。logo 为 5x7 像素字表生成，可作为正式 logo 的方向稿。
 
 ## 商店截图（5 张，16:9）
 
