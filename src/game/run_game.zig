@@ -187,6 +187,7 @@ pub const RunGame = struct {
     settings_key_mode: bool = false,
     settings_key_index: u8 = 0,
     settings_key_error: bool = false,
+    settings_chunks: bool = false,
     hero_vis: Visual = .{},
     enemy_vis: [sim_mod.max_enemies]Visual = undefined,
     floats: [24]FloatText = .{ .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{}, .{} },
@@ -321,6 +322,7 @@ pub const RunGame = struct {
     /// class selection and the menu, so R never loses the chosen class.
     fn resetRun(self: *RunGame) void {
         self.sim.reset(self.seed, self.class);
+        if (self.settings_chunks) self.sim.enableChunks();
         self.inventory = items_mod.Inventory.init();
         self.mods.clear();
         self.loot_rng = std.Random.DefaultPrng.init(self.seed ^ 0x9e3779b97f4a7c15);
@@ -347,6 +349,22 @@ pub const RunGame = struct {
         if (seed_state == 0) seed_state = @intFromPtr(&seed_state) ^ 0x9e3779b97f4a7c15;
         seed_state = seed_state *% 6364136223846793005 +% 1442695040888963407;
         return if (seed_state == 0) 1 else seed_state;
+    }
+
+    pub fn setChunks(self: *RunGame, enabled: bool) void {
+        self.settings_chunks = enabled;
+        if (enabled) {
+            if (!self.sim.chunks_enabled) {
+                self.sim.enableChunks();
+                self.sim.pushLog("CHUNKS 3x3 ON", .{});
+            }
+        } else if (self.sim.chunks_enabled) {
+            self.sim.freezeForSave();
+            self.sim.pushLog("CHUNKS OFF", .{});
+        }
+        self.rebuildMesh();
+        self.resetVisuals();
+        self.fillHudState();
     }
 
     pub fn restart(self: *RunGame) void {
@@ -741,6 +759,7 @@ pub const RunGame = struct {
         self.panel = .none;
         self.started = true;
         self.shrine_open = self.sim.atShrine();
+        self.settings_chunks = self.sim.chunks_enabled;
         self.shop_open = self.sim.atShop();
         self.rebuildMesh();
         self.resetVisuals();
@@ -2011,6 +2030,7 @@ pub const RunGame = struct {
             .keys_mode = self.settings_key_mode,
             .keys_index = self.settings_key_index,
             .keys_error = self.settings_key_error,
+            .settings_chunks = self.settings_chunks,
             .record_best_floor = self.records.best_floor,
             .record_best_turn = self.records.best_turn,
             .potions = potion_count,
@@ -2280,6 +2300,19 @@ test "run game: P quaffs a potion outside the inventory" {
     g.update(.{ .use_item = true }, 1.0 / 60.0);
     try std.testing.expect(g.sim.hero.vitals.val > 10);
     try std.testing.expectEqual(before - 1, g.inventory.count());
+}
+
+test "run game: chunk setting survives toggle and restart" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.setChunks(true);
+    try std.testing.expect(g.sim.chunks_enabled);
+    g.setChunks(false);
+    try std.testing.expect(!g.sim.chunks_enabled);
+    g.setChunks(true);
+    g.restart();
+    try std.testing.expect(g.sim.chunks_enabled);
 }
 
 test "run game: shop sells a replacement bomb" {

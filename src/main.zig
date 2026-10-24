@@ -396,6 +396,8 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     game.settings_ambient = settings.ambient;
     game.settings_pad_swap = settings.pad_swap;
     game.settings_esdf = settings.esdf;
+    game.settings_chunks = settings.chunks;
+    if (settings.chunks) game.setChunks(true);
 
     const freq: f64 = @floatFromInt(vx.platform.performanceFrequency());
     var last = vx.platform.performanceNow();
@@ -530,6 +532,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                     settings.ambient = game.settings_ambient;
                     settings.pad_swap = game.settings_pad_swap;
                     settings.esdf = game.settings_esdf;
+                    settings.chunks = game.settings_chunks;
                     vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
                 }
             }
@@ -776,7 +779,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
         game.hud_state.keys_mode = true;
         game.hud_state.keys_index = 0;
     }
-    if (options.chunks) game.sim.enableChunks();
+    if (options.chunks) game.setChunks(true);
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
     game.show_world_labels = !options.hide_labels;

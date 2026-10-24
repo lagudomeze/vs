@@ -459,6 +459,7 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_6))) input.stat = 5;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_7))) input.stat = 6;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_8))) input.stat = 7;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_9))) input.stat = 8;
                     if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.character))) input.character = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F))) input.interrupt = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.inventory))) input.inventory = true;
