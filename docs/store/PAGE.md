@@ -110,7 +110,7 @@ Roguelike, Turn-Based, Dungeon Crawler, Pixel Art, Singleplayer, Procedural Gene
 
 ## Launch Checklist
 
-- [ ] 正式 key art / logo 替换占位
+- [ ] 正式 key art / logo 替换占位（已有像素 VX 方向稿）
 - [ ] 5 张商店截图最终版
 - [ ] 30–60 秒预告片
 - [ ] Steam AppID / DepotID

@@ -41,14 +41,15 @@ def main() -> None:
         v.putpixel((0, y), int(120 * t ** 2))
     shade = Image.composite(Image.new("RGB", (1920, 1080), DARK), shade, v.resize((1920, 1080)))
 
+    logo = Image.open(ROOT / "docs" / "store" / "logo_920x430.png").convert("RGBA")
+    logo = logo.resize((540, 252), Image.LANCZOS)
+    shade.paste(logo, (72, 300), logo)
+
     draw = ImageDraw.Draw(shade)
-    x, y = 96, 300
-    draw.text((x, y), "PIXEL-ART DUNGEON CRAWL", font=font(FONT_SUB, 24), fill=GOLD)
-    draw.text((x - 4, y + 42), "VX", font=font(FONT_BOLD, 240), fill=CREAM, stroke_width=6, stroke_fill=DARK)
-    draw.text((x + 4, y + 300), "AETHER KEEP", font=font(FONT_BOLD, 58), fill=GOLD)
-    draw.rectangle((x + 4, y + 380, x + 520, y + 384), fill=GOLD)
-    draw.text((x + 4, y + 406), "DESCEND.  ADAPT.  SURVIVE.", font=font(FONT_SUB, 26), fill=CREAM)
-    draw.text((x + 4, y + 452), "TURN-BASED  /  THREE FLOORS  /  ONE HERO", font=font(FONT_SUB, 18), fill=(160, 168, 184))
+    x, y = 76, 590
+    draw.rectangle((x, y, x + 520, y + 4), fill=GOLD)
+    draw.text((x, y + 26), "DESCEND.  ADAPT.  SURVIVE.", font=font(FONT_SUB, 26), fill=CREAM)
+    draw.text((x, y + 72), "TURN-BASED  /  THREE FLOORS  /  ONE HERO", font=font(FONT_SUB, 18), fill=(160, 168, 184))
 
     # Simple corner runes.
     for cx, cy, dx, dy in [(48, 48, 1, 1), (1872, 48, -1, 1), (48, 1032, 1, -1), (1872, 1032, -1, -1)]:
