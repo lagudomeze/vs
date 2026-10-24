@@ -40,7 +40,11 @@ steamcmd +login <account> +run_app_build "C:/path/to/vx/steam/app_build.vdf" +qu
 
 首次上传前在 Steamworks 后台创建 App/Depot，并配置启动项为 vx.exe。
 
-## 4. 检查
+## 4. 启动/Deck
+
+启动项、Depot 根、Auto-Cloud、Deck 与首启清单见 [docs/LAUNCH_CONFIG.md](../docs/LAUNCH_CONFIG.md)。
+
+## 5. 检查
 
 ~~~powershell
 pwsh -File tools/steam_check.ps1
