@@ -57,3 +57,7 @@ pwsh -File tools/demo_pack.ps1
 - 独立 Demo App/Depot
 - Demo 商店页/预告片
 - 从 Demo 导入愿望单/进度
+
+## 商店素材
+
+Demo 专用截图/头图/胶囊见 [store/demo/README.md](store/demo/README.md)，由 tools/demo_assets.py 生成；头图只写 WARRIOR / FLOOR 1。
