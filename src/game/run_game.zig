@@ -2072,6 +2072,18 @@ pub const RunGame = struct {
             self.sim.notice = "";
         }
         const initiative = self.initiativeNames();
+        var boss_active = false;
+        var boss_hp: f32 = 0;
+        var boss_hp_max: f32 = 1;
+        var bi: usize = 0;
+        while (bi < self.sim.enemy_count) : (bi += 1) {
+            const e = &self.sim.enemies[bi];
+            if (!e.life.alive or e.identity.kind != intent_mod.boss_kind) continue;
+            boss_active = true;
+            boss_hp = e.vitals.val;
+            boss_hp_max = e.vitals.full;
+            break;
+        }
         var potion_count: u8 = 0;
         for (self.inventory.slice()) |id| {
             if (id >= self.content.items.len) continue;
@@ -2104,6 +2116,9 @@ pub const RunGame = struct {
             .settings_chunks = self.settings_chunks,
             .chunk_map_open = self.chunk_map_open,
             .demo_end = self.demo_end,
+            .boss_active = boss_active,
+            .boss_hp = boss_hp,
+            .boss_hp_max = boss_hp_max,
             .chunk = self.sim.chunk,
             .chunk_visited = self.sim.visited_chunks,
             .chunk_cleared = self.sim.cleared_chunks,
