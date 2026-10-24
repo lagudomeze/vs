@@ -426,6 +426,7 @@ pub const RunGame = struct {
             }
             self.records.best_floor = @max(self.records.best_floor, self.sim.floor);
             self.records.best_kills = @max(self.records.best_kills, self.sim.kills);
+            self.records.best_gold = @max(self.records.best_gold, self.sim.gold);
             self.records_dirty = true;
         }
         self.last_state = self.sim.state;
@@ -2065,6 +2066,8 @@ pub const RunGame = struct {
             .toast = self.toast_text,
             .record_best_floor = self.records.best_floor,
             .record_best_turn = self.records.best_turn,
+            .record_best_kills = self.records.best_kills,
+            .record_best_gold = self.records.best_gold,
             .potions = potion_count,
             .bombs = bomb_count,
             .floor_mod_label = self.sim.floor_mod.label(),
