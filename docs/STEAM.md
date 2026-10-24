@@ -14,7 +14,7 @@
 | 存档路径 | 已改 SDL_GetPrefPath；旧 saves 自动迁移；--portable 保留 cwd | Cloud 白名单 |
 | 声音 | 程序化 SFX + 音量；无 BGM | 至少 BGM/环境音 |
 | 设置 | 全屏/窗口/VSync/倍率/音量已可调 | 键位、语言、音频设备 |
-| 手柄 | 键鼠 | Steam Input / 手柄导航 |
+| 手柄 | SDL3 gamepad 基础映射 | 热插拔、改键、Steam Input 官方配置 |
 | 本地化 | 中文 | 英文商店页 + 英文本地化（至少 UI/日志） |
 | 商店素材 | 占位 Capsule + 1920 截图已生成 | 正式 key art、5 张截图、预告片 |
 | 法律 | 无 | EULA/隐私政策、第三方许可（SDL/zflecs/字体/Kenney） |

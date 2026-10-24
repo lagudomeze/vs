@@ -63,6 +63,9 @@ pub const Platform = struct {
     window_width: u32 = 0,
     fullscreen: bool = false,
     audio: ?*c.SDL_AudioStream = null,
+    gamepad: ?*c.SDL_Gamepad = null,
+    pad_prev: u32 = 0,
+    pad_dir: u8 = 0,
     audio_volume: f32 = 0.55,
     window_scale: u8 = 3,
     window_height: u32 = 0,
@@ -74,6 +77,7 @@ pub const Platform = struct {
         if (!c.SDL_Init(@intCast(c.SDL_INIT_VIDEO))) return error.SdlInitFailed;
         errdefer c.SDL_Quit();
         _ = c.SDL_InitSubSystem(@intCast(c.SDL_INIT_AUDIO));
+        _ = c.SDL_InitSubSystem(@intCast(c.SDL_INIT_GAMEPAD));
 
         const win_w: c_int = @intCast(width * window_scale);
         const win_h: c_int = @intCast(height * window_scale);
@@ -107,8 +111,17 @@ pub const Platform = struct {
         if (audio) |stream| _ = c.SDL_ResumeAudioStreamDevice(stream);
         errdefer if (audio) |stream| c.SDL_DestroyAudioStream(stream);
 
+        var pad_count: c_int = 0;
+        const pad_ids = c.SDL_GetGamepads(&pad_count);
+        var gamepad: ?*c.SDL_Gamepad = null;
+        if (pad_ids != null) {
+            if (pad_count > 0) gamepad = c.SDL_OpenGamepad(pad_ids[0]);
+            c.SDL_free(pad_ids);
+        }
+
         return .{
             .audio = audio,
+            .gamepad = gamepad,
             .window = win,
             .renderer = ren,
             .texture = tex,
@@ -117,6 +130,72 @@ pub const Platform = struct {
             .window_width = @intCast(win_w),
             .window_height = @intCast(win_h),
         };
+    }
+
+    fn pollGamepad(self: *Platform, pad: *c.SDL_Gamepad, input: *FrameInput) void {
+        const btn = struct {
+            fn down(p: *c.SDL_Gamepad, b: c_int) bool {
+                return c.SDL_GetGamepadButton(p, @intCast(b));
+            }
+        };
+        var mask: u32 = 0;
+        const buttons = [_]c_int{
+            c.SDL_GAMEPAD_BUTTON_SOUTH,
+            c.SDL_GAMEPAD_BUTTON_EAST,
+            c.SDL_GAMEPAD_BUTTON_WEST,
+            c.SDL_GAMEPAD_BUTTON_NORTH,
+            c.SDL_GAMEPAD_BUTTON_LEFT_SHOULDER,
+            c.SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER,
+            c.SDL_GAMEPAD_BUTTON_LEFT_STICK,
+            c.SDL_GAMEPAD_BUTTON_START,
+            c.SDL_GAMEPAD_BUTTON_BACK,
+            c.SDL_GAMEPAD_BUTTON_DPAD_UP,
+            c.SDL_GAMEPAD_BUTTON_DPAD_DOWN,
+            c.SDL_GAMEPAD_BUTTON_DPAD_LEFT,
+            c.SDL_GAMEPAD_BUTTON_DPAD_RIGHT,
+        };
+        for (buttons) |b| {
+            if (btn.down(pad, b)) mask |= @as(u32, 1) << @intCast(b);
+        }
+        const pressed = mask & ~self.pad_prev;
+        self.pad_prev = mask;
+
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_SOUTH)) != 0) {
+            input.cast = true;
+            input.wait = true;
+        }
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_EAST)) != 0) input.escape = true;
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_WEST)) != 0) input.inventory = true;
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_NORTH)) != 0) input.character = true;
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_LEFT_SHOULDER)) != 0) input.talent_1 = true;
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER)) != 0) input.talent_2 = true;
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_LEFT_STICK)) != 0) input.talent_3 = true;
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_START)) != 0) input.help = true;
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_BACK)) != 0) input.settings = true;
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_DPAD_UP)) != 0) input.step_n = true;
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_DPAD_DOWN)) != 0) input.step_s = true;
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_DPAD_LEFT)) != 0) input.step_w = true;
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_DPAD_RIGHT)) != 0) input.step_e = true;
+
+        const ax = c.SDL_GetGamepadAxis(pad, @intCast(c.SDL_GAMEPAD_AXIS_LEFTX));
+        const ay = c.SDL_GetGamepadAxis(pad, @intCast(c.SDL_GAMEPAD_AXIS_LEFTY));
+        const dead: i32 = 16000;
+        var dir: u8 = 0;
+        if (@abs(@as(i32, ax)) > @abs(@as(i32, ay))) {
+            if (ax > dead) dir = 4 else if (ax < -dead) dir = 3;
+        } else {
+            if (ay > dead) dir = 2 else if (ay < -dead) dir = 1;
+        }
+        if (dir != self.pad_dir) {
+            switch (dir) {
+                1 => input.step_n = true,
+                2 => input.step_s = true,
+                3 => input.step_w = true,
+                4 => input.step_e = true,
+                else => {},
+            }
+            self.pad_dir = dir;
+        }
     }
 
     pub fn setFullscreen(self: *Platform, on: bool) void {
@@ -188,6 +267,7 @@ pub const Platform = struct {
     }
 
     pub fn deinit(self: *Platform) void {
+        if (self.gamepad) |pad| c.SDL_CloseGamepad(pad);
         if (self.audio) |stream| c.SDL_DestroyAudioStream(stream);
         if (self.texture != null) c.SDL_DestroyTexture(self.texture);
         if (self.renderer) |r| c.SDL_DestroyRenderer(r);
@@ -294,6 +374,8 @@ pub const Platform = struct {
         if (held.key(keys, c.SDL_SCANCODE_A)) input.move_x -= 1;
         if (held.key(keys, c.SDL_SCANCODE_Q)) input.yaw_delta += 1.7 * dt;
         if (held.key(keys, c.SDL_SCANCODE_E)) input.yaw_delta -= 1.7 * dt;
+
+        if (self.gamepad) |pad| self.pollGamepad(pad, &input);
         return input;
     }
 

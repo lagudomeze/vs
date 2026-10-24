@@ -143,7 +143,7 @@ const menu_hint = "按 1 / 2 / 3 开始";
 const menu_footer = "1/2/3 选择  D 切换  F9 读档  R 重开";
 const talent_label = "天赋";
 const help_title = "操作说明";
-const help_footer = "H 关闭";
+const help_footer = "H CLOSE   PAD A OK  B BACK";
 
 /// Single source of truth for the in-game controls panel. A test asserts that
 /// the new core verbs (potion / shop / shrine / BUFF) are present, so README
