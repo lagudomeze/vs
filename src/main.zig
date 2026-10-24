@@ -371,6 +371,16 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     platform.setAmbient(settings.ambient);
     platform.setPadSwap(settings.pad_swap);
     platform.setEsdf(settings.esdf);
+    platform.setBindings(.{
+        .confirm = settings.keys.confirm,
+        .potion = settings.keys.potion,
+        .bomb = settings.keys.bomb,
+        .inventory = settings.keys.inventory,
+        .character = settings.keys.character,
+        .talent1 = settings.keys.talent1,
+        .talent2 = settings.keys.talent2,
+        .talent3 = settings.keys.talent3,
+    });
     game.settings_fullscreen = settings.fullscreen;
     game.settings_scale = settings.scale;
     game.settings_vsync = settings.vsync;

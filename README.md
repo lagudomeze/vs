@@ -112,7 +112,7 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | F5 / F9 | 打开存档 / 读档槽位面板；1/2/3 选择，Esc 取消 |
 | F10 | 打开自动档面板；1/2/3 读取最近 3 个楼层备份 |
 | H | 打开/关闭操作说明 |
-| F2 | 快速设置：1 全屏 / 2 垂直同步 / 3 窗口倍率 / 4 音量 / 5 环境音 / 6 手柄 A/B 交换 / 7 WASD/ESDF |
+| F2 | 快速设置：1 全屏 / 2 垂直同步 / 3 窗口倍率 / 4 音量 / 5 环境音 / 6 手柄 A/B 交换 / 7 WASD/ESDF；按键重绑见 [docs/KEYS.md](docs/KEYS.md) |
 | F3 | 打开反馈表单（GitHub issue） |
 | F11 | 全屏切换（也支持 --fullscreen 启动） |
 | F1 / F12 | 调试 / 截图 |
@@ -239,7 +239,7 @@ docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 
 ## 发行计划
 
-Steam 上架/商店素材/Demo/反馈闭环见 [docs/STEAM.md](docs/STEAM.md)；商店占位素材与生成器见 [docs/store/README.md](docs/store/README.md)；Auto-Cloud 配置见 [docs/STEAM_CLOUD.md](docs/STEAM_CLOUD.md)；SteamPipe 模板在 [steam/](steam/README.md)；玩家反馈流程见 [docs/FEEDBACK.md](docs/FEEDBACK.md)；商店页文案见 [docs/store/PAGE.md](docs/store/PAGE.md)；测试流程见 [docs/PLAYTEST.md](docs/PLAYTEST.md)；预告片分镜见 [docs/TRAILER.md](docs/TRAILER.md)。拆出的任务：#120 ECS Phase1、#121 Steam 构建、#122 商店/Demo/反馈、#123 设置/手柄。
+Steam 上架/商店素材/Demo/反馈闭环见 [docs/STEAM.md](docs/STEAM.md)；商店占位素材与生成器见 [docs/store/README.md](docs/store/README.md)；Auto-Cloud 配置见 [docs/STEAM_CLOUD.md](docs/STEAM_CLOUD.md)；SteamPipe 模板在 [steam/](steam/README.md)；玩家反馈流程见 [docs/FEEDBACK.md](docs/FEEDBACK.md)；商店页文案见 [docs/store/PAGE.md](docs/store/PAGE.md)；测试流程见 [docs/PLAYTEST.md](docs/PLAYTEST.md)；预告片分镜见 [docs/TRAILER.md](docs/TRAILER.md)；按键重绑见 [docs/KEYS.md](docs/KEYS.md)。拆出的任务：#120 ECS Phase1、#121 Steam 构建、#122 商店/Demo/反馈、#123 设置/手柄。
 
 ## 致谢与许可
 
