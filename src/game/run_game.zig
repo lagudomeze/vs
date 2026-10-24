@@ -189,6 +189,8 @@ pub const RunGame = struct {
     settings_key_error: bool = false,
     settings_chunks: bool = false,
     chunk_map_open: bool = false,
+    demo: bool = false,
+    demo_end: bool = false,
     toast_text: []const u8 = "",
     toast_time: f32 = 0,
     hero_vis: Visual = .{},
@@ -365,6 +367,13 @@ pub const RunGame = struct {
         return out[0..off :0];
     }
 
+    fn finishDemo(self: *RunGame) void {
+        self.demo_end = true;
+        self.sim.state = .victory;
+        self.sim.pushLog("DEMO END", .{});
+        self.clearAim();
+    }
+
     pub fn setChunks(self: *RunGame, enabled: bool) void {
         self.settings_chunks = enabled;
         if (enabled) {
@@ -418,6 +427,10 @@ pub const RunGame = struct {
             return;
         }
         if (self.last_state == .playing and self.sim.state != .playing) {
+            if (self.demo_end) {
+                self.last_state = self.sim.state;
+                return;
+            }
             if (self.sim.state == .victory) {
                 const had_win = self.records.wins > 0;
                 const all_before = self.records.wins_warrior > 0 and self.records.wins_mage > 0 and self.records.wins_chronomancer > 0;
@@ -1208,6 +1221,14 @@ pub const RunGame = struct {
                 // cancel itself; the step below costs its usual turn).
                 self.clearAim();
                 self.step_cooldown = 0.30;
+                if (self.demo) {
+                    const nx = self.sim.hero.pos.x + input.step_x;
+                    const ny = self.sim.hero.pos.y + input.step_y;
+                    if (nx == self.sim.stairs.x and ny == self.sim.stairs.y and !self.sim.stairsSealed()) {
+                        self.finishDemo();
+                        return;
+                    }
+                }
                 const before_hero = self.sim.hero.vitals.val;
                 var before: [sim_mod.max_enemies]f32 = undefined;
                 var bi: usize = 0;
@@ -2082,6 +2103,7 @@ pub const RunGame = struct {
             .keys_error = self.settings_key_error,
             .settings_chunks = self.settings_chunks,
             .chunk_map_open = self.chunk_map_open,
+            .demo_end = self.demo_end,
             .chunk = self.sim.chunk,
             .chunk_visited = self.sim.visited_chunks,
             .chunk_cleared = self.sim.cleared_chunks,
@@ -2400,6 +2422,30 @@ test "run game: sim notice becomes a HUD toast" {
     try std.testing.expectEqualStrings("TEST NOTICE", g.hud_state.toast);
     try std.testing.expect(g.toast_time > 0);
     try std.testing.expectEqualStrings("", g.sim.notice);
+}
+
+test "run game: demo ends at the stairs and skips records" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.demo = true;
+    g.started = true;
+    g.records = .{};
+    const dirs = [_][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
+    var found = false;
+    for (dirs) |d| {
+        const p = sim_mod.GridPos{ .x = g.sim.stairs.x + d[0], .y = g.sim.stairs.y + d[1] };
+        if (g.sim.map.isWalkable(.{ .x = p.x, .y = p.y })) {
+            g.sim.hero.pos = p;
+            g.update(.{ .step_x = -d[0], .step_y = -d[1] }, 0.2);
+            found = true;
+            break;
+        }
+    }
+    try std.testing.expect(found);
+    try std.testing.expect(g.demo_end);
+    try std.testing.expectEqual(sim_mod.State.victory, g.sim.state);
+    try std.testing.expectEqual(@as(u32, 0), g.records.wins);
 }
 
 test "run game: chunk map blocks world movement" {
