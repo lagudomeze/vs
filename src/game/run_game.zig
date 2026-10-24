@@ -354,6 +354,17 @@ pub const RunGame = struct {
         return if (seed_state == 0) 1 else seed_state;
     }
 
+    pub fn diagnostics(self: *const RunGame, out: [:0]u8) [:0]const u8 {
+        var off: usize = 0;
+        detailAppend(out[0 .. out.len - 1], &off, "vx 0.1.0\n", .{});
+        detailAppend(out[0 .. out.len - 1], &off, "seed={d} class={s} difficulty={s}\n", .{ self.seed, @tagName(self.class), @tagName(self.sim.difficulty) });
+        detailAppend(out[0 .. out.len - 1], &off, "floor={d} turn={d} state={s} hp={d:.0}/{d:.0}\n", .{ self.sim.floor, self.sim.turn, @tagName(self.sim.state), self.sim.hero.vitals.val, self.sim.hero.vitals.full });
+        detailAppend(out[0 .. out.len - 1], &off, "gold={d} bombs={d} chunks={s} chunk={d}\n", .{ self.sim.gold, self.sim.hero.bombs, if (self.sim.chunks_enabled) "on" else "off", self.sim.chunk });
+        detailAppend(out[0 .. out.len - 1], &off, "window={s} scale={d} vsync={s} esdf={s}\n", .{ if (self.settings_fullscreen) "full" else "window", self.settings_scale, if (self.settings_vsync) "on" else "off", if (self.settings_esdf) "on" else "off" });
+        out[off] = 0;
+        return out[0..off :0];
+    }
+
     pub fn setChunks(self: *RunGame, enabled: bool) void {
         self.settings_chunks = enabled;
         if (enabled) {
@@ -2321,6 +2332,16 @@ test "run game: P quaffs a potion outside the inventory" {
     g.update(.{ .use_item = true }, 1.0 / 60.0);
     try std.testing.expect(g.sim.hero.vitals.val > 10);
     try std.testing.expectEqual(before - 1, g.inventory.count());
+}
+
+test "run game: diagnostics include seed and state" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 4242);
+    defer g.destroy();
+    var buf: [512:0]u8 = undefined;
+    const text = g.diagnostics(&buf);
+    try std.testing.expect(std.mem.indexOf(u8, text, "seed=4242") != null);
+    try std.testing.expect(std.mem.indexOf(u8, text, "class=warrior") != null);
 }
 
 test "run game: sim notice becomes a HUD toast" {

@@ -56,7 +56,7 @@ powershell -ExecutionPolicy Bypass -File tools/package.ps1
 
 - GitHub issue 标签：feedback / balance / bug / ux
 - 标题格式：[Feedback] 一句话结论
-- 必填：版本、种子、职业、复现步骤、期望/实际
+- 必填：版本、种子、职业、复现步骤、期望/实际；游戏内按 F4 复制诊断后粘贴
 - 平衡问题附 QA 数据或种子；不要只写“太难”。
 
 ## 7. 禁止
