@@ -73,6 +73,11 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 - **规则**：以后 bump save_version 时必须同时更新本节、loadErrorText 的提示，以及一个 v(N-1) fixture 测试；如果只是新增可忽略字段，优先保持版本并做默认值兼容。
 - 日志缓冲区每行只有 64 字节，loadErrorText 的提示必须控制在约 45 字节以内，否则 pushLog 会静默丢弃。
 
+## 存档目录
+
+- 默认：SDL_GetPrefPath("lagudomeze","vx")，Windows 为 %APPDATA%\\lagudomeze\\vx\\。
+- 开发/CI：--portable 保持当前工作目录；--out 在切换目录前解析为绝对路径。
+
 ## 战绩文件
 
 - saves/records.json 独立于 run save；损坏时回退为空战绩，不影响读档。

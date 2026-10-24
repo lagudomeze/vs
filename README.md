@@ -134,6 +134,7 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | --difficulty normal\|hard | 难度；困难敌人 HP ×1.15、伤害 ×1.08 |
 | --shrine | headless 打开祭坛面板（截图/QA） |
 | --shop | headless 打开补给站面板（截图/QA） |
+| --portable | 存档留在当前目录（开发/CI；默认写用户目录） |
 | --auto | headless 自动向楼梯推进、打怪、放天赋 |
 | --inventory / --character | 启动时打开对应面板（截图/审查用） |
 | --loot N | 调试：直接获得 N 件掉落（截图/QA 用） |

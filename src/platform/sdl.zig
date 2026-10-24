@@ -3,6 +3,14 @@
 const std = @import("std");
 const c = @import("sdl");
 
+/// SDL-owned per-user writable directory, e.g. %APPDATA%/lagudomeze/vx/.
+/// Caller owns the returned slice and frees it with the same allocator.
+pub fn prefPath(alloc: std.mem.Allocator) ![]u8 {
+    const raw = c.SDL_GetPrefPath("lagudomeze", "vx") orelse return error.NoPrefPath;
+    defer c.SDL_free(raw);
+    return alloc.dupe(u8, std.mem.span(raw));
+}
+
 pub const FrameInput = struct {
     quit: bool = false,
     escape: bool = false,
