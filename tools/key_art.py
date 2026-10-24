@@ -12,6 +12,7 @@ FONT_SUB = Path("C:/Windows/Fonts/consola.ttf")
 
 GOLD = (232, 196, 106)
 CREAM = (244, 238, 220)
+MUTED = (160, 168, 184)
 DARK = (8, 9, 14)
 
 
@@ -32,26 +33,31 @@ def main() -> None:
     grad = Image.new("L", (1920, 1))
     for x in range(1920):
         t = x / 1919
-        grad.putpixel((x, 0), int(235 * max(0.0, 1.0 - t * 1.25) ** 1.4))
+        grad.putpixel((x, 0), int(238 * max(0.0, 1.0 - t * 1.12) ** 1.35))
     shade = Image.composite(Image.new("RGB", (1920, 1080), DARK), image, grad.resize((1920, 1080)))
     # Vignette top/bottom.
     v = Image.new("L", (1, 1080))
     for y in range(1080):
         t = abs(y / 540 - 1)
-        v.putpixel((0, y), int(120 * t ** 2))
+        v.putpixel((0, y), int(150 * t ** 2))
     shade = Image.composite(Image.new("RGB", (1920, 1080), DARK), shade, v.resize((1920, 1080)))
 
     logo = Image.open(ROOT / "docs" / "store" / "logo_920x430.png").convert("RGBA")
-    logo = logo.resize((540, 252), Image.LANCZOS)
-    shade.paste(logo, (72, 300), logo)
+    logo = logo.resize((720, 337), Image.LANCZOS)
+    shadow = Image.new("RGBA", logo.size, (0, 0, 0, 0))
+    shadow.putalpha(logo.getchannel("A").point(lambda a: int(a * 0.55)))
+    shade.paste(Image.new("RGB", logo.size, DARK), (92, 238), shadow)
+    shade.paste(logo, (84, 230), logo)
 
     draw = ImageDraw.Draw(shade)
-    x, y = 76, 590
-    draw.rectangle((x, y, x + 520, y + 4), fill=GOLD)
-    draw.text((x, y + 26), "DESCEND.  ADAPT.  SURVIVE.", font=font(FONT_SUB, 26), fill=CREAM)
-    draw.text((x, y + 72), "TURN-BASED  /  THREE FLOORS  /  ONE HERO", font=font(FONT_SUB, 18), fill=(160, 168, 184))
+    draw.text((92, 150), "A TURN-BASED ROGUELIKE", font=font(FONT_SUB, 20), fill=GOLD)
+    x, y = 92, 596
+    draw.rectangle((x, y, x + 620, y + 4), fill=GOLD)
+    draw.text((x, y + 28), "DESCEND.  ADAPT.  SURVIVE.", font=font(FONT_SUB, 32), fill=CREAM)
+    draw.text((x, y + 82), "THREE CLASSES  /  THREE FLOORS  /  ONE HERO", font=font(FONT_SUB, 19), fill=MUTED)
+    draw.text((x, y + 118), "WISHLIST ON STEAM", font=font(FONT_SUB, 17), fill=GOLD)
 
-    # Simple corner runes.
+    # Corner runes.
     for cx, cy, dx, dy in [(48, 48, 1, 1), (1872, 48, -1, 1), (48, 1032, 1, -1), (1872, 1032, -1, -1)]:
         draw.line((cx, cy, cx + dx * 96, cy), fill=GOLD, width=3)
         draw.line((cx, cy, cx, cy + dy * 96), fill=GOLD, width=3)
