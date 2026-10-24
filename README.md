@@ -49,6 +49,18 @@
 
 ![fight](docs/screenshots/run_fight.png)
 
+## 截图
+
+| 商店 | 祭坛 |
+| --- | --- |
+| ![商店](docs/screenshots/shop_panel.png) | ![祭坛](docs/screenshots/shrine_panel.png) |
+
+| 背包对比 | 帮助/状态 |
+| --- | --- |
+| ![背包](docs/screenshots/inventory_compare.png) | ![帮助](docs/screenshots/help_status.png) |
+
+截图统一量化为 64 色；运行 python tools/shrink_shots.py --check docs/screenshots 检查体积。
+
 ## 快速开始
 
 ### 环境
@@ -182,10 +194,10 @@ docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 
 ## 验证
 
-- zig build / zig build test：13/13 steps、189/189 tests。
+- zig build / zig build test：13/13 steps、191/191 tests。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/run_select.png`。
 - 职业菜单显示的 SEED 就是本局真实 seed；选择职业只按同一 seed 重开；R 保留职业，未锁定时换新 seed。
-- 大图 QA（100 seed × 3 职业，纯逻辑 bot）：普通 64.0%（192/300）：狂战士 45%、元素法师 86%、时空法师 61%；困难 36.3%（109/300）；简单 85.3%（256/300）：79%/96%/86%，0 超时/不变量违规；test-qa 111/111。
+- 大图 QA（100 seed × 3 职业，纯逻辑 bot）：普通 64.0%（192/300）：狂战士 45%、元素法师 86%、时空法师 61%；困难 36.3%（109/300）；简单 85.3%（256/300）：79%/96%/86%，0 超时/不变量违规；test-qa 112/112。
 - auto 是演示/巡检 bot，不保证通关；31×31 + 楼层 Boss 下可能停在 Boss 层，实际 QA 以 test-qa 为准。
 - Boss 深渊斩每 3 个敌方回合预警一次，半径 0.9 格；走出标记格即可躲开；Boss 存活时第 3 层楼梯封印。
 - 速度机制已改为 energy 银行：精英幽魂 150 积累双动，石魔像 70 隔回合少动。
