@@ -78,6 +78,7 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 - 默认：SDL_GetPrefPath("lagudomeze","vx")，Windows 为 %APPDATA%\\lagudomeze\\vx\\。
 - 开发/CI：--portable 保持当前工作目录；--out 在切换目录前解析为绝对路径。
 - 旧存档：默认启动时若当前目录有 saves/，把用户目录缺失的普通文件复制过去，不覆盖新文件。
+- 诊断：vx --save-info 打印 save_root/saves/settings/records 与 portable 状态。
 
 ## 设置文件
 

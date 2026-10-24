@@ -1,0 +1,12 @@
+"AppBuild"
+{
+    "AppID" "YOUR_APP_ID"
+    "Desc" "vx 0.1.0"
+    "BuildOutput" "../dist/steam"
+    "ContentRoot" "../dist/vx-0.1.0-win64"
+    "Preview" "0"
+    "Depots"
+    {
+        "YOUR_DEPOT_ID" "depot_build.vdf"
+    }
+}

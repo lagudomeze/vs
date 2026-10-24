@@ -1,0 +1,13 @@
+"DepotBuildConfig"
+{
+    "DepotID" "YOUR_DEPOT_ID"
+    "ContentRoot" "../dist/vx-0.1.0-win64"
+    "FileMapping"
+    {
+        "LocalPath" "*"
+        "DepotPath" "."
+        "recursive" "1"
+    }
+    "FileExclusion" "*.pdb"
+    "FileExclusion" "steam_appid.txt"
+}

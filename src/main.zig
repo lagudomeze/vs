@@ -36,6 +36,7 @@ const Options = struct {
     portable: bool = false,
     version: bool = false,
     fullscreen: bool = false,
+    save_info: bool = false,
     help_screen: bool = false,
     shrine_screen: bool = false,
     settings_screen: bool = false,
@@ -76,6 +77,7 @@ fn usage() void {
         \\  --portable        keep saves in the current directory (development)
         \\  --version         print version
         \\  --fullscreen      start fullscreen (F11 toggles)
+        \\  --save-info       print effective save paths and exit
         \\  --settings        open the settings panel (screenshot/QA)
         \\  --help            this text
         \\
@@ -179,6 +181,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.version = true;
         } else if (std.mem.eql(u8, a, "--fullscreen")) {
             o.fullscreen = true;
+        } else if (std.mem.eql(u8, a, "--save-info")) {
+            o.save_info = true;
         } else if (std.mem.eql(u8, a, "--help") or std.mem.eql(u8, a, "-h")) {
             o.help = true;
         } else {
@@ -579,6 +583,17 @@ pub fn main(init: std.process.Init.Minimal) !void {
         } else |_| {
             std.debug.print("vx: no per-user save path; saves stay in cwd\n", .{});
         }
+    }
+
+    if (options.save_info) {
+        var cwd_buf: [4096]u8 = undefined;
+        const cwd_raw = std.c.getcwd(&cwd_buf, cwd_buf.len) orelse cwd_buf[0..0].ptr;
+        const cwd = std.mem.sliceTo(cwd_raw, 0);
+        std.debug.print(
+            "vx 0.1.0\nsave_root: {s}\nsaves: {s}/saves\nsettings: {s}/saves/settings.json\nrecords: {s}/saves/records.json\nportable: {s}\n",
+            .{ cwd, cwd, cwd, cwd, if (options.portable) "yes" else "no" },
+        );
+        return;
     }
 
     if (options.arena) {

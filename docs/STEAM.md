@@ -9,8 +9,8 @@
 | --- | --- | --- |
 | 账号/费用 | 无 Steamworks 后台 | 注册 Steamworks，支付 100 USD/产品；等待 30 天 |
 | 商店页 | 无 Coming Soon | 提前至少 2 周公开 Coming Soon |
-| 构建 | 已加 --version / tools/package.ps1 | SteamPipe depot、appid、启动项 |
-| Steam 集成 | 无 | SteamAPI_Init、Overlay、Cloud、成就（可选） |
+| 构建 | 已加 --version / package.ps1 / SteamPipe 模板 | SteamPipe appid、depot、启动项 |
+| Steam 集成 | Auto-Cloud 路径已配；无 SDK | SteamAPI_Init、Overlay、成就（可选） |
 | 存档路径 | 已改 SDL_GetPrefPath；旧 saves 自动迁移；--portable 保留 cwd | Cloud 白名单 |
 | 声音 | 无 | 至少 BGM/命中/UI 音效与音量设置 |
 | 设置 | 无 | 全屏/窗口、分辨率缩放、音量、键位 |
@@ -68,6 +68,7 @@
 
 ### Phase 4：发售
 
+- 用 steam/app_build.vdf.example + depot_build.vdf.example 上传（先填 AppID/DepotID）。
 - 提交 build review（预留至少 1–2 周）。
 - 发售折扣建议 10–15%，不要长期深折。
 - 发售首周每天看评论/论坛，热修优先崩溃/存档/卡死。
