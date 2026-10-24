@@ -421,12 +421,22 @@ pub const RunGame = struct {
             if (self.sim.state == .victory) {
                 self.records.wins +|= 1;
                 if (self.records.best_turn == 0 or self.sim.turn < self.records.best_turn) self.records.best_turn = self.sim.turn;
+                switch (self.class) {
+                    .warrior => self.records.wins_warrior +|= 1,
+                    .mage => self.records.wins_mage +|= 1,
+                    .chronomancer => self.records.wins_chronomancer +|= 1,
+                }
             } else {
                 self.records.deaths +|= 1;
             }
             self.records.best_floor = @max(self.records.best_floor, self.sim.floor);
             self.records.best_kills = @max(self.records.best_kills, self.sim.kills);
             self.records.best_gold = @max(self.records.best_gold, self.sim.gold);
+            var clears: u32 = 0;
+            for (self.sim.cleared_chunks) |c| {
+                if (c) clears += 1;
+            }
+            self.records.chunk_clears +|= clears;
             self.records_dirty = true;
         }
         self.last_state = self.sim.state;
@@ -2068,6 +2078,10 @@ pub const RunGame = struct {
             .record_best_turn = self.records.best_turn,
             .record_best_kills = self.records.best_kills,
             .record_best_gold = self.records.best_gold,
+            .record_wins_warrior = self.records.wins_warrior,
+            .record_wins_mage = self.records.wins_mage,
+            .record_wins_chronomancer = self.records.wins_chronomancer,
+            .record_chunk_clears = self.records.chunk_clears,
             .potions = potion_count,
             .bombs = bomb_count,
             .floor_mod_label = self.sim.floor_mod.label(),
@@ -2345,6 +2359,21 @@ test "run game: diagnostics include seed and state" {
     const text = g.diagnostics(&buf);
     try std.testing.expect(std.mem.indexOf(u8, text, "seed=4242") != null);
     try std.testing.expect(std.mem.indexOf(u8, text, "class=warrior") != null);
+}
+
+test "run game: victory updates class and chunk records" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.records = .{};
+    g.started = true;
+    g.last_state = .playing;
+    g.sim.state = .victory;
+    g.sim.cleared_chunks[4] = true;
+    g.sim.cleared_chunks[1] = true;
+    g.fillHudState();
+    try std.testing.expectEqual(@as(u32, 1), g.records.wins_warrior);
+    try std.testing.expectEqual(@as(u32, 2), g.records.chunk_clears);
 }
 
 test "run game: sim notice becomes a HUD toast" {
