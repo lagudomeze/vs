@@ -60,6 +60,7 @@ pub const FrameInput = struct {
     use_item: bool = false,
     use_bomb: bool = false,
     key_code: u32 = 0,
+    map: bool = false,
     mouse_x: f32 = 0,
     mouse_y: f32 = 0,
     click: bool = false,
@@ -473,6 +474,7 @@ pub const Platform = struct {
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F9))) input.load_slot = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_F10))) input.load_auto = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_H))) input.help = true;
+                    if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_M))) input.map = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(c.SDL_SCANCODE_D))) input.difficulty = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.potion))) input.use_item = true;
                     if (sc == @as(c.SDL_Scancode, @intCast(self.bindings.bomb))) input.use_bomb = true;
