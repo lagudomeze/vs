@@ -17,9 +17,11 @@ pwsh -File tools/playtest_pack.ps1
 | 文件 | 用途 |
 | --- | --- |
 | vx.exe + runtime | 解压即玩 |
-| PLAYTEST_README.txt | 启动/F2/F3/F4/存档/无遥测说明 |
+| PLAYTEST_README.txt | 英文启动/手柄/F2/F3/F4/存档/无遥测说明 |
+| README_ZH.txt | 中文版说明 |
 | CONSENT.txt | 自愿、匿名、可删除的简明同意 |
-| FEEDBACK.md | 单人记录模板 + P0–P3 分级 |
+| KNOWN_ISSUES.txt | English beta/无云/无成就/Deck 未实测 |
+| FEEDBACK.md | 结构化表单链接 + 单人记录模板 + P0–P3 |
 | README/CREDITS/OFL | 项目说明与字体许可 |
 
 ## 招募
@@ -38,17 +40,17 @@ pwsh -File tools/playtest_pack.ps1
 1. 解压到可写目录，双击 vx.exe
 2. 不解释，观察前 5 分钟
 3. 卡住 60 秒才提示
-4. 结束前按 F4，粘贴诊断到 FEEDBACK.md
+4. 结束前按 F3/F4，粘贴诊断到 FEEDBACK.md 或试玩表单
 5. 按 [PLAYTEST.md](PLAYTEST.md) 做访谈与归档
 
 ## 验收
 
-- [ ] zip 内 vx.exe 可启动
-- [ ] 说明包含 F2/F3/F4 与存档路径
-- [ ] 不包含 steam_appid.txt
-- [ ] 不含开发者本机存档
-- [ ] 体积 < 10 MB
+- [x] zip 内 vx.exe 可启动
+- [x] 说明包含 F2/F3/F4 与存档路径
+- [x] 不包含 steam_appid.txt
+- [x] 不含开发者本机存档
+- [x] 体积 < 10 MB
 
 ## 当前状态
 
-已生成 vx-playtest-0.1.0.zip（约 2.6 MB），内容清单已核对。尚未招募真实测试者。
+已生成 vx-playtest-0.1.0.zip（2.72 MB）：中英说明、CONSENT、KNOWN_ISSUES、FEEDBACK、exe 均存在；解包运行 exit 0；无 steam_appid.txt。尚未招募真实测试者。

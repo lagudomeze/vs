@@ -1,0 +1,8 @@
+PLAYTEST CONSENT (plain language)
+
+- Participation is voluntary; you may stop at any time.
+- We record only: build version, seed, class, floor reached, death cause, and your answers.
+- Do not share passwords, real names, or other sensitive data.
+- We will not record audio/video without asking first.
+- Feedback may be summarized in a public issue without your identity.
+- Ask the facilitator to delete your notes after the session.
