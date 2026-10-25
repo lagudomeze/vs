@@ -899,9 +899,9 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         r.fillRect(px, py, pw, ph, palette.panel);
         r.strokeRect(px, py, pw, ph, palette.gold);
         const title = switch (state.slot_mode) {
-            1 => "保存到槽位",
-            2 => "从槽位读取",
-            else => "自动档备份",
+            1 => i18n.t("保存到槽位", "SAVE TO SLOT"),
+            2 => i18n.t("从槽位读取", "LOAD FROM SLOT"),
+            else => i18n.t("自动档备份", "AUTOSAVE BACKUP"),
         };
         r.drawIcon(.save, px + 14, py + 6, palette.gold, 1);
         r.drawText(px + 32, py + 12, title, palette.gold, 1, true);
@@ -911,10 +911,10 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
             r.fillRect(px + 12, y - 4, pw - 24, 26, palette.deep);
             const num = fmt(&buf, "{d}", .{i + 1});
             r.drawText(px + 20, y, num, palette.gold_light, 1, true);
-            const label = if (state.slot_labels[i].len > 0) state.slot_labels[i] else "空";
+            const label = if (state.slot_labels[i].len > 0) state.slot_labels[i] else i18n.t("空", "EMPTY");
             r.drawText(px + 44, y, label, palette.cream, 1, true);
         }
-        r.drawText(px + 16, py + ph - 24, "1/2/3 选择   Esc 取消", palette.muted, 1, true);
+        r.drawText(px + 16, py + ph - 24, i18n.t("1/2/3 选择   Esc 取消", "1/2/3 SELECT   ESC CANCEL"), palette.muted, 1, true);
     }
 }
 

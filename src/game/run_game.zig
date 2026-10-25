@@ -603,16 +603,16 @@ pub const RunGame = struct {
     fn refreshSlotLabels(self: *RunGame, io: std.Io) void {
         var i: usize = 0;
         while (i < self.slot_files.len) : (i += 1) {
-            self.slot_labels[i] = "空";
+            self.slot_labels[i] = i18n.t("空", "EMPTY");
             const loaded = slot_bundle.loadFile(io, self.gpa, self.slot_files[i]) catch |err| {
                 if (err == error.FileNotFound) {
                     const legacy = save_mod.loadFile(io, self.gpa, self.slot_runs[i]) catch |old_err| {
-                        if (old_err != error.FileNotFound) self.slot_labels[i] = "坏档";
+                        if (old_err != error.FileNotFound) self.slot_labels[i] = i18n.t("坏档", "CORRUPT");
                         continue;
                     };
                     self.slot_labels[i] = self.formatSlotLabel(i, &legacy);
                 } else {
-                    self.slot_labels[i] = "坏档";
+                    self.slot_labels[i] = i18n.t("坏档", "CORRUPT");
                 }
                 continue;
             };
@@ -621,6 +621,13 @@ pub const RunGame = struct {
     }
 
     fn formatSlotLabel(self: *RunGame, i: usize, loaded: *const sim_mod.Sim) []const u8 {
+        if (i18n.current == .en) {
+            return std.fmt.bufPrint(
+                &self.slot_bufs[i],
+                "{s} F{d} LV{d} T{d}",
+                .{ sim_mod.class_names_en[@backingInt(loaded.class)], loaded.floor, loaded.hero.progression.level, loaded.turn },
+            ) catch "VALID SAVE";
+        }
         return std.fmt.bufPrint(
             &self.slot_bufs[i],
             "{s} 第{d}层 {d}级 回合{d}",
@@ -712,7 +719,7 @@ pub const RunGame = struct {
         while (i < self.auto_files.len) : (i += 1) {
             self.slot_labels[i] = "空";
             const loaded = slot_bundle.loadFile(io, self.gpa, self.auto_files[i]) catch |err| {
-                if (err != error.FileNotFound) self.slot_labels[i] = "坏档";
+                if (err != error.FileNotFound) self.slot_labels[i] = i18n.t("坏档", "CORRUPT");
                 continue;
             };
             self.slot_labels[i] = self.formatSlotLabel(i, &loaded.sim);

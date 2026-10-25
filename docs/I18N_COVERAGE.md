@@ -16,6 +16,7 @@
 | 瞄准 | 完整 | aim_en.png |
 | 背包 | 完整（空包态） | inventory_en.png |
 | 角色 | 完整 | character_en.png |
+| 槽位菜单 | 完整 | slots_en.png |
 
 ## 已覆盖内容
 

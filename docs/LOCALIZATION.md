@@ -24,6 +24,7 @@
 - 物品名/品质/属性细节（IRON SWORD/RARE/ATK）
 - 背包/角色面板标签、装备槽、天赋速查
 - 瞄准提示 AIM/DIST/DMG/AOE、原因/天赋名
+- 槽位菜单标题/空档/坏档/槽位摘要
 - F2 按 L 切换 ZH/EN，settings.language 持久化
 - --lang en 可直接看英文设置/菜单
 
