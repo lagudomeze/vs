@@ -3416,6 +3416,18 @@ test "run game: mouse click on a bomb does not drink a potion" {
     try std.testing.expectEqual(@as(f32, 10), g.sim.hero.vitals.val);
 }
 
+test "run game: bag hud marks risk items" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
+    defer g.destroy();
+    g.inventory = .{};
+    const pearl_id = g.content.itemIndex("void_pearl") orelse return error.MissingItem;
+    _ = g.inventory.pickup(pearl_id);
+    g.fillHudState();
+    try std.testing.expectEqual(@as(usize, 1), g.hud_state.item_count);
+    try std.testing.expect(g.hud_state.item_risk[0]);
+}
+
 test "run game: risk markers catch negative hp and armor" {
     const gpa = std.testing.allocator;
     const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
