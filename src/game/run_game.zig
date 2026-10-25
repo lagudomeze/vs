@@ -491,6 +491,14 @@ pub const RunGame = struct {
         return true;
     }
 
+    fn menuColumnAt(self: *RunGame, sx: f32, sy: f32) ?u8 {
+        const w: f32 = @floatFromInt(self.renderer.width);
+        const h: f32 = @floatFromInt(self.renderer.height);
+        if (sx < 0 or sy < 55 or sy > h - 50 or w <= 0) return null;
+        const col = @floor(sx / (w / 3.0));
+        return @intFromFloat(std.math.clamp(col, 0, 2));
+    }
+
     fn trackRunEnd(self: *RunGame) void {
         if (!self.started) {
             self.last_state = self.sim.state;
@@ -1270,6 +1278,10 @@ pub const RunGame = struct {
 
         if (!self.started) {
             if (input.difficulty) self.toggleDifficulty();
+            if (self.menuColumnAt(input.mouse_x, input.mouse_y)) |col| {
+                self.menu_selection = col;
+                if (input.click) self.selectClass(sim_mod.classFromIndex(col));
+            }
             if (input.step_x < 0) {
                 self.menu_selection = (self.menu_selection + 2) % 3;
             } else if (input.step_x > 0) {
@@ -2750,6 +2762,19 @@ test "run game: daily seed is stable per UTC day" {
     try std.testing.expect(a.seed != first);
     a.rerollSeed();
     try std.testing.expect(!a.daily);
+}
+
+test "run game: menu click selects then starts a class" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 0);
+    defer g.destroy();
+    g.openMenu();
+    g.update(.{ .mouse_x = 320, .mouse_y = 180 }, 1.0 / 60.0);
+    try std.testing.expectEqual(@as(u8, 1), g.menu_selection);
+    try std.testing.expect(!g.started);
+    g.update(.{ .mouse_x = 320, .mouse_y = 180, .click = true }, 1.0 / 60.0);
+    try std.testing.expect(g.started);
+    try std.testing.expectEqual(sim_mod.Class.mage, g.class);
 }
 
 test "run game: gamepad menu cycles and confirms a class" {
