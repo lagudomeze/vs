@@ -123,6 +123,19 @@ pub fn logLine(line: []const u8, buf: []u8) []const u8 {
     if (std.mem.eql(u8, line, "闪现")) return "BLINK";
     if (std.mem.eql(u8, line, "时间回溯")) return "REWIND";
     if (std.mem.eql(u8, line, "FROST 减速")) return "FROST SLOW";
+    if (std.mem.eql(u8, line, "金币不足")) return "NOT ENOUGH GOLD";
+    if (std.mem.eql(u8, line, "技能不可用")) return "ABILITY UNAVAILABLE";
+    if (std.mem.eql(u8, line, "技能未生效")) return "ABILITY FAILED";
+    if (std.mem.eql(u8, line, "无效目标")) return "INVALID TARGET";
+    if (std.mem.eql(u8, line, "读档失败：未知物品")) return "LOAD FAILED: UNKNOWN ITEM";
+    if (std.mem.eql(u8, line, "读档失败：未知装备")) return "LOAD FAILED: UNKNOWN GEAR";
+    if (std.mem.eql(u8, line, "读档失败：背包损坏")) return "LOAD FAILED: BAG CORRUPT";
+    if (std.mem.startsWith(u8, line, "读档失败：")) return "LOAD FAILED";
+    if (std.mem.startsWith(u8, line, "存档失败 ")) return "SAVE FAILED";
+    if (std.mem.startsWith(u8, line, "自动存档失败 ")) return "AUTOSAVE FAILED";
+    if (std.mem.startsWith(u8, line, "自动存档轮换失败 ")) return "AUTOSAVE ROTATE FAILED";
+    if (std.mem.startsWith(u8, line, "装备存档失败 ")) return "GEAR SAVE FAILED";
+    if (std.mem.startsWith(u8, line, "装备读档失败：")) return "GEAR LOAD FAILED";
     if (std.mem.eql(u8, line, "深渊守卫攻击")) return "ABYSS WARDEN ATTACK";
 
     if (afterPrefix(line, "进入第 ")) |rest| {
@@ -232,4 +245,6 @@ test "i18n: battle log lines translate common formats" {
     try std.testing.expectEqualStrings("SHOP HEAL", logLine("SHOP 治疗", &buf));
     try std.testing.expectEqualStrings("SHRINE STR +2", logLine("SHRINE 力量 +2", &buf));
     try std.testing.expectEqualStrings("WRAITH GUARDS", logLine("幽魂 举盾", &buf));
+    try std.testing.expectEqualStrings("NOT ENOUGH GOLD", logLine("金币不足", &buf));
+    try std.testing.expectEqualStrings("LOAD FAILED", logLine("读档失败：文件损坏", &buf));
 }
