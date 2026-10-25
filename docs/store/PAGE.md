@@ -44,7 +44,7 @@ Choose one of three classes and lean into its rhythm:
 - **Archmage** — ranged spells, area damage and resource management; punishes clumping enemies.
 - **Chronomancer** — rewinds, stuns and tempo control; turns bad positioning into a second chance.
 
-Loot is automatic and build-defining: weapons, armor, trinkets and consumables feed the same attribute sheet. Elite affixes change the fight — SWIFT, ARMORED, VAMPIRIC, VOLATILE, FROST and SPLIT each demand a different answer. Die and the run ends; restart and the dungeon rolls again.
+Loot is automatic and build-defining: weapons, armor, trinkets and consumables feed the same attribute sheet. Elite affixes change the fight — SWIFT, ARMORED, VAMPIRIC, VOLATILE, FROST, SPLIT and BERSERK each demand a different answer. Die and the run ends; restart and the dungeon rolls again.
 
 ### ZH
 
@@ -58,7 +58,7 @@ Loot is automatic and build-defining: weapons, armor, trinkets and consumables f
 - **元素法师**：远程法术、范围伤害与资源管理，惩罚扎堆的敌人。
 - **时空法师**：回溯、眩晕与节奏控制，把错误站位变成第二次机会。
 
-战利品自动装备并参与构筑：武器、护甲、饰品与消耗品共同影响属性。精英词缀改变战斗——迅捷、重甲、吸血、爆裂、霜冻与分裂，各自需要不同解法。死亡即结束本局；重开，地牢再次生成。
+战利品自动装备并参与构筑：武器、护甲、饰品与消耗品共同影响属性。精英词缀改变战斗——迅捷、重甲、吸血、爆裂、霜冻、分裂与狂暴，各自需要不同解法。死亡即结束本局；重开，地牢再次生成。
 
 ## Key Features
 
@@ -68,7 +68,10 @@ Loot is automatic and build-defining: weapons, armor, trinkets and consumables f
 - Seed-based runs, deterministic combat, visible enemy intents.
 - Automatic equipment plus a small inventory; build through loot, not menus.
 - A starting fire bomb (B) gives every class a one-use area answer; shops refill it for 40 gold.
-- Elite affixes that change target priority: SWIFT / ARMORED / VAMPIRIC / VOLATILE / FROST / SPLIT.
+- Seven elite affixes that change target priority: SWIFT / ARMORED / VAMPIRIC / VOLATILE / FROST / SPLIT / BERSERK.
+- 16 items across weapons, armor, trinkets and consumables, including the rare AETHER LENS.
+- A daily challenge with one seed per UTC day, a win streak, and six permanent badges.
+- Status durations are visible on enemies (STUN2 / SLOW2 / BURN2x3), so control builds stay legible.
 - Rotatable top-down camera, pixel-art software renderer, integer scaling.
 - Controller support (including A/B swap), keyboard and mouse.
 - Simplified Chinese is the default UI. English beta is available (core menus/HUD/logs; some fallbacks remain). Full localization is planned.
