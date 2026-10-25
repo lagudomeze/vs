@@ -431,6 +431,9 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     platform.setEsdf(settings.esdf);
     platform.setBindings(bindingsFor(settings));
     game.settings_fullscreen = settings.fullscreen;
+    if (platform.window_scale != settings.scale) {
+        settings.scale = platform.window_scale;
+    }
     game.settings_scale = settings.scale;
     game.settings_vsync = settings.vsync;
     game.settings_volume = settings.volume;
