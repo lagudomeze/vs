@@ -41,6 +41,102 @@ pub fn enemyShort(zh: []const u8) []const u8 {
     return zh;
 }
 
+fn parseU32(text: []const u8) ?u32 {
+    return std.fmt.parseInt(u32, text, 10) catch null;
+}
+
+fn afterPrefix(line: []const u8, prefix: []const u8) ?[]const u8 {
+    if (!std.mem.startsWith(u8, line, prefix)) return null;
+    return line[prefix.len..];
+}
+
+pub fn logLine(line: []const u8, buf: []u8) []const u8 {
+    if (current != .en) return line;
+
+    if (std.mem.eql(u8, line, "休息：恢复生命与资源")) return "REST: HP + RESOURCE";
+    if (std.mem.eql(u8, line, "深渊守卫封印了楼梯")) return "STAIRS SEALED BY THE WARDEN";
+    if (std.mem.eql(u8, line, "深渊守卫倒下，胜利") or std.mem.eql(u8, line, "击败深渊守卫，胜利")) return "ABYSS WARDEN FALLS - VICTORY";
+    if (std.mem.eql(u8, line, "深渊守卫 狂暴")) return "ABYSS WARDEN ENRAGES";
+    if (std.mem.eql(u8, line, "深渊守卫 召唤骷髅")) return "ABYSS WARDEN SUMMONS";
+    if (std.mem.eql(u8, line, "躲开深渊斩")) return "DODGED ABYSS CLEAVE";
+    if (std.mem.eql(u8, line, "Boss 免疫减速")) return "BOSS IMMUNE TO SLOW";
+    if (std.mem.eql(u8, line, "Boss 抗眩晕 减速+反噬")) return "BOSS RESISTS STUN: SLOW + RETALIATE";
+    if (std.mem.eql(u8, line, "火球轰击地面")) return "FIREBALL HITS THE GROUND";
+    if (std.mem.eql(u8, line, "深渊守卫攻击")) return "ABYSS WARDEN ATTACK";
+
+    if (afterPrefix(line, "进入第 ")) |rest| {
+        if (std.mem.endsWith(u8, rest, " 层")) {
+            if (parseU32(rest[0 .. rest.len - 4])) |n| return std.fmt.bufPrint(buf, "ENTER FLOOR {d}", .{n}) catch line;
+        }
+    }
+
+    if (afterPrefix(line, "第 ")) |rest| {
+        if (std.mem.indexOf(u8, rest, " 层：")) |at| {
+            if (parseU32(rest[0..at])) |floor| {
+                const tail = rest[at + " 层：".len ..];
+                if (std.mem.indexOf(u8, tail, " 个敌人")) |e| {
+                    if (parseU32(tail[0..e])) |count| return std.fmt.bufPrint(buf, "FLOOR {d}: {d} ENEMIES", .{ floor, count }) catch line;
+                }
+            }
+        }
+    }
+
+    if (afterPrefix(line, "触发陷阱 -")) |rest| {
+        if (std.mem.endsWith(u8, rest, " 生命")) {
+            if (parseU32(rest[0 .. rest.len - 7])) |n| return std.fmt.bufPrint(buf, "TRAP -{d} HP", .{n}) catch line;
+        }
+    }
+    if (afterPrefix(line, "打开宝箱：恢复 ")) |rest| {
+        if (std.mem.endsWith(u8, rest, " 生命")) {
+            if (parseU32(rest[0 .. rest.len - 7])) |n| return std.fmt.bufPrint(buf, "CHEST: +{d} HP", .{n}) catch line;
+        }
+    }
+    if (afterPrefix(line, "诅咒宝箱 -")) |rest| {
+        if (parseU32(rest)) |n| return std.fmt.bufPrint(buf, "CURSED CHEST -{d}", .{n}) catch line;
+    }
+    if (afterPrefix(line, "灼烧 -")) |rest| {
+        if (parseU32(rest)) |n| return std.fmt.bufPrint(buf, "BURN -{d}", .{n}) catch line;
+    }
+    if (afterPrefix(line, "升级到 ")) |rest| {
+        if (std.mem.indexOf(u8, rest, " 级")) |at| {
+            if (parseU32(rest[0..at])) |n| {
+                if (std.mem.indexOf(u8, rest, "属性点") != null) return std.fmt.bufPrint(buf, "LEVEL {d} +1 POINT", .{n}) catch line;
+                return std.fmt.bufPrint(buf, "LEVEL {d}", .{n}) catch line;
+            }
+        }
+    }
+    if (afterPrefix(line, "深渊守卫 深渊斩 -")) |rest| {
+        if (parseU32(rest)) |n| return std.fmt.bufPrint(buf, "ABYSS CLEAVE -{d}", .{n}) catch line;
+    }
+    if (afterPrefix(line, "石魔像 震地 -")) |rest| {
+        if (parseU32(rest)) |n| return std.fmt.bufPrint(buf, "GOLEM QUAKE -{d}", .{n}) catch line;
+    }
+    if (afterPrefix(line, "幽魂 汲取 -")) |rest| {
+        if (parseU32(rest)) |n| return std.fmt.bufPrint(buf, "WRAITH DRAIN -{d}", .{n}) catch line;
+    }
+    if (afterPrefix(line, "击杀 ")) |rest| {
+        if (std.mem.indexOf(u8, rest, " +")) |at| {
+            if (std.mem.endsWith(u8, rest, "XP")) {
+                const name = rest[0..at];
+                if (parseU32(rest[at + 2 .. rest.len - 2])) |xp| return std.fmt.bufPrint(buf, "KILL {s} +{d} XP", .{ enemyName(name), xp }) catch line;
+            }
+        }
+    }
+    if (afterPrefix(line, "命中 ")) |rest| {
+        var it = std.mem.splitScalar(u8, rest, ' ');
+        const name = it.next() orelse return line;
+        const dmg = it.next() orelse return line;
+        return std.fmt.bufPrint(buf, "HIT {s} {s}", .{ enemyName(name), dmg }) catch line;
+    }
+    if (std.mem.indexOf(u8, line, " 造成 ")) |at| {
+        if (std.mem.endsWith(u8, line, " 伤害")) {
+            const name = line[0..at];
+            const dmg = line[at + " 造成 ".len .. line.len - " 伤害".len];
+            return std.fmt.bufPrint(buf, "{s} DEALS {s}", .{ enemyName(name), dmg }) catch line;
+        }
+    }
+    return line;
+}
 test "i18n: select language and translate" {
     const saved = current;
     defer current = saved;
@@ -51,4 +147,17 @@ test "i18n: select language and translate" {
     try std.testing.expectEqual(@as(u8, 1), code());
     set(99);
     try std.testing.expectEqual(Lang.zh, current);
+}
+
+test "i18n: battle log lines translate common formats" {
+    const saved = current;
+    defer current = saved;
+    set(1);
+    var buf: [96]u8 = undefined;
+    try std.testing.expectEqualStrings("ENTER FLOOR 2", logLine("进入第 2 层", &buf));
+    try std.testing.expectEqualStrings("FLOOR 3: 8 ENEMIES", logLine("第 3 层：8 个敌人", &buf));
+    try std.testing.expectEqualStrings("TRAP -12 HP", logLine("触发陷阱 -12 生命", &buf));
+    try std.testing.expectEqualStrings("KILL WRAITH +5 XP", logLine("击杀 幽魂 +5XP", &buf));
+    try std.testing.expectEqualStrings("WRAITH DEALS 7", logLine("幽魂 造成 7 伤害", &buf));
+    try std.testing.expectEqualStrings("BURN -3", logLine("灼烧 -3", &buf));
 }

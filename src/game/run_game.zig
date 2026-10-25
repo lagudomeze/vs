@@ -2413,7 +2413,8 @@ pub const RunGame = struct {
         i = 0;
         while (i < self.hud_state.log_count) : (i += 1) {
             const start = (self.sim.log_head + self.sim.log_buf.len - self.hud_state.log_count) % self.sim.log_buf.len;
-            self.hud_state.log_lines[i] = self.sim.log_buf[(start + i) % self.sim.log_buf.len].text[0..self.sim.log_buf[(start + i) % self.sim.log_buf.len].len];
+            const raw = self.sim.log_buf[(start + i) % self.sim.log_buf.len].text[0..self.sim.log_buf[(start + i) % self.sim.log_buf.len].len];
+            self.hud_state.log_lines[i] = if (en) i18n.logLine(raw, &self.hud_state.log_translated[i]) else raw;
         }
     }
 
