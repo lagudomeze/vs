@@ -683,9 +683,12 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             game.hud_state.pause_confirm_quit = true;
             platform.playSound(.ui);
         }
+        const bomb_ok = game.started and game.sim.state == .playing and
+            !game.isAiming() and game.panel == .none and !game.shop_open and !game.shrine_open and
+            !game.pause_open and !game.settings_open and !game.chunk_map_open and !game.badges_open and !game.show_help and game.slot_menu == .none;
         // Escape is hierarchical: cancel aim first (never lose the run just
         // for cancelling a target), then close a modal panel, then quit.
-        if (pin.escape) {
+        if (pin.escape and !(pin.use_bomb and bomb_ok)) {
             if (game.settings_open) {
                 game.settings_open = false;
             } else if (game.chunk_map_open) {
