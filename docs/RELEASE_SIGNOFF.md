@@ -4,7 +4,7 @@
 
 | 目标 | 状态 | 依据 |
 | --- | --- | --- |
-| 内部/好友 Playtest 包 | **READY** | 255/145/239；全量/Demo 包可运行；存档隔离 |
+| 内部/好友 Playtest 包 | **READY** | 266/145/250；全量/Demo 包可运行；存档隔离 |
 | Steam 商店正式版 | **NOT READY** | 无 AppID/DepotID/SDK；key art/预告仍是占位级 |
 
 不要把当前包当作 Steam 正式版上传。可以发给试玩者，但必须说明是 early build。

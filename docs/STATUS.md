@@ -6,7 +6,7 @@
 
 无。没有已知崩溃/坏档/无法启动。
 
-当前验证：264/145/248；PREFLIGHT PASS；SURGE 稀有化后 QA normal 65.3% / hard 39.0% / easy 89.7%。
+当前验证：266/145/250；PREFLIGHT PASS；SURGE 稀有化后 QA normal 65.3% / hard 39.0% / easy 89.7%。
 第 200 轮里程碑：17 物品、6 层词条、首次引导、鼠标全主要面板、一键 release gate。
 
 ## P1
