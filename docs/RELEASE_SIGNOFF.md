@@ -21,6 +21,8 @@
 - steam_check：exit 0，SteamPipe-ready（AppID/DepotID 待填）
 - steam_package_check：PASS，仅 YOUR_APP_ID/YOUR_DEPOT_ID 警告
 - Demo 冒烟：解包运行 exit 0，HP 184，存档在 %APPDATA%/lagudomeze/vx/demo
+- 干净解包冒烟：全量/Demo version=vx 0.1.0，headless exit 0，无 steam_appid，无本地 saves。
+
 
 ## 可对外说
 
