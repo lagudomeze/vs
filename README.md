@@ -108,7 +108,7 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | C | 角色面板（六属性、装备、天赋说明）；有升级点时按 1-6 加点 |
 | Q/E、右键拖拽 | 旋转相机；滚轮缩放 |
 | Tab | 瞄准中切换目标 |
-| 鼠标 | 职业卡悬停/单击；暂停点 RESUME/HELP/SETTINGS/QUIT；商店/祭坛点行购买；战斗悬停高亮/选择目标；瞄准中左键确认 |
+| 鼠标 | 职业卡悬停/单击；暂停点 RESUME/HELP/SETTINGS/QUIT；商店/祭坛点行购买；角色面板点属性加点；战斗悬停高亮/选择目标；瞄准中左键确认 |
 | R | 游戏中第一次按进入确认（2 秒内再按）；死亡/胜利立即重开；保留职业，默认换新种子；`--seed` 时保持 seed |
 | F5 / F9 | 打开存档 / 读档槽位面板；1/2/3 选择，Esc 取消 |
 | F10 | 打开自动档面板；1/2/3 读取最近 3 个楼层备份 |
@@ -225,11 +225,11 @@ docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 
 ## 验证
 
-- zig build / zig build test：14/14 steps、259/259 tests。
+- zig build / zig build test：14/14 steps、260/260 tests。
 - 一条命令发版自检：tools/preflight.ps1（fmt/三层测试/打包/Steam/Demo/Deck 静态/i18n/截图）；Python 可设 VX_PYTHON。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/run_select.png`。
 - 职业菜单显示的 SEED 就是本局真实 seed；选择职业只按同一 seed 重开；R 保留职业，未锁定时换新 seed。
-- 大图 QA（100 seed × 3 职业，纯逻辑 bot）：普通 68.0%（204/300）：狂战士 63%、元素法师 76%、时空法师 65%；困难 40.7%（122/300）；简单 91.3%（274/300），0 超时/不变量违规；test-qa 145/145、test-qa3 243/243。
+- 大图 QA（100 seed × 3 职业，纯逻辑 bot）：普通 68.0%（204/300）：狂战士 63%、元素法师 76%、时空法师 65%；困难 40.7%（122/300）；简单 91.3%（274/300），0 超时/不变量违规；test-qa 145/145、test-qa3 244/244。
 - auto 是演示/巡检 bot，不保证通关；31×31 + 楼层 Boss 下可能停在 Boss 层，实际 QA 以 test-qa 为准。
 - Boss 深渊斩每 3 个敌方回合预警一次，半径 0.9 格；走出标记格即可躲开；Boss 存活时第 3 层楼梯封印。
 - 速度机制已改为 energy 银行：精英幽魂 150 积累双动，石魔像 70 隔回合少动。

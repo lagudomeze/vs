@@ -215,6 +215,8 @@ pub const RunGame = struct {
     shrine_mouse_x: f32 = -1,
     shrine_mouse_y: f32 = -1,
     stat_index: u8 = 0,
+    stat_mouse_x: f32 = -1,
+    stat_mouse_y: f32 = -1,
     victory_hold: f32 = 0,
     skip_victory_banner: bool = false,
     toast_text: []const u8 = "",
@@ -497,6 +499,17 @@ pub const RunGame = struct {
         records_mod.save(io, self.gpa, records_mod.default_path, self.records) catch return false;
         self.records_dirty = false;
         return true;
+    }
+
+    fn statRowAt(self: *const RunGame, sx: f32, sy: f32) ?u8 {
+        _ = self;
+        if (sx < 24 or sx > 340) return null;
+        const iy: f32 = 12;
+        const row = @floor((sy - (iy + 42)) / 22);
+        if (row < 0 or row > 2) return null;
+        const col: f32 = if (sx < 180) 0 else 1;
+        const idx = row * 2 + col;
+        return @intFromFloat(idx);
     }
 
     fn shrineRowAt(self: *const RunGame, sx: f32, sy: f32) ?u8 {
@@ -1478,6 +1491,13 @@ pub const RunGame = struct {
             self.panel = if (self.panel == .character) .none else .character;
         }
         if (self.panel == .character) {
+            const stat_mouse_moved = input.mouse_x != self.stat_mouse_x or input.mouse_y != self.stat_mouse_y;
+            self.stat_mouse_x = input.mouse_x;
+            self.stat_mouse_y = input.mouse_y;
+            if (self.statRowAt(input.mouse_x, input.mouse_y)) |idx| {
+                if (stat_mouse_moved) self.stat_index = idx;
+                if (input.click) self.spendPendingPoint(idx);
+            }
             if (input.step_y < 0) self.stat_index = (self.stat_index + 5) % 6;
             if (input.step_y > 0) self.stat_index = (self.stat_index + 1) % 6;
             if (input.stat >= 0) {
@@ -3309,6 +3329,18 @@ test "run game: shop loot purchase adds an item and spends gold" {
     try std.testing.expect(g.sim.shop_used);
     // The drop may auto-equip, so total items can stay flat; gold and shop prove the purchase.
     _ = before;
+}
+
+test "run game: mouse click spends a character point" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 640, 360, .mage, 12345);
+    defer g.destroy();
+    g.panel = .character;
+    g.sim.hero.progression.pending_points = 1;
+    const magic = g.sim.hero.sheet.stats.magic.val;
+    g.update(.{ .mouse_x = 60, .mouse_y = 98, .click = true }, 1.0 / 60.0);
+    try std.testing.expectApproxEqAbs(magic + 1, g.sim.hero.sheet.stats.magic.val, 0.001);
+    try std.testing.expectEqual(@as(u8, 0), g.sim.hero.progression.pending_points);
 }
 
 test "run game: mouse click chooses a shrine blessing" {
