@@ -342,14 +342,14 @@ RUN_V1 没有给时长目标；建议 v1 用：
 本文没有新的 RUN 构建可跑：当前 feat/ux-review 仍是实时原型，RUN_V1 只存在于设计工作树。审查依据：
 
 - 设计：docs/RUN_V1.md（vx-tactical，2026-10-22）。
-- 现有 3D 证据：docs/screenshots/critic_window.png、docs/screenshots/orbit.png；另有 boss.png 可看 Boss 1.95 模型与 480 下的占格。
+- 现有 3D 证据：docs/screenshots/window.png、docs/screenshots/review2_fight.png；另有 boss.png 可看 Boss 1.95 模型与 480 下的占格。
 - 字体：src/core/cjk_font.zig、tools/gen_cjk_font.py。
 - 旧 HUD/操作：src/game/hud.zig、src/platform/sdl.zig。
 
-![当前实时原型的 3D 近景：没有格子边界，名字牌重叠](screenshots/critic_window.png)
+![当前实时原型的 3D 近景：没有格子边界，名字牌重叠](screenshots/window.png)
 
 *critic_window.png：仅作为“当前 3D 模型/名字牌/无网格”的证据；RUN 会重做 HUD，但模型与相机问题会延续。*
 
-![旋转相机后的 3D 场景：没有北向提示，墙体遮挡边缘](screenshots/orbit.png)
+![旋转相机后的 3D 场景：没有北向提示，墙体遮挡边缘](screenshots/review2_fight.png)
 
 *orbit.png：旋转 60° 后场景仍正确，但没有格子/北向提示；RUN 的 90° 吸附与遮挡淡出要解决的就是这里。*

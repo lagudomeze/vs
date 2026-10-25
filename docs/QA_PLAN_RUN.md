@@ -1,7 +1,7 @@
 # QA 计划 — reference roguelike 风格回合制（RUN v1）
 
 > 设计基线：docs/RUN_V1.md。当前状态：**骨架就绪，真实一局待 API 合并**。
-> 实时战斗基线（遗留）见 [QA_PLAN.md](QA_PLAN.md) 与 [QA_REPORT.md](QA_REPORT.md)，在回合制 API 落地前继续保留。
+> 历史实时 QA 见 [QA_REPORT_OLD.md](QA_REPORT_OLD.md)。
 
 ## 1. 目标与边界
 

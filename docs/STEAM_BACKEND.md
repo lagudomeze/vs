@@ -25,7 +25,7 @@
 
 ## 2. SteamPipe 模板
 
-现有 [steam/app_build.vdf](../steam/app_build.vdf) 是占位。填：
+现有 [steam/app_build.vdf.example](../steam/app_build.vdf.example) 是占位。填：
 
 - AppID
 - DepotID
