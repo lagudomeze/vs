@@ -22,7 +22,7 @@ pwsh -File tools/playtest_pack.ps1
 | CONSENT.txt | 自愿、匿名、可删除的简明同意 |
 | KNOWN_ISSUES.txt | English beta/无云/无成就/Deck 未实测 |
 | FEEDBACK.md | 结构化表单链接 + 单人记录模板 + P0–P3 |
-| README/CREDITS/OFL | 项目说明与字体许可 |
+| README/CHANGELOG/CREDITS/OFL | 项目说明、变更记录与字体许可 |
 
 ## 招募
 
