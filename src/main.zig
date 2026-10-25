@@ -698,6 +698,33 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                 }
             }
         }
+        if (pin.pause) {
+            if (game.settings_open) {
+                game.settings_open = false;
+                game.settings_key_mode = false;
+                game.settings_key_error = false;
+                game.hud_state.keys_mode = false;
+                game.hud_state.keys_error = false;
+            } else if (game.pause_open) {
+                game.pause_open = false;
+                game.pause_confirm_quit = false;
+                game.hud_state.pause_open = false;
+                game.hud_state.pause_confirm_quit = false;
+            } else if (game.started and game.sim.state == .playing) {
+                game.pause_open = true;
+                game.pause_confirm_quit = false;
+                game.hud_state.pause_open = true;
+                game.hud_state.pause_confirm_quit = false;
+            }
+            platform.playSound(.ui);
+        }
+        if (game.pause_open and pin.cast) {
+            game.pause_open = false;
+            game.pause_confirm_quit = false;
+            game.hud_state.pause_open = false;
+            game.hud_state.pause_confirm_quit = false;
+            platform.playSound(.ui);
+        }
         if (pin.toggle_debug) game.debug = !game.debug;
         if (pin.load_auto) {
             game.openAutoMenu(io);
