@@ -97,14 +97,27 @@ pub const Platform = struct {
     mouse_y: f32 = 0,
     right_button_down: bool = false,
 
+    pub fn fitScale(width: u32, height: u32, requested: u32, avail_w: i32, avail_h: i32) u8 {
+        var s: u32 = @min(requested, 8);
+        while (s > 1 and (width * s > @as(u32, @intCast(@max(avail_w, 1))) or height * s > @as(u32, @intCast(@max(avail_h, 1))))) {
+            s -= 1;
+        }
+        return @intCast(@max(s, 1));
+    }
+
     pub fn init(title: [:0]const u8, width: u32, height: u32, window_scale: u32) !Platform {
         if (!c.SDL_Init(@intCast(c.SDL_INIT_VIDEO))) return error.SdlInitFailed;
         errdefer c.SDL_Quit();
         _ = c.SDL_InitSubSystem(@intCast(c.SDL_INIT_AUDIO));
         _ = c.SDL_InitSubSystem(@intCast(c.SDL_INIT_GAMEPAD));
 
-        const win_w: c_int = @intCast(width * window_scale);
-        const win_h: c_int = @intCast(height * window_scale);
+        var scale: u8 = @intCast(@min(window_scale, 8));
+        var bounds: c.SDL_Rect = undefined;
+        if (c.SDL_GetDisplayUsableBounds(c.SDL_GetPrimaryDisplay(), &bounds)) {
+            scale = fitScale(width, height, window_scale, bounds.w, bounds.h);
+        }
+        const win_w: c_int = @intCast(width * scale);
+        const win_h: c_int = @intCast(height * scale);
         const win = c.SDL_CreateWindow(title.ptr, win_w, win_h, @intCast(c.SDL_WINDOW_RESIZABLE)) orelse
             return error.SdlWindowFailed;
         errdefer c.SDL_DestroyWindow(win);
@@ -153,6 +166,7 @@ pub const Platform = struct {
             .logical_height = height,
             .window_width = @intCast(win_w),
             .window_height = @intCast(win_h),
+            .window_scale = scale,
         };
     }
 
@@ -380,7 +394,11 @@ pub const Platform = struct {
 
     pub fn setWindowScale(self: *Platform, scale: u8) void {
         if (self.fullscreen) return;
-        const s: u32 = @min(@as(u32, scale), 8);
+        var s: u32 = @min(@as(u32, scale), 8);
+        var bounds: c.SDL_Rect = undefined;
+        if (c.SDL_GetDisplayUsableBounds(c.SDL_GetPrimaryDisplay(), &bounds)) {
+            s = fitScale(self.logical_width, self.logical_height, s, bounds.w, bounds.h);
+        }
         if (self.window) |win| {
             _ = c.SDL_SetWindowSize(win, @intCast(self.logical_width * s), @intCast(self.logical_height * s));
             self.window_width = self.logical_width * s;
@@ -582,4 +600,10 @@ pub fn performanceFrequency() u64 {
 
 pub fn openUrl(url: [:0]const u8) bool {
     return c.SDL_OpenURL(url.ptr);
+}
+
+test "platform: fit scale respects display bounds" {
+    try std.testing.expectEqual(@as(u8, 2), Platform.fitScale(640, 360, 3, 1280, 800));
+    try std.testing.expectEqual(@as(u8, 3), Platform.fitScale(640, 360, 3, 1920, 1080));
+    try std.testing.expectEqual(@as(u8, 1), Platform.fitScale(640, 360, 4, 800, 600));
 }
