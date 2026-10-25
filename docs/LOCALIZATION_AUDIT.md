@@ -5,9 +5,9 @@
 ## 总计
 
 - 文件：18
-- 字符串出现次数：747
-- 去重字符串：452
-- CJK 字符数：3882
+- 字符串出现次数：755
+- 去重字符串：459
+- CJK 字符数：3946
 
 ## 按文件
 
@@ -16,16 +16,16 @@
 | src/core/font.zig | 2 | 2 | 4 |
 | src/core/mech.zig | 11 | 11 | 490 |
 | src/game/attributes.zig | 25 | 22 | 228 |
-| src/game/content.zig | 108 | 106 | 894 |
+| src/game/content.zig | 109 | 107 | 898 |
 | src/game/game.zig | 17 | 16 | 52 |
 | src/game/gear_save.zig | 3 | 3 | 10 |
 | src/game/hud.zig | 42 | 42 | 119 |
-| src/game/i18n.zig | 141 | 114 | 514 |
+| src/game/i18n.zig | 149 | 121 | 560 |
 | src/game/intent.zig | 0 | 0 | 11 |
 | src/game/items.zig | 18 | 16 | 130 |
-| src/game/run_game.zig | 103 | 71 | 402 |
+| src/game/run_game.zig | 101 | 70 | 403 |
 | src/game/run_hud.zig | 131 | 110 | 453 |
-| src/game/run_sim.zig | 102 | 66 | 379 |
+| src/game/run_sim.zig | 103 | 67 | 392 |
 | src/game/run_target.zig | 10 | 9 | 88 |
 | src/game/save.zig | 8 | 8 | 28 |
 | src/game/status_def.zig | 6 | 6 | 12 |
