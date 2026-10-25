@@ -122,6 +122,7 @@ pub fn logLine(line: []const u8, buf: []u8) []const u8 {
     if (std.mem.eql(u8, line, "战吼：攻击 +30%")) return "WAR CRY: +30% ATK";
     if (std.mem.eql(u8, line, "闪现")) return "BLINK";
     if (std.mem.eql(u8, line, "时间回溯")) return "REWIND";
+    if (std.mem.eql(u8, line, "时间停滞：眩晕2 减速2")) return "TIME STOP: STUN 2 SLOW 2";
     if (std.mem.eql(u8, line, "FROST 减速")) return "FROST SLOW";
     if (std.mem.eql(u8, line, "金币不足")) return "NOT ENOUGH GOLD";
     if (std.mem.eql(u8, line, "技能不可用")) return "ABILITY UNAVAILABLE";
@@ -190,6 +191,11 @@ pub fn logLine(line: []const u8, buf: []u8) []const u8 {
     if (afterPrefix(line, "深渊守卫 深渊斩 -")) |rest| {
         if (std.mem.endsWith(u8, rest, " 生命")) {
             if (parseU32(rest[0 .. rest.len - 7])) |n| return std.fmt.bufPrint(buf, "WARDEN CLEAVE -{d}", .{n}) catch line;
+        }
+    }
+    if (afterPrefix(line, "时间回溯：后退")) |rest| {
+        if (std.mem.indexOf(u8, rest, "格")) |at| {
+            if (parseU32(rest[0..at])) |n| return std.fmt.bufPrint(buf, "REWIND {d} TILES +8% HP", .{n}) catch line;
         }
     }
     if (afterPrefix(line, "已保存到槽 ")) |rest| {
@@ -281,6 +287,8 @@ test "i18n: battle log lines translate common formats" {
     try std.testing.expectEqualStrings("LOAD FAILED", logLine("读档失败：文件损坏", &buf));
     try std.testing.expectEqualStrings("OBTAINED LEATHER ARMOR", logLine("获得 皮甲", &buf));
     try std.testing.expectEqualStrings("BAG FULL", logLine("背包已满", &buf));
+    try std.testing.expectEqualStrings("TIME STOP: STUN 2 SLOW 2", logLine("时间停滞：眩晕2 减速2", &buf));
+    try std.testing.expectEqualStrings("REWIND 3 TILES +8% HP", logLine("时间回溯：后退3格 回复8%", &buf));
     try std.testing.expectEqualStrings("GOLEM SLAM -7", logLine("石魔像 震地 -7 生命", &buf));
     try std.testing.expectEqualStrings("SAVED SLOT 2", logLine("已保存到槽 2", &buf));
 }
