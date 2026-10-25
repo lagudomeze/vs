@@ -719,11 +719,11 @@ pub const Sim = struct {
         const h = seed ^ (@as(u64, floor) *% 0x94d049bb133111eb) ^ 0x9e3779b97f4a7c15;
         var rng = std.Random.DefaultPrng.init(h);
         const roll = rng.random().float(f32);
-        if (roll < 0.17) return .ember;
-        if (roll < 0.34) return .frost;
-        if (roll < 0.50) return .miasma;
-        if (roll < 0.67) return .gilded;
-        if (roll < 0.84) return .bloodmoon;
+        if (roll < 0.18) return .ember;
+        if (roll < 0.36) return .frost;
+        if (roll < 0.54) return .miasma;
+        if (roll < 0.72) return .gilded;
+        if (roll < 0.90) return .bloodmoon;
         return .surge;
     }
 
