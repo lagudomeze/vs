@@ -486,11 +486,11 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
         }
         if (pin.feedback) _ = vx.platform.openUrl("https://github.com/lagudomeze/vs/issues/new?template=feedback.yml");
-        if (pin.key_code == 38) {
+        if (pin.key_code == vx.platform.scancode_f7) {
             game.badges_open = !game.badges_open;
             game.hud_state.badges_open = game.badges_open;
         }
-        if (!game.started and pin.key_code == 39) game.rerollSeed();
+        if (!game.started and pin.key_code == vx.platform.scancode_f8) game.rerollSeed();
         if (pin.diagnostics) {
             var dbuf: [512:0]u8 = undefined;
             platform.setClipboard(game.diagnostics(&dbuf));
