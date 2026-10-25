@@ -17,13 +17,15 @@
 - 敌人名/短名、意图（ATK/RANGED/CHASE/STUN）、先攻 YOU
 - 帮助页 16 行
 - 死亡/胜利标题、BEST/R RESTART
+- 常见战斗日志（楼层/敌人/陷阱/宝箱/灼烧/升级/击杀/命中/伤害/Boss 阶段）
+- 死亡原因
 - F2 按 L 切换 ZH/EN，settings.language 持久化
 - --lang en 可直接看英文设置/菜单
 
 ## 没有
 
 - 暂停/BADGES 仍是英文固定文案（中文模式下不切换）
-- 战斗日志/死亡原因/物品/商店/祭坛/天赋瞄准提示未翻译
+- 罗盘方位/世界内“楼梯”标签/物品/商店/祭坛/天赋瞄准提示未翻译
 - 没有语言选择 UI（F2 里没有）
 - 没有英文截图/字体溢出验收
 - 没有内容翻译（406 去重字符串）
@@ -41,4 +43,4 @@
 - 历史日志切语言后不会重译
 - CJK 字体子集不影响 ASCII，但英文排版需重新测宽
 
-当前状态：**导航 + 职业卡 + 核心 HUD 部分英文**，不是完整英文版。截图：settings_en.png / menu_en.png / gameplay_en.png / help_en.png / death_en.png。
+当前状态：**导航 + 职业卡 + 核心 HUD 部分英文**，不是完整英文版。截图：settings_en.png / menu_en.png / gameplay_en.png / help_en.png / death_en.png；日志为显示层翻译，存档仍存中文。

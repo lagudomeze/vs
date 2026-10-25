@@ -133,6 +133,7 @@ pub const State = struct {
     target_range: u16 = 0,
     aim: AimInfo = .{},
     log_lines: [4][]const u8 = .{ "", "", "", "" },
+    log_translated: [4][96]u8 = undefined,
     log_count: usize = 0,
     minimap: [169]u8 = @splat(0),
     has_minimap: bool = false,
