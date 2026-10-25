@@ -5,7 +5,7 @@
 规则：扫描 src 中所有含 CJK 的双引号字符串，减去 i18n.zig 里出现过的字符串。
 这不是 AST 分析；被映射的字符串可能仍有别的显示路径，未映射的也可能不显示。
 
-- 未在 i18n 表中出现的去重字符串：301
+- 未在 i18n 表中出现的去重字符串：302
 - 涉及文件：15
 
 ## 按文件
@@ -15,12 +15,12 @@
 | src/core/font.zig | 2 | 2 |
 | src/core/mech.zig | 11 | 11 |
 | src/game/attributes.zig | 25 | 12 |
-| src/game/content.zig | 109 | 85 |
+| src/game/content.zig | 110 | 86 |
 | src/game/game.zig | 17 | 11 |
 | src/game/gear_save.zig | 3 | 3 |
 | src/game/hud.zig | 42 | 30 |
 | src/game/items.zig | 18 | 10 |
-| src/game/run_game.zig | 101 | 45 |
+| src/game/run_game.zig | 102 | 45 |
 | src/game/run_hud.zig | 131 | 61 |
 | src/game/run_sim.zig | 103 | 41 |
 | src/game/run_target.zig | 10 | 4 |
@@ -87,6 +87,7 @@
 | 恢复 40 生命；背包面板按 P 使用。 | 1 |
 | 时空法师的齿轮印记：+3 感知，+2 魔力，+5% 暴击。 | 1 |
 | 恢复 30 资源；背包面板按 P 使用。 | 1 |
+| 铁木之心 | 1 |
 | 狂战士：近战 2.0 倍伤害，冷却 4 回合。 | 1 |
 | 狂战士：直线 2 格冲锋并击退 2 格，冷却 6 回合。 | 1 |
 | 狂战士：3 回合内攻击 +30%，冷却 8 回合。 | 1 |
@@ -111,7 +112,6 @@
 | 消耗品效果超出范围 | 1 |
 | 敌人缺少 id | 1 |
 | 敌人缺少名称 | 1 |
-| 敌人缺少模型 | 1 |
 
 ## 处理原则
 

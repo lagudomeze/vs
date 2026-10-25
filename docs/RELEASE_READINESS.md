@@ -12,7 +12,7 @@
 | Demo 代码 | 绿 | 单层/单职业/独立存档/结束页 | 独立 App/Depot |
 | 商店素材 | 黄 | 7 张 1920 截图 + capsule + 30s 真实引擎 capture 预告片 | 正式手绘 key art、人手实机/正式配乐 |
 | 音频 | 黄 | 程序化 SFX/ambience/victory | 未实机试听 |
-| 本地化 | 黄 | English beta 覆盖菜单/HUD/商店/面板/常见战斗日志；459 去重字符串仍在审计 | 完整英文化/长文本验收 |
+| 本地化 | 黄 | English beta 覆盖菜单/HUD/商店/面板/常见战斗日志；461 去重字符串仍在审计 | 完整英文化/长文本验收 |
 | Playtest | 红 | 0 名真实玩家 | 招募/反馈 |
 | Steam 后台 | 红 | 无 AppID/DepotID/SDK；清单见 STEAM_BACKEND.md | 账号/费用/审核 |
 | Deck | 黄 | 静态预检 0 fail；自动 2×；手柄可完成主要流程 | 无实机/Proton 验证 |

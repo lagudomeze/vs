@@ -5,9 +5,9 @@
 ## 总计
 
 - 文件：18
-- 字符串出现次数：755
-- 去重字符串：459
-- CJK 字符数：3946
+- 字符串出现次数：757
+- 去重字符串：461
+- CJK 字符数：3950
 
 ## 按文件
 
@@ -16,15 +16,15 @@
 | src/core/font.zig | 2 | 2 | 4 |
 | src/core/mech.zig | 11 | 11 | 490 |
 | src/game/attributes.zig | 25 | 22 | 228 |
-| src/game/content.zig | 109 | 107 | 898 |
+| src/game/content.zig | 110 | 108 | 902 |
 | src/game/game.zig | 17 | 16 | 52 |
 | src/game/gear_save.zig | 3 | 3 | 10 |
 | src/game/hud.zig | 42 | 42 | 119 |
 | src/game/i18n.zig | 149 | 121 | 560 |
 | src/game/intent.zig | 0 | 0 | 11 |
 | src/game/items.zig | 18 | 16 | 130 |
-| src/game/run_game.zig | 101 | 70 | 403 |
-| src/game/run_hud.zig | 131 | 110 | 453 |
+| src/game/run_game.zig | 102 | 71 | 407 |
+| src/game/run_hud.zig | 131 | 110 | 449 |
 | src/game/run_sim.zig | 103 | 67 | 392 |
 | src/game/run_target.zig | 10 | 9 | 88 |
 | src/game/save.zig | 8 | 8 | 28 |
