@@ -53,8 +53,8 @@ pwsh -File tools/playtest_pack.ps1
 
 ## 当前状态
 
-已生成 vx-playtest-0.1.0.zip（2,727,614 bytes）：中英说明、CONSENT、KNOWN_ISSUES、FEEDBACK、exe 均存在；解包运行 exit 0；无 steam_appid.txt。
+已生成 vx-playtest-0.1.0.zip（2,727,871 bytes）：中英说明、CONSENT、KNOWN_ISSUES、FEEDBACK、exe 均存在；解包运行 exit 0；无 steam_appid.txt。
 
-SHA256: DD45D67DE03845DA4A87BEB98664AF2E3D2D9CBF38D8A92F9D9A8FDF5CD3F0DC
+SHA256: 349016B96B38C5EC1228128F196A52A75308CB1086FA6C9A0AC5B63C7209072C
 
 尚未招募真实测试者。
