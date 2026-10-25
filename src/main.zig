@@ -750,6 +750,15 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             game.hud_state.pause_confirm_quit = false;
             platform.playSound(.ui);
         }
+        if (game.pause_open and pin.character) {
+            game.pause_open = false;
+            game.pause_confirm_quit = false;
+            game.show_help = true;
+            game.hud_state.pause_open = false;
+            game.hud_state.pause_confirm_quit = false;
+            game.hud_state.help = true;
+            platform.playSound(.ui);
+        }
         if (pin.toggle_debug) game.debug = !game.debug;
         if (pin.load_auto) {
             game.openAutoMenu(io);
