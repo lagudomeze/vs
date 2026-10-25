@@ -188,7 +188,7 @@ pub const ClassDef = struct {
 };
 
 pub const class_defs = [class_count]ClassDef{
-    .{ .name = "狂战士", .name_en = "WARRIOR", .role = "近战 防御", .role_en = "MELEE TANK", .base_attack = 18, .main_stat = .strength, .resource = .stamina, .base_stats = .{ 14, 10, 16, 8, 4, 10 } },
+    .{ .name = "狂战士", .name_en = "WARRIOR", .role = "近战 防御", .role_en = "MELEE TANK", .base_attack = 18, .main_stat = .strength, .resource = .stamina, .base_stats = .{ 16, 10, 18, 8, 4, 10 } },
     .{ .name = "元素法师", .name_en = "MAGE", .role = "远程 伤害", .role_en = "RANGED DPS", .base_attack = 11, .main_stat = .magic, .resource = .mana, .base_stats = .{ 6, 8, 8, 12, 18, 12 } },
     .{ .name = "时空法师", .name_en = "CHRONOMANCER", .role = "远程 减速", .role_en = "RANGED SLOW", .base_attack = 14, .main_stat = .magic, .resource = .paradox, .base_stats = .{ 7, 10, 9, 14, 14, 13 } },
 };
@@ -472,10 +472,10 @@ const expectApprox = std.testing.expectApproxEqAbs;
 
 test "class base stats and derived formulas match the v1 table" {
     const warrior = recompute(baseStats(.warrior), &.{}, .warrior);
-    try expectApprox(@as(f32, 168), warrior.derived.hp_max, 0.001); // 40 + 16*8
+    try expectApprox(@as(f32, 184), warrior.derived.hp_max, 0.001); // 40 + 18*8
     try expectApprox(@as(f32, 100), warrior.derived.resource_max, 0.001); // 60 + 10*4
-    try expectApprox(@as(f32, 34.8), warrior.derived.attack, 0.001); // 18 + 14*1.2
-    try expectApprox(@as(f32, 8), warrior.derived.armor, 0.001); // 16*0.5
+    try expectApprox(@as(f32, 37.2), warrior.derived.attack, 0.001); // 18 + 16*1.2
+    try expectApprox(@as(f32, 9), warrior.derived.armor, 0.001); // 18*0.5
     try expectApprox(@as(f32, 0.082), warrior.derived.crit, 0.0001); // 5% + 8*0.4%
     try expectApprox(@as(f32, 100), warrior.derived.speed, 0.001); // 100 + (10-10)*2
     try expectApprox(@as(f32, 11.5), warrior.derived.resource_per_turn, 0.001); // 8 + 10*0.35
@@ -514,7 +514,7 @@ test "xp follows 100 x current level and levels auto allocate" {
 
     var stats = baseStats(.warrior);
     applyLevels(&stats, .warrior, gained);
-    try expectApprox(@as(f32, 16), stats.get(.strength), 0.001); // 14 + 2 levels
+    try expectApprox(@as(f32, 18), stats.get(.strength), 0.001); // 16 + 2 levels
 }
 
 test "flat modifiers move derived stats immediately" {
@@ -527,9 +527,9 @@ test "flat modifiers move derived stats immediately" {
     };
     const after = recompute(base, &mods, .warrior);
 
-    try expectApprox(@as(f32, 24), after.stat(.strength), 0.001);
-    try expectApprox(@as(f32, 46.8), after.derived.attack, 0.001); // 18 + 24*1.2
-    try expectApprox(@as(f32, 204), after.derived.hp_max, 0.001); // 40 + 18*8 + 20
+    try expectApprox(@as(f32, 26), after.stat(.strength), 0.001);
+    try expectApprox(@as(f32, 49.2), after.derived.attack, 0.001); // 18 + 26*1.2
+    try expectApprox(@as(f32, 220), after.derived.hp_max, 0.001); // 40 + 20*8 + 20
     try std.testing.expect(after.derived.hp_max > before.derived.hp_max);
     try std.testing.expect(after.derived.attack > before.derived.attack);
 }
@@ -592,7 +592,7 @@ test "damage mitigation keeps 15% penetration" {
 test "level ups auto allocate to the class main stat" {
     var warrior = baseStats(.warrior);
     applyLevels(&warrior, .warrior, 3);
-    try expectApprox(@as(f32, 17), warrior.get(.strength), 0.001); // 14 + 3
+    try expectApprox(@as(f32, 19), warrior.get(.strength), 0.001); // 16 + 3
 
     var mage = baseStats(.mage);
     applyLevels(&mage, .mage, 2);
