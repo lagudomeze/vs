@@ -421,6 +421,13 @@ pub const RunGame = struct {
 
     /// Show the pre-run class cards. The same seed is used for the preview;
     /// picking a class keeps it and regenerates the dungeon for that class.
+    pub fn rerollSeed(self: *RunGame) void {
+        if (self.started) return;
+        self.seed = freshSeed();
+        self.seed_locked = false;
+        self.openMenu();
+    }
+
     pub fn openMenu(self: *RunGame) void {
         self.started = false;
         self.resetRun();
