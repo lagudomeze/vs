@@ -95,6 +95,7 @@ pub const State = struct {
     menu_selection: u8 = 0,
     shop_index: u8 = 0,
     shrine_index: u8 = 0,
+    stat_index: u8 = 0,
     victory_hold: bool = false,
     boss_active: bool = false,
     boss_hp: f32 = 0,
@@ -795,7 +796,8 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                 const row = @as(i32, @intCast(i / 2));
                 const ax = ix + 16 + col * 150;
                 const ay = iy + 42 + row * 22;
-                r.drawText(ax, ay, i18n.statShort(label), palette.cream, 1, false);
+                if (i == state.stat_index) r.drawText(ax - 8, ay, ">", palette.gold, 1, false);
+                r.drawText(ax, ay, i18n.statShort(label), if (i == state.stat_index) palette.gold_light else palette.cream, 1, false);
                 const val = fmt(&abuf, "{d}", .{state.attrs[i]});
                 r.drawText(ax + 48, ay, val, palette.gold_light, 1, false);
             }
@@ -828,6 +830,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                 const line = fmt(&tbuf, "{s}{d} {s}{s}{s}", .{ prefix, i + 1, slot.name, i18n.t("：", ": "), state.talent_descs[i] });
                 r.drawText(ix + 16, iy + 204 + @as(i32, @intCast(i)) * 14, line, if (i == 0) palette.gold_light else palette.cream, 1, false);
             }
+            r.drawText(ix + 16, iy + 252, "1-6 / DPAD / A  POINTS", palette.muted, 1, false);
         } else {
             if (state.item_count == 0) {
                 r.drawText(ix + 16, iy + 42, i18n.t("背包是空的", "BAG IS EMPTY"), palette.muted, 1, false);
@@ -867,7 +870,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                 r.drawText(ix + 16, iy + ih - 78 + @as(i32, @intCast(i)) * 16, fmt(&ebuf, "{s}  {s}", .{ label, name }), palette.muted, 1, false);
             }
             var pbuf: [48]u8 = undefined;
-            r.drawText(ix + 16, iy + ih - 18, fmt(&pbuf, "1/2/3 EQ  P POT x{d}  B BOMB x{d}", .{ state.potions, state.bombs }), palette.muted, 1, false);
+            r.drawText(ix + 16, iy + ih - 18, fmt(&pbuf, "1/2/3 EQ  A/P POT x{d}  B BOMB x{d}", .{ state.potions, state.bombs }), palette.muted, 1, false);
         }
     }
 

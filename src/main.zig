@@ -698,6 +698,8 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                 game.closeShrine();
             } else if (game.shop_open) {
                 game.closeShop();
+            } else if (game.panel != .none) {
+                game.panel = .none;
             } else if (!game.cancelAim()) {
                 if (game.show_help) {
                     game.show_help = false;
