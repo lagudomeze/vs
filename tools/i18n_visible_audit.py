@@ -69,7 +69,7 @@ def main() -> None:
         "- 内容 description 若 UI 不展示，可后置。",
         "- 每次翻译后重跑本脚本，数字应下降。",
     ]
-    OUT.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    OUT.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     print(f"{OUT.relative_to(ROOT)}: {len(remaining)} unmapped, {len(per_file)} files")
 
 

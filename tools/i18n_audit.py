@@ -95,7 +95,7 @@ def main() -> None:
         "本文件是审计，不是已完成本地化的声明。",
     ]
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    OUT.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     print(f"{OUT.relative_to(ROOT)}: {len(rows)} files, {len(all_lits)} unique strings")
 
 if __name__ == "__main__":
