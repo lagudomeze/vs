@@ -1222,8 +1222,12 @@ pub const RunGame = struct {
             }
         }
         if (self.victory_hold > 0) {
+            if (input.restart) {
+                self.restart();
+                return;
+            }
             self.victory_hold = @max(0, self.victory_hold - dt);
-            if (input.confirm or input.wait or input.restart) self.victory_hold = 0;
+            if (input.confirm or input.wait) self.victory_hold = 0;
             if (self.victory_hold == 0) self.hud_state.victory_hold = false;
             return;
         }
@@ -2673,6 +2677,19 @@ test "run game: victory updates class and chunk records" {
     var hold_frames: usize = 0;
     while (hold_frames < 30) : (hold_frames += 1) g.update(.{}, 0.05);
     try std.testing.expect(!g.hud_state.victory_hold);
+}
+
+test "run game: restart on victory banner is immediate" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.started = true;
+    g.sim.state = .victory;
+    g.victory_hold = 1.0;
+    g.update(.{ .restart = true }, 1.0 / 60.0);
+    try std.testing.expectEqual(sim_mod.State.playing, g.sim.state);
+    try std.testing.expectEqual(@as(f32, 0), g.victory_hold);
+    try std.testing.expectEqual(@as(u32, 1), g.sim.turn);
 }
 
 test "run game: sim notice becomes a HUD toast" {
