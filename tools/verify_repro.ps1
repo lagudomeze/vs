@@ -19,7 +19,7 @@ function Run-Gate() {
     } else {
         & (Join-Path $PSScriptRoot "release_gate.ps1")
     }
-    if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) { throw "release gate failed" }
+    if ($LASTEXITCODE -ne 0) { throw "release gate failed (exit $LASTEXITCODE)" }
 }
 
 function Get-Hashes() {
