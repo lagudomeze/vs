@@ -95,9 +95,9 @@ def main() -> int:
             break
         im = Image.frombytes("RGB", (W, H), raw)
         d = ImageDraw.Draw(im, "RGBA")
-        d.rectangle((0, 0, W, 110), fill=(5, 7, 12, 190))
+        d.rectangle((0, 150, W, 260), fill=(5, 7, 12, 190))
         caption = CAPTIONS[min(len(CAPTIONS) - 1, (i - 15) * len(CAPTIONS) // PLAY_FRAMES)]
-        center_text(d, 32, caption, font(48), (255, 238, 180))
+        center_text(d, 182, caption, font(48), (255, 238, 180))
         writer.send(im.tobytes())
 
     end = card("WISHLIST ON STEAM", "DEMO COMING SOON")
