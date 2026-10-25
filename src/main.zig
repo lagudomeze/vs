@@ -516,7 +516,10 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             game.sim.notice = "FEEDBACK: DIAGNOSTICS COPIED - PASTE IN FORM";
             _ = vx.platform.openUrl("https://github.com/lagudomeze/vs/issues/new?template=playtest_session.yml");
         }
-        if (pin.key_code == vx.platform.scancode_f7) {
+        if (pin.key_code == vx.platform.scancode_f7 and !game.settings_open and !game.chunk_map_open and
+            !game.show_help and !game.pause_open and !game.shop_open and !game.shrine_open and
+            game.panel == .none and game.slot_menu == .none)
+        {
             game.badges_open = !game.badges_open;
             game.hud_state.badges_open = game.badges_open;
         }
@@ -531,7 +534,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             game.sim.notice = "DIAGNOSTICS COPIED";
             platform.playSound(.ui);
         }
-        if (pin.settings) {
+        if (pin.settings and !game.show_help and !game.badges_open and !game.chunk_map_open and game.slot_menu == .none) {
             game.settings_open = !game.settings_open;
             if (!game.settings_open) {
                 game.settings_key_mode = false;
@@ -541,7 +544,10 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             }
             platform.playSound(.ui);
         }
-        if (pin.map and game.sim.chunks_enabled) {
+        if (pin.map and game.sim.chunks_enabled and !game.settings_open and !game.show_help and
+            !game.badges_open and !game.pause_open and !game.shop_open and !game.shrine_open and
+            game.panel == .none and game.slot_menu == .none)
+        {
             game.chunk_map_open = !game.chunk_map_open;
             game.hud_state.chunk_map_open = game.chunk_map_open;
             platform.playSound(.ui);
@@ -704,6 +710,11 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             modal_consumed = true;
             help_consumed = true;
             platform.playSound(.ui);
+        }
+        if (pin.help and (game.settings_open or game.chunk_map_open or game.badges_open or
+            game.shop_open or game.shrine_open or game.panel != .none))
+        {
+            help_consumed = true;
         }
         const bomb_ok = game.started and game.sim.state == .playing and
             !game.isAiming() and game.panel == .none and !game.shop_open and !game.shrine_open and
