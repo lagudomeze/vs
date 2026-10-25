@@ -10,6 +10,8 @@ Snapshot: main 40e5963 (2026-10-26). This page is the single list of what code c
 - Full and demo run from a clean unzip; no AppID, no local saves shipped.
 - Save v3 accepts v2, rejects v1; BLOODMOON/SURGE round-trip covered.
 - Demo and playtest consent/feedback templates are static files.
+- Public playtest check (2026-10-26): #441 has 0 comments; 0 real feedback records.
+
 
 ## Human-only blockers
 
