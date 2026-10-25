@@ -43,6 +43,15 @@ pub fn quality(zh: []const u8) []const u8 {
     return zh;
 }
 
+pub fn aimReason(zh: []const u8) []const u8 {
+    if (current != .en) return zh;
+    if (std.mem.eql(u8, zh, "无效目标")) return "INVALID TARGET";
+    if (std.mem.eql(u8, zh, "超出范围")) return "OUT OF RANGE";
+    if (std.mem.eql(u8, zh, "视线受阻")) return "LINE BLOCKED";
+    if (std.mem.eql(u8, zh, "取消瞄准")) return "AIM CANCELLED";
+    return zh;
+}
+
 pub fn itemName(zh: []const u8) []const u8 {
     if (current != .en) return zh;
     if (std.mem.eql(u8, zh, "铁剑")) return "IRON SWORD";
