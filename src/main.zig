@@ -597,11 +597,13 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                         else => 0.0,
                     };
                     platform.setAudioVolume(game.settings_volume);
+                    platform.playSound(.ui);
                     settings_dirty = true;
                 }
                 if (pin.stat == 4) {
                     game.settings_ambient = !game.settings_ambient;
                     platform.setAmbient(game.settings_ambient);
+                    platform.playSound(.ui);
                     settings_dirty = true;
                 }
                 if (pin.stat == 5) {
