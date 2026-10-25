@@ -1162,6 +1162,13 @@ pub const RunGame = struct {
         self.sim.pushLog("装备 {s}", .{def.name});
     }
 
+    fn itemHasRisk(def: *const items_mod.ItemDef) bool {
+        for (def.mods()) |m| {
+            if ((m.stat == .hp_max or m.stat == .armor) and m.flat < 0) return true;
+        }
+        return false;
+    }
+
     fn itemScore(def: *const items_mod.ItemDef) f32 {
         var score: f32 = 0;
         for (def.mods()) |m| {
@@ -2689,6 +2696,7 @@ pub const RunGame = struct {
         self.hud_state.item_deltas = @splat(0);
         self.hud_state.item_delta_valid = @splat(false);
         self.hud_state.item_delta_new = @splat(false);
+        self.hud_state.item_risk = @splat(false);
         var di: usize = 0;
         while (di < self.hud_state.item_count) : (di += 1) {
             const item = self.inventory.at(di);
@@ -2697,6 +2705,7 @@ pub const RunGame = struct {
             const slot = def.slot() orelse continue;
             const equipped = self.inventory.equipped.get(slot);
             self.hud_state.item_delta_valid[di] = true;
+            self.hud_state.item_risk[di] = itemHasRisk(def);
             if (equipped) |eq| {
                 if (eq >= self.content.items.len) continue;
                 const delta = itemPower(def.*) - itemPower(self.content.items[eq]);
@@ -3405,6 +3414,18 @@ test "run game: mouse click on a bomb does not drink a potion" {
     g.update(.{ .mouse_x = 32, .mouse_y = 54, .click = true }, 1.0 / 60.0);
     try std.testing.expectEqual(@as(usize, 2), g.inventory.count());
     try std.testing.expectEqual(@as(f32, 10), g.sim.hero.vitals.val);
+}
+
+test "run game: risk markers catch negative hp and armor" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
+    defer g.destroy();
+    const pearl = g.content.item("void_pearl") orelse return error.MissingItem;
+    const ironwood = g.content.item("ironwood_heart") orelse return error.MissingItem;
+    const edge = g.content.item("bloodmoon_charm") orelse return error.MissingItem;
+    try std.testing.expect(RunGame.itemHasRisk(pearl));
+    try std.testing.expect(RunGame.itemHasRisk(edge));
+    try std.testing.expect(!RunGame.itemHasRisk(ironwood));
 }
 
 test "run game: void pearl is a manual risk item" {
