@@ -1529,10 +1529,16 @@ pub const RunGame = struct {
         if (self.panel == .inventory and input.click) {
             if (self.bagRowAt(input.mouse_x, input.mouse_y)) |idx| {
                 const item = self.inventory.at(idx);
-                if (item < self.content.items.len and self.content.items[item].use() != null) {
-                    _ = self.usePotion(true);
-                } else {
-                    self.equipBag(idx);
+                if (item < self.content.items.len) {
+                    if (self.content.items[item].use()) |use| {
+                        if (use.bomb > 0) {
+                            _ = self.useBomb();
+                        } else {
+                            _ = self.usePotion(true);
+                        }
+                    } else {
+                        self.equipBag(idx);
+                    }
                 }
             }
         }
@@ -3372,6 +3378,30 @@ test "run game: shop loot purchase adds an item and spends gold" {
     try std.testing.expect(g.sim.shop_used);
     // The drop may auto-equip, so total items can stay flat; gold and shop prove the purchase.
     _ = before;
+}
+
+test "run game: mouse click on a bomb does not drink a potion" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
+    defer g.destroy();
+    g.inventory = .{};
+    const bomb_id = g.content.itemIndex("fire_bomb") orelse return error.NoBomb;
+    var potion_id: ?usize = null;
+    for (g.content.items, 0..) |def, i| {
+        if (def.use() != null and def.use().?.heal > 0) {
+            potion_id = i;
+            break;
+        }
+    }
+    const potion = potion_id orelse return error.NoPotion;
+    _ = g.inventory.pickup(@intCast(bomb_id));
+    _ = g.inventory.pickup(@intCast(potion));
+    g.panel = .inventory;
+    g.sim.hero.vitals.val = 10;
+    g.fillHudState();
+    g.update(.{ .mouse_x = 32, .mouse_y = 54, .click = true }, 1.0 / 60.0);
+    try std.testing.expectEqual(@as(usize, 2), g.inventory.count());
+    try std.testing.expectEqual(@as(f32, 10), g.sim.hero.vitals.val);
 }
 
 test "run game: mouse click drinks a bag potion" {
