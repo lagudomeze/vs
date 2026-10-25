@@ -489,7 +489,13 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             settings.fullscreen = platform.fullscreen;
             vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
         }
-        if (pin.feedback) _ = vx.platform.openUrl("https://github.com/lagudomeze/vs/issues/new?template=feedback.yml");
+        if (pin.feedback) {
+            var dbuf: [1024:0]u8 = undefined;
+            const diag = game.diagnostics(&dbuf);
+            platform.setClipboard(diag);
+            game.sim.notice = "FEEDBACK: DIAGNOSTICS COPIED";
+            _ = vx.platform.openUrl("https://github.com/lagudomeze/vs/issues/new?template=feedback.yml");
+        }
         if (pin.key_code == vx.platform.scancode_f7) {
             game.badges_open = !game.badges_open;
             game.hud_state.badges_open = game.badges_open;

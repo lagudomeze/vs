@@ -2,7 +2,7 @@
 
 ## 玩家入口
 
-- 游戏内 **F3**：打开 GitHub 反馈表单（需要系统浏览器）。
+- 游戏内 **F3**：先把诊断（seed/daily/版本/窗口）复制到剪贴板，再打开 GitHub 反馈表单；粘贴即可。
 - 表单：.github/ISSUE_TEMPLATE/feedback.yml
 - 直接链接：https://github.com/lagudomeze/vs/issues/new?template=feedback.yml
 
