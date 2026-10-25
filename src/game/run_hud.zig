@@ -264,7 +264,7 @@ fn drawBadges(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
 fn drawPause(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     r.fillRect(0, 0, w, h, palette.deep);
     const pw: i32 = 260;
-    const ph: i32 = 150;
+    const ph: i32 = 170;
     const px = @divTrunc(w - pw, 2);
     const py = @divTrunc(h - ph, 2);
     backPanel(r, px, py, pw, ph);
@@ -273,11 +273,12 @@ fn drawPause(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     r.drawText(px + @divTrunc(pw - tw, 2), py + 20, title, palette.gold_light, 2, true);
     r.drawText(px + 30, py + 64, "START/A  RESUME", palette.cream, 1, false);
     r.drawText(px + 30, py + 80, "ESC/B    RESUME", palette.cream, 1, false);
-    r.drawText(px + 30, py + 96, "F2   SETTINGS", palette.cream, 1, false);
+    r.drawText(px + 30, py + 96, "Y    HELP", palette.cream, 1, false);
+    r.drawText(px + 30, py + 112, "F2   SETTINGS", palette.cream, 1, false);
     if (state.pause_confirm_quit) {
-        r.drawText(px + 30, py + 112, "Q AGAIN TO QUIT", palette.red, 1, false);
+        r.drawText(px + 30, py + 128, "Q AGAIN TO QUIT", palette.red, 1, false);
     } else {
-        r.drawText(px + 30, py + 112, "Q  QUIT", palette.muted, 1, false);
+        r.drawText(px + 30, py + 128, "Q  QUIT", palette.muted, 1, false);
     }
     r.drawText(px + 30, py + ph - 22, "F4 COPY DIAGNOSTICS", palette.gold, 1, false);
 }
