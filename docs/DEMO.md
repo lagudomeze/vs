@@ -61,3 +61,11 @@ pwsh -File tools/demo_pack.ps1
 ## 商店素材
 
 Demo 专用截图/头图/胶囊见 [store/demo/README.md](store/demo/README.md)，由 tools/demo_assets.py 生成；头图只写 WARRIOR / FLOOR 1。
+
+## 复验 2026-10-25
+
+- dist/demo/vx-demo-0.1.0.zip 2.6 MB
+- PLAY_DEMO.cmd / DEMO_README.txt / vx.exe / CREDITS / OFL / README
+- 解包后 --demo --headless 渲染成功
+- saves 实际路径：%APPDATA%/lagudomeze/vx/demo
+- steam_package_check: PASS，仅 AppID/DepotID 占位 warning
