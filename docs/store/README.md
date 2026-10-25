@@ -11,6 +11,7 @@ python tools/store_assets.py
 python tools/store_screens.py
 python tools/key_art.py
 python tools/pixel_logo.py
+python tools/store_extra_assets.py
 ~~~
 
 源图：
@@ -24,7 +25,8 @@ python tools/pixel_logo.py
 | --- | --- | --- |
 | key_art_1920x1080.png | 1920x1080 | 主视觉 v2：放大像素 VX logo + AETHER KEEP，回合制 Roguelike 文案与 Wishlist |
 | trailer_storyboard.png | 1920x1080 | 30 秒预告片故事板（6 镜） |
-| logo_920x430.png | 920x430 | 像素 VX / AETHER KEEP 透明 logo |
+| logo_920x430.png | 920x430 | 像素 VX / AETHER KEEP 透明 logo（源） |
+| library_logo_1280x720.png | 1280x720 | Library Logo（透明，正式要求尺寸） |
 
 仍不是正式手绘 key art；上架前替换为专门构图。logo 为 5x7 像素字表生成，可作为正式 logo 的方向稿。
 
@@ -50,6 +52,9 @@ python tools/pixel_logo.py
 | vertical_capsule_374x542.png | 374×542 | Vertical Capsule 半尺寸 |
 | library_capsule_600x900.png | 600×900 | Library Capsule |
 | library_capsule_300x450.png | 300×450 | Library Capsule 半尺寸 |
+| library_hero_3840x1240.png | 3840×1240 | Library Hero |
+| page_background_1438x810.png | 1438×810 | 商店页背景 |
+| community_icon_184x184.png | 184×184 | Community Icon |
 
 ## 上架前替换
 
