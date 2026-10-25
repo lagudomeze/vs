@@ -122,11 +122,13 @@ pub const Settings = struct {
     keys: Keys = .{},
     chunks: bool = false,
     shake: bool = true,
+    language: u8 = 0,
 
     pub fn sanitized(self: Settings) Settings {
         var s = self;
         s.scale = @min(@max(s.scale, 2), 4);
         s.volume = std.math.clamp(s.volume, 0, 1);
+        s.language = @min(s.language, 1);
         for (binding_defs) |def| {
             var v = keyCode(def.get(&s.keys), def.default);
             if (isReserved(v)) v = def.default;
@@ -247,5 +249,7 @@ test "settings round-trip, defaults and clamp" {
     try save(io, alloc, path, want);
     try std.testing.expectEqual(want, try load(io, alloc, path));
     try std.testing.expectEqual(@as(u8, 4), (Settings{ .scale = 99 }).sanitized().scale);
+    try std.testing.expectEqual(@as(u8, 1), (Settings{ .language = 99 }).sanitized().language);
+    try std.testing.expectEqual(@as(u8, 1), (Settings{ .language = 1 }).sanitized().language);
     try std.testing.expectEqual(@as(u32, 44), (Settings{ .keys = .{ .confirm = 41 } }).sanitized().keys.confirm);
 }
