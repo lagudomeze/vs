@@ -38,7 +38,7 @@ steam_package_check：
 
 - dist/demo/vx-demo-0.1.0.zip
 - 2.6 MB
-- SHA256 = 219FD841EEEB6AEF4E3B867879437BA88AEE4873DB47E7F55E5991332B0B2D5F
+- SHA256 = 859001A8C160124F34CFFF99D71EB5BA264D015C7F63699B714236A52782F145
 - 内容：vx.exe / PLAY_DEMO.cmd / DEMO_README.txt / README / CREDITS / OFL / VERSION
 
 解包冒烟：
@@ -72,6 +72,14 @@ pwsh -File tools/release_gate.ps1 -DryRun
 ~~~
 
 顺序：preflight -> playtest_pack -> press_kit -> steam_check -> steam_package_check -> 三个 SHA。
+
+## 可复现性验证
+
+~~~powershell
+pwsh -File tools/verify_repro.ps1 -SkipPreflight
+~~~
+
+连续两次 gate，比较全量/Demo/Playtest SHA；任何 DIFF 直接失败。
 
 ## 一键 preflight
 
