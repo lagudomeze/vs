@@ -211,6 +211,8 @@ const help_lines = [_][]const u8{
     "状态 STUN/SLOW/BURN/VULN/GUARD/BUFF",
     "BURN max 3 stacks; VULN +20% dmg",
     "ENEMY: GOLEM QUAKE / WRAITH DRAIN / SKEL GUARD",
+    "DAILY F6/Y   BADGES F7   DIAG F4",
+    "PAD  A OK  B BACK  X BAG  Y CHAR  START PAUSE",
     "F2 SETTINGS  F3 FEEDBACK+DIAG  F11 FULL  F12 SHOT",
 };
 const help_lines_en = [_][]const u8{
@@ -229,6 +231,8 @@ const help_lines_en = [_][]const u8{
     "STATUS STUN/SLOW/BURN/VULN/GUARD/BUFF",
     "BURN max 3 stacks; VULN +20% dmg",
     "ENEMY: GOLEM QUAKE / WRAITH DRAIN / SKEL GUARD",
+    "DAILY F6/Y   BADGES F7   DIAG F4",
+    "PAD  A OK  B BACK  X BAG  Y CHAR  START PAUSE",
     "F2 SETTINGS  F3 FEEDBACK+DIAG  F11 FULL  F12 SHOT",
 };
 const aim_hint = "空格/同键/左键确认  Esc取消  Tab换目标";
@@ -471,7 +475,7 @@ fn drawHelp(r: *renderer.Renderer, w: i32, h: i32) void {
     r.fillRect(0, 0, w, h, palette.deep);
     const px: i32 = 32;
     const pw: i32 = w - 64;
-    const ph: i32 = @min(h - 32, 256);
+    const ph: i32 = @min(h - 32, 280);
     const py: i32 = @divTrunc(h - ph, 2);
     backPanel(r, px, py, pw, ph);
     const title = i18n.t(help_title, "CONTROLS");
