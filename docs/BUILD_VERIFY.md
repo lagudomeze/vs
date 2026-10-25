@@ -81,6 +81,10 @@ pwsh -File tools/verify_repro.ps1 -SkipPreflight
 
 连续两次 gate，比较全量/Demo/Playtest/Press SHA；任何 DIFF 直接失败。
 
+## 文档链接检查
+
+preflight 会跑 tools/check_links.py；断链直接失败。
+
 ## 一键 preflight
 
     $env:VX_PYTHON = <python.exe>
