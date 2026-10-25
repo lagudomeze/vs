@@ -1,0 +1,7 @@
+KNOWN LIMITATIONS (0.1.0)
+
+- English is a beta: some dynamic text may fall back to Chinese.
+- No cloud saves, achievements, or Steam overlay in this build.
+- Steam Deck/Proton is not hardware-verified; a Windows PC is the target.
+- Trailer/marketing capture is auto-bot, not human gameplay.
+- If the game does not start, include the error text and Windows version.
