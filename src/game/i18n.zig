@@ -115,6 +115,14 @@ pub fn logLine(line: []const u8, buf: []u8) []const u8 {
     if (std.mem.eql(u8, line, "Boss 免疫减速")) return "BOSS IMMUNE TO SLOW";
     if (std.mem.eql(u8, line, "Boss 抗眩晕 减速+反噬")) return "BOSS RESISTS STUN: SLOW + RETALIATE";
     if (std.mem.eql(u8, line, "火球轰击地面")) return "FIREBALL HITS THE GROUND";
+    if (std.mem.eql(u8, line, "SHOP 治疗")) return "SHOP HEAL";
+    if (std.mem.eql(u8, line, "SHOP 主属性 +2")) return "SHOP MAIN +2";
+    if (std.mem.eql(u8, line, "SHOP 体质 +2")) return "SHOP CON +2";
+    if (std.mem.eql(u8, line, "SHOP 净化")) return "SHOP CLEANSE";
+    if (std.mem.eql(u8, line, "战吼：攻击 +30%")) return "WAR CRY: +30% ATK";
+    if (std.mem.eql(u8, line, "闪现")) return "BLINK";
+    if (std.mem.eql(u8, line, "时间回溯")) return "REWIND";
+    if (std.mem.eql(u8, line, "FROST 减速")) return "FROST SLOW";
     if (std.mem.eql(u8, line, "深渊守卫攻击")) return "ABYSS WARDEN ATTACK";
 
     if (afterPrefix(line, "进入第 ")) |rest| {
@@ -157,6 +165,14 @@ pub fn logLine(line: []const u8, buf: []u8) []const u8 {
                 return std.fmt.bufPrint(buf, "LEVEL {d}", .{n}) catch line;
             }
         }
+    }
+    if (afterPrefix(line, "SHRINE ")) |rest| {
+        if (std.mem.endsWith(u8, rest, " +2")) {
+            return std.fmt.bufPrint(buf, "SHRINE {s} +2", .{statShort(rest[0 .. rest.len - 3])}) catch line;
+        }
+    }
+    if (std.mem.endsWith(u8, line, " 举盾")) {
+        return std.fmt.bufPrint(buf, "{s} GUARDS", .{enemyName(line[0 .. line.len - " 举盾".len])}) catch line;
     }
     if (afterPrefix(line, "深渊守卫 深渊斩 -")) |rest| {
         if (parseU32(rest)) |n| return std.fmt.bufPrint(buf, "ABYSS CLEAVE -{d}", .{n}) catch line;
@@ -213,4 +229,7 @@ test "i18n: battle log lines translate common formats" {
     try std.testing.expectEqualStrings("KILL WRAITH +5 XP", logLine("击杀 幽魂 +5XP", &buf));
     try std.testing.expectEqualStrings("WRAITH DEALS 7", logLine("幽魂 造成 7 伤害", &buf));
     try std.testing.expectEqualStrings("BURN -3", logLine("灼烧 -3", &buf));
+    try std.testing.expectEqualStrings("SHOP HEAL", logLine("SHOP 治疗", &buf));
+    try std.testing.expectEqualStrings("SHRINE STR +2", logLine("SHRINE 力量 +2", &buf));
+    try std.testing.expectEqualStrings("WRAITH GUARDS", logLine("幽魂 举盾", &buf));
 }
