@@ -54,7 +54,10 @@ powershell -ExecutionPolicy Bypass -File tools/package.ps1
 
 ## 6. 反馈归档
 
-- GitHub issue 标签：feedback / balance / bug / ux
+- GitHub issue 标签：feedback / playtest / balance / bug / ux
+
+- 结构化表单：[playtest_session.yml](../.github/ISSUE_TEMPLATE/playtest_session.yml)
+- 游戏内 F3：复制诊断并打开该表单
 - 标题格式：[Feedback] 一句话结论
 - 必填：版本、种子、职业、复现步骤、期望/实际；游戏内按 F4 复制诊断后粘贴
 - 平衡问题附 QA 数据或种子；不要只写“太难”。

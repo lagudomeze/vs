@@ -1,0 +1,116 @@
+name: Playtest session
+description: Structured feedback after a 5-30 minute playtest session.
+title: "[Playtest] "
+labels: ["feedback", "playtest"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for playing. Press F3 in game to copy diagnostics, then paste them below.
+        Do not attach save files with personal paths if you do not want to share them.
+  - type: input
+    id: build
+    attributes:
+      label: Build
+      description: vx --version output or the zip name.
+      placeholder: vx 0.1.0 / vx-0.1.0-win64.zip
+    validations:
+      required: true
+  - type: input
+    id: seed
+    attributes:
+      label: Seed / floor / turn
+      description: From the pause screen or F3 diagnostics.
+      placeholder: seed 12345, floor 2, turn 87
+  - type: dropdown
+    id: class
+    attributes:
+      label: Class
+      options:
+        - Warrior
+        - Mage
+        - Chronomancer
+        - Tried more than one
+    validations:
+      required: true
+  - type: dropdown
+    id: floor
+    attributes:
+      label: Furthest floor
+      options:
+        - Floor 1
+        - Floor 2
+        - Floor 3
+        - Finished a run
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows desktop
+        - Steam Deck / Proton
+        - Other / not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: input
+    attributes:
+      label: Input
+      options:
+        - Keyboard + mouse
+        - Xbox-style gamepad
+        - Steam Deck controls
+        - Mixed
+  - type: dropdown
+    id: minutes
+    attributes:
+      label: Session length
+      options:
+        - Under 5 minutes
+        - 5-15 minutes
+        - 15-30 minutes
+        - Over 30 minutes
+  - type: dropdown
+    id: rating
+    attributes:
+      label: Overall
+      options:
+        - "5 - would wishlist"
+        - "4 - fun, needs polish"
+        - "3 - mixed"
+        - "2 - confusing"
+        - "1 - not for me"
+    validations:
+      required: true
+  - type: textarea
+    id: liked
+    attributes:
+      label: What worked
+      description: One or two things that felt good.
+    validations:
+      required: true
+  - type: textarea
+    id: confused
+    attributes:
+      label: What was confusing
+      description: Controls, UI labels, difficulty spikes, unclear goals.
+    validations:
+      required: true
+  - type: textarea
+    id: bugs
+    attributes:
+      label: Bugs / crashes
+      description: Include the F3 diagnostics paste and steps if possible.
+  - type: textarea
+    id: next
+    attributes:
+      label: One change that would make you play again
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I played without a guide
+        - label: I can share a screenshot or diagnostics
