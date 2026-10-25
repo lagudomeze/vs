@@ -46,7 +46,7 @@ def main() -> None:
     logo = logo.resize((720, 337), Image.LANCZOS)
     shadow = Image.new("RGBA", logo.size, (0, 0, 0, 0))
     shadow.putalpha(logo.getchannel("A").point(lambda a: int(a * 0.55)))
-    shade.paste(Image.new("RGB", logo.size, DARK), (92, 238), shadow)
+    shade.paste(Image.new("RGB", logo.size, DARK), (87, 233), shadow)
     shade.paste(logo, (84, 230), logo)
 
     draw = ImageDraw.Draw(shade)
