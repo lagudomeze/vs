@@ -1,4 +1,4 @@
-# 存档模块（RunState v2）
+# 存档模块（RunState v3）
 
 纯逻辑的 turn-based 存档/读档，位于 `src/game/save.zig`；窗口已接入 **F5 存档 / F9 读档槽位**（`RunGame.saveSlot/loadSlot`），装备侧车在 `src/game/gear_save.zig`。
 
@@ -48,7 +48,7 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 - 所有坐标必须在 31×31 内；hero、敌人、stairs、entrance、活着的宝箱/陷阱必须落在可行走格。
 - 地图外圈必须封闭；活着的宝箱/陷阱不能重叠、不能压楼梯/入口；敌人 kind 与 name 必须成对匹配。
 - 数值范围：hp∈[0,hp_max]、resource∈[0,resource_max]、crit∈[0,1]、level∈[1,50]、speed∈[1,1000]；所有浮点必须有限。
-- 长度：敌人 ≤ 12、日志 ≤ 6 条且每行 ≤ 64 字节、输入 ≤ 256 KB。
+- 长度：敌人 ≤ 12、日志 ≤ 6 条且每行 ≤ 64 字节、输入 ≤ 1 MiB。
 - RNG 状态不能全 0。
 
 错误类型见 `save.SaveError`；`save.LoadError` 另外包含 `std.json` 的解析错误。
@@ -67,7 +67,8 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 
 ## 破坏性变更
 
-- **v2（当前）**：地图从 13×13 升到 31×31。v1 存档里的坐标和 seed 生成结果不再对应，**不做迁移**，读取时返回 UnsupportedVersion。
+- **v3（当前）**：地图 31×31、1 MiB 上限、9 个 chunk 区域、敌人/物品/日志扩容；v2 读取时按默认值兼容。
+- **v2**：地图从 13×13 升到 31×31；v1 因坐标/seed 不兼容，读取时返回 UnsupportedVersion。
 - 玩家提示固定为：读档失败：v1 旧档不兼容，请开新局；不再把 UnsupportedVersion 裸英文名写进战斗日志。
 - 错误映射：NotSaveFormat / EmptySave / SaveTooLarge / InvalidCoordinate / InvalidEnemyKind / InvalidLog / InconsistentMap 都有中文原因，未知错误回退为“存档损坏或无法读取”。
 - **规则**：以后 bump save_version 时必须同时更新本节、loadErrorText 的提示，以及一个 v(N-1) fixture 测试；如果只是新增可忽略字段，优先保持版本并做默认值兼容。
@@ -87,7 +88,9 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 ## 战绩文件
 
 - saves/records.json 独立于 run save；损坏时回退为空战绩，不影响读档。
-- 字段：wins、deaths、best_floor、best_turn、best_kills。
+- 字段：wins、deaths、best_floor、best_turn、best_kills、best_gold、wins_warrior/mage/chronomancer、chunk_clears、flawless_wins、daily_day、daily_best_floor、daily_best_kills、daily_streak、daily_last_win_day。
+- 旧 records.json 缺 daily_* 时默认 -1/0；未知字段忽略。
+- daily 状态不写入 run save；读档时若 seed 与当天 daily seed 不符，会清除 daily，避免把普通档/旧 daily 档算进今天。
 
 ## F5/F9（已接入）
 
