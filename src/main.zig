@@ -506,8 +506,8 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             var dbuf: [1024:0]u8 = undefined;
             const diag = game.diagnostics(&dbuf);
             platform.setClipboard(diag);
-            game.sim.notice = "FEEDBACK: DIAGNOSTICS COPIED";
-            _ = vx.platform.openUrl("https://github.com/lagudomeze/vs/issues/new?template=feedback.yml");
+            game.sim.notice = "FEEDBACK: DIAGNOSTICS COPIED - PASTE IN FORM";
+            _ = vx.platform.openUrl("https://github.com/lagudomeze/vs/issues/new?template=playtest_session.yml");
         }
         if (pin.key_code == vx.platform.scancode_f7) {
             game.badges_open = !game.badges_open;

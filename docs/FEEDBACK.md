@@ -3,15 +3,18 @@
 ## 玩家入口
 
 - 游戏内 **F3**：先把诊断（seed/daily/版本/窗口）复制到剪贴板，再打开 GitHub 反馈表单；粘贴即可。
-- 表单：.github/ISSUE_TEMPLATE/feedback.yml
-- 直接链接：https://github.com/lagudomeze/vs/issues/new?template=feedback.yml
+- 试玩表单：.github/ISSUE_TEMPLATE/playtest_session.yml
+- 直接链接：https://github.com/lagudomeze/vs/issues/new?template=playtest_session.yml
+- Bug 表单（可选）：.github/ISSUE_TEMPLATE/feedback.yml
 
-表单固定收集：
+试玩表单固定收集：
 
 - 版本（vx --version / commit）
-- 职业
-- 楼层/回合
-- 实际行为、期望行为、复现步骤
+- seed / 楼层 / 回合
+- 职业、最远层数
+- 平台（Windows / Deck）、输入设备、时长
+- 总体评分 1–5
+- 哪些做得好、哪里困惑、Bug、最想改的一件事
 - 存档/截图（可选）
 
 ## 处理节奏
