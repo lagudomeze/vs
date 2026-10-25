@@ -453,8 +453,8 @@ test "equipping and unequipping changes derived stats immediately" {
     try std.testing.expect(inv.pickup(0));
     try inv.equip(&test_defs, 0);
     const armed = sheetFor(&test_defs, &inv.equipped, base, .warrior);
-    // +6 力量 and +4 攻击: 18 + 20*1.2 + 4 == 46
-    try expectApprox(@as(f32, 46), armed.derived.attack, 0.001);
+    // +6 力量 and +4 攻击: 18 + 22*1.2 + 4 == 48.4
+    try expectApprox(@as(f32, 48.4), armed.derived.attack, 0.001);
     try std.testing.expect(armed.derived.attack > before.derived.attack);
     try std.testing.expectEqual(@as(usize, 0), inv.count());
 
@@ -470,8 +470,8 @@ test "armor items add flat HP and armor" {
     _ = inv.pickup(1);
     try inv.equip(&test_defs, 1);
     const sheet = sheetFor(&test_defs, &inv.equipped, attributes.baseStats(.warrior), .warrior);
-    try expectApprox(@as(f32, 188), sheet.derived.hp_max, 0.001); // 168 + 20
-    try expectApprox(@as(f32, 11), sheet.derived.armor, 0.001); // 8 + 3
+    try expectApprox(@as(f32, 204), sheet.derived.hp_max, 0.001); // 184 + 20
+    try expectApprox(@as(f32, 12), sheet.derived.armor, 0.001); // 9 + 3
 }
 
 test "percentage modifiers scale the base stat" {
@@ -479,8 +479,8 @@ test "percentage modifiers scale the base stat" {
     _ = inv.pickup(2);
     try inv.equip(&test_defs, 2);
     const sheet = sheetFor(&test_defs, &inv.equipped, attributes.baseStats(.warrior), .warrior);
-    try expectApprox(@as(f32, 21), sheet.stat(.strength), 0.001); // 14 * 1.5
-    try expectApprox(@as(f32, 43.2), sheet.derived.attack, 0.001); // 18 + 21*1.2
+    try expectApprox(@as(f32, 24), sheet.stat(.strength), 0.001); // 16 * 1.5
+    try expectApprox(@as(f32, 46.8), sheet.derived.attack, 0.001); // 18 + 24*1.2
 }
 
 test "inventory capacity is fixed" {
@@ -587,11 +587,11 @@ test "character panel exposes stats, gear, bag and xp" {
     try std.testing.expectEqual(@as(u32, 40), panel.xp);
     try std.testing.expectEqual(@as(u32, 200), panel.xp_to_next);
     try std.testing.expectEqual(@as(f32, 100), panel.hp);
-    try std.testing.expectApproxEqAbs(@as(f32, 188), panel.hp_max, 0.001); // 168 + 20
+    try std.testing.expectApproxEqAbs(@as(f32, 204), panel.hp_max, 0.001); // 184 + 20
     try std.testing.expectEqual(@as(f32, 55), panel.resource);
     try std.testing.expectApproxEqAbs(@as(f32, 100), panel.resource_max, 0.001);
     try std.testing.expectApproxEqAbs(@as(f32, 100), panel.speed, 0.001);
-    try std.testing.expectApproxEqAbs(@as(f32, 20), panel.stat(.strength), 0.001); // 14 + 6
+    try std.testing.expectApproxEqAbs(@as(f32, 22), panel.stat(.strength), 0.001); // 16 + 6
     try std.testing.expectEqual(@as(usize, 1), panel.bagCount());
     try std.testing.expectEqual(@as(?ItemId, 0), panel.equipped(.main_hand));
     try std.testing.expectEqual(@as(?ItemId, 1), panel.equipped(.body));
