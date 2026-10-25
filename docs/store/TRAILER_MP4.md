@@ -1,5 +1,7 @@
 # 30 秒预告片（占位版）
 
+另见 [GAMEPLAY_CAPTURE.md](GAMEPLAY_CAPTURE.md)：29.5 秒真实引擎内录屏（auto bot，非人手实机）。
+
 文件：docs/store/trailer_30s.mp4
 
 ## 规格

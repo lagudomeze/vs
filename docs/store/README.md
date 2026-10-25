@@ -16,7 +16,8 @@ python tools/store_extra_assets.py
 
 源图：
 
-- docs/store/screenshots/*.png：由真实 CLI 场景生成的 5 张 1920×1080 商店截图
+- docs/store/screenshots/*.png：由真实 CLI 场景生成的 7 张 1920×1080 商店截图
+- docs/store/gameplay_capture_30s.mp4：29.5 秒真实引擎内录屏（auto bot，见 [GAMEPLAY_CAPTURE.md](GAMEPLAY_CAPTURE.md)）
 - docs/screenshots/store_clean.png：--hide-hud --hide-labels 的干净场景，用于 Capsule 底图与 key art
 
 ## Key art
@@ -30,7 +31,7 @@ python tools/store_extra_assets.py
 
 仍不是正式手绘 key art；上架前替换为专门构图。logo 为 5x7 像素字表生成，可作为正式 logo 的方向稿。
 
-## 商店截图（5 张，16:9）
+## 商店截图（7 张，16:9）
 
 | 文件 | 场景 |
 | --- | --- |
@@ -61,7 +62,7 @@ python tools/store_extra_assets.py
 - 标题字体/Logo 换成正式 logo；当前用 bahnschrift 占位。
 - Capsule 已统一使用像素 logo；正式版换成专门手绘构图。
 - 5 张截图已覆盖战斗/角色/瞄准/商店/地图；正式版可替换为更精细构图。
-- 预告片 30–60 秒。
+- 预告片 30–60 秒；已有 29.5s auto-bot 引擎内录屏，最终需人手实机。
 - 检查中文在 920×430 下仍可读；小尺寸只保留标题。
 
 ## 许可

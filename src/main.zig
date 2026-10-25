@@ -4,6 +4,7 @@ const vx = @import("vx");
 const Options = struct {
     headless: bool = false,
     out: ?[]const u8 = null,
+    record_dir: ?[]const u8 = null,
     frames: u32 = 0,
     hero: u32 = 0,
     hero_set: bool = false,
@@ -68,6 +69,7 @@ fn usage() void {
         \\  --headless        render without opening a window
         \\  --out PATH        screenshot path (default: shots/vx.png)
         \\  --frames N        simulation frames before a headless capture; window auto-quit
+        \\  --record DIR      headless: save every 2nd rendered frame to DIR (gameplay capture)
         \\  --run-seconds S   window mode: capture and quit after S seconds
         \\  --hero N          start as hero 0=Berserker 1=Archmage 2=Chronomancer (skips the class menu)
         \\  --seed N          fixed dungeon seed (default 0 = fresh seed each run)
@@ -146,6 +148,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.headless = true;
         } else if (std.mem.eql(u8, a, "--out")) {
             o.out = try argAt(argv, &i);
+        } else if (std.mem.eql(u8, a, "--record")) {
+            o.record_dir = try argAt(argv, &i);
         } else if (std.mem.eql(u8, a, "--frames")) {
             o.frames = try std.fmt.parseInt(u32, try argAt(argv, &i), 10);
         } else if (std.mem.eql(u8, a, "--hero")) {
@@ -391,6 +395,15 @@ fn runRunHeadless(game: *vx.RunGame, io: std.Io, options: Options) !void {
         game.update(input, 1.0 / 60.0);
         if (game.records_dirty) _ = game.saveRecords(io);
         if (game.autosave_pending) game.flushAutosave(io);
+        if (options.record_dir) |dir| {
+            if (frame % 2 == 0) {
+                game.render();
+                var fbuf: [64]u8 = undefined;
+                const fpath = std.fmt.bufPrint(&fbuf, "{s}/frame_{d:0>4}.png", .{ dir, frame / 2 }) catch continue;
+                ensureParent(io, fpath);
+                game.saveScreenshot(io, fpath) catch |err| std.debug.print("record error: {s} {s}\n", .{ @errorName(err), fpath });
+            }
+        }
     }
     game.render();
     const path = options.out orelse "shots/run.png";
@@ -914,6 +927,12 @@ pub fn main(init: std.process.Init.Minimal) !void {
                 var cwd_buf: [4096]u8 = undefined;
                 const cwd_raw = std.c.getcwd(&cwd_buf, cwd_buf.len) orelse cwd_buf[0..0].ptr;
                 options.out = try std.fs.path.resolve(gpa, &.{ std.mem.sliceTo(cwd_raw, 0), out });
+            }
+            if (options.record_dir) |dir| {
+                if (!std.fs.path.isAbsolute(dir)) std.Io.Dir.cwd().createDirPath(io, dir) catch {};
+                var cwd_buf: [4096]u8 = undefined;
+                const cwd_raw = std.c.getcwd(&cwd_buf, cwd_buf.len) orelse cwd_buf[0..0].ptr;
+                options.record_dir = try std.fs.path.resolve(gpa, &.{ std.mem.sliceTo(cwd_raw, 0), dir });
             }
             const demo_mode = options.demo or options.demo_end_screen;
             const save_root = if (demo_mode)
