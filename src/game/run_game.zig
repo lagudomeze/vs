@@ -201,6 +201,7 @@ pub const RunGame = struct {
     pause_confirm_quit: bool = false,
     badges_open: bool = false,
     daily: bool = false,
+    daily_day: i64 = 0,
     victory_hold: f32 = 0,
     skip_victory_banner: bool = false,
     toast_text: []const u8 = "",
@@ -434,6 +435,7 @@ pub const RunGame = struct {
         if (self.started) return;
         const day: u64 = @intCast(@divFloor(unix_seconds, 86400));
         self.daily = true;
+        self.daily_day = @intCast(day);
         self.seed = sim_mod.nextSeed(day ^ 0xda11c0de);
         self.seed_locked = false;
         self.openMenu();
@@ -502,6 +504,16 @@ pub const RunGame = struct {
             self.records.best_floor = @max(self.records.best_floor, self.sim.floor);
             self.records.best_kills = @max(self.records.best_kills, self.sim.kills);
             self.records.best_gold = @max(self.records.best_gold, self.sim.gold);
+            if (self.daily) {
+                if (self.records.daily_day != self.daily_day) {
+                    self.records.daily_day = self.daily_day;
+                    self.records.daily_best_floor = self.sim.floor;
+                    self.records.daily_best_kills = self.sim.kills;
+                } else {
+                    self.records.daily_best_floor = @max(self.records.daily_best_floor, self.sim.floor);
+                    self.records.daily_best_kills = @max(self.records.daily_best_kills, self.sim.kills);
+                }
+            }
             var clears: u32 = 0;
             for (self.sim.cleared_chunks) |c| {
                 if (c) clears += 1;
@@ -2215,6 +2227,7 @@ pub const RunGame = struct {
             .pause_confirm_quit = self.pause_confirm_quit,
             .badges_open = self.badges_open,
             .daily = self.daily,
+            .daily_best_floor = self.records.daily_best_floor,
             .victory_hold = self.victory_hold > 0,
             .boss_active = boss_active,
             .boss_hp = boss_hp,
@@ -2746,6 +2759,24 @@ test "run game: death updates lifetime records once" {
     try std.testing.expect(g.records_dirty);
     g.fillHudState();
     try std.testing.expectEqual(@as(u32, 1), g.records.deaths);
+}
+
+test "run game: daily run records best floor and kills" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.openMenu();
+    g.startDaily(1_700_000_000);
+    g.started = true;
+    g.sim.floor = 2;
+    g.sim.kills = 5;
+    g.last_state = .playing;
+    g.sim.state = .dead;
+    g.trackRunEnd();
+    try std.testing.expectEqual(@as(i64, 19_675), g.records.daily_day);
+    try std.testing.expectEqual(@as(u8, 2), g.records.daily_best_floor);
+    try std.testing.expectEqual(@as(u32, 5), g.records.daily_best_kills);
+    try std.testing.expect(g.records_dirty);
 }
 
 test "run game: shop panel buys a heal once" {
