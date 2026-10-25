@@ -621,26 +621,49 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     if (state.aim.active) {
         var aim_buf: [128]u8 = undefined;
         var line: []const u8 = undefined;
+        const en = i18n.current == .en;
         if (state.aim.valid) {
             if (std.mem.eql(u8, state.aim.target, "地面")) {
-                line = fmt(&aim_buf, "瞄准：{s} -> 地面 距离{d} 范围{d}", .{
-                    state.aim.talent, state.aim.distance, state.aim.aoe_radius,
-                });
+                line = if (en)
+                    fmt(&aim_buf, "AIM: {s} -> GROUND  DIST {d}  AOE {d}", .{
+                        state.aim.talent, state.aim.distance, state.aim.aoe_radius,
+                    })
+                else
+                    fmt(&aim_buf, "瞄准：{s} -> 地面 距离{d} 范围{d}", .{
+                        state.aim.talent, state.aim.distance, state.aim.aoe_radius,
+                    });
             } else if (state.aim.aoe_radius > 0)
-                line = fmt(&aim_buf, "瞄准：{s} -> {s} 距离{d} 预计{d}伤害 范围{d}", .{
-                    state.aim.talent, state.aim.target, state.aim.distance, state.aim.damage, state.aim.aoe_radius,
-                })
+                line = if (en)
+                    fmt(&aim_buf, "AIM: {s} -> {s}  DIST {d}  DMG {d}  AOE {d}", .{
+                        state.aim.talent, state.aim.target, state.aim.distance, state.aim.damage, state.aim.aoe_radius,
+                    })
+                else
+                    fmt(&aim_buf, "瞄准：{s} -> {s} 距离{d} 预计{d}伤害 范围{d}", .{
+                        state.aim.talent, state.aim.target, state.aim.distance, state.aim.damage, state.aim.aoe_radius,
+                    })
             else
-                line = fmt(&aim_buf, "瞄准：{s} -> {s} 距离{d} 预计{d}伤害", .{
-                    state.aim.talent, state.aim.target, state.aim.distance, state.aim.damage,
-                });
+                line = if (en)
+                    fmt(&aim_buf, "AIM: {s} -> {s}  DIST {d}  DMG {d}", .{
+                        state.aim.talent, state.aim.target, state.aim.distance, state.aim.damage,
+                    })
+                else
+                    fmt(&aim_buf, "瞄准：{s} -> {s} 距离{d} 预计{d}伤害", .{
+                        state.aim.talent, state.aim.target, state.aim.distance, state.aim.damage,
+                    });
         } else if (state.aim.target.len > 0) {
-            line = fmt(&aim_buf, "瞄准：{s} -> {s} {s}", .{ state.aim.talent, state.aim.target, state.aim.reason });
+            line = if (en)
+                fmt(&aim_buf, "AIM: {s} -> {s} {s}", .{ state.aim.talent, state.aim.target, i18n.aimReason(state.aim.reason) })
+            else
+                fmt(&aim_buf, "瞄准：{s} -> {s} {s}", .{ state.aim.talent, state.aim.target, state.aim.reason });
         } else {
-            line = fmt(&aim_buf, "瞄准：{s} {s}", .{ state.aim.talent, state.aim.reason });
+            line = if (en)
+                fmt(&aim_buf, "AIM: {s} {s}", .{ state.aim.talent, i18n.aimReason(state.aim.reason) })
+            else
+                fmt(&aim_buf, "瞄准：{s} {s}", .{ state.aim.talent, state.aim.reason });
         }
         const line_w = renderer.Renderer.textWidth(line, 1);
-        const hint_w = renderer.Renderer.textWidth(aim_hint, 1);
+        const hint_text = i18n.t(aim_hint, "SPACE/SAME KEY/LMB CONFIRM  ESC CANCEL  TAB TARGET");
+        const hint_w = renderer.Renderer.textWidth(hint_text, 1);
         const box_w = @max(line_w, hint_w) + 16;
         const box_x = @divTrunc(w - box_w, 2);
         const box_y = h - 90;
@@ -649,7 +672,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         r.strokeRect(box_x, box_y, box_w, 26, accent);
         r.fillRect(box_x + 2, box_y + 2, 24, 1, accent);
         r.drawText(box_x + 8, box_y + 4, line, if (state.aim.valid) palette.cyan_light else palette.red, 1, false);
-        r.drawText(box_x + 8, box_y + 15, aim_hint, palette.muted, 1, false);
+        r.drawText(box_x + 8, box_y + 15, hint_text, palette.muted, 1, false);
     }
 
     // hotbar: name, cost/base cooldown, then live availability
