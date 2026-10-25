@@ -266,6 +266,28 @@
         "resource": 30
       },
       "description": "恢复 30 资源；背包面板按 P 使用。"
+    },
+    {
+      "id": "bloodmoon_charm",
+      "name": "BLOODMOON CHARM",
+      "slot": "trinket",
+      "quality": "epic",
+      "weight": 0.55,
+      "mods": [
+        {
+          "stat": "attack",
+          "flat": 7
+        },
+        {
+          "stat": "crit",
+          "flat": 0.04
+        },
+        {
+          "stat": "armor",
+          "flat": -3
+        }
+      ],
+      "description": "+7 ATK, +4% CRIT, -3 ARMOR. Risk for reward."
     }
   ]
 }
