@@ -1,6 +1,17 @@
 # Steam 后台准备清单
 
-状态：模板已存在，**没有真实 AppID/DepotID/SDK**。不要编造 ID。
+状态：模板与商店素材已存在，**没有真实 AppID/DepotID/SDK**。不要编造 ID。
+
+## 0. 实际提交顺序（没有 AppID 时）
+
+1. 注册 Steamworks 合作伙伴，支付 100 USD/app 费用（可回收，按 Valve 当前条款）。
+2. 完成税务/银行信息。
+3. 后台创建正式 App；Demo 单独创建 App，不复用正式 AppID。
+4. 取得 AppID/DepotID，填 steam/app_build.vdf 与 depot_build.vdf。
+5. 上传 build，设置 launch option，先在 Steam 客户端跑一遍。
+6. 商店页先上 Coming Soon（至少提前 2 周），再排 build review。
+7. Demo 走独立 review；Playtest 可用 Playtest App 或 keys。
+8. 价格/日期未定，不在文档/页面写死。
 
 ## 1. 需要 Valve 后台创建
 
@@ -50,16 +61,23 @@
 
 冲突：优先 Steam 客户端冲突 UI；本地保留三代备份。Demo 独立目录 vx/demo，不与正式版混。
 
-## 5. 商店素材
+## 5. 商店素材（当前实际文件）
 
-- 616×353 capsule
-- 920×430 header
-- 1920×1080 screenshots
-- 30–60s MP4 trailer
-- 商店文案（中英）
-- 系统需求
-- 隐私说明/反馈渠道
-- AI 生成内容披露（如有）
+- header_capsule_920x430.png
+- small_capsule_462x174.png
+- main_capsule_1232x706.png
+- vertical_capsule_748x1084.png + 374x542
+- library_capsule_600x900.png + 300x450
+- library_hero_3840x1240.png
+- library_logo_1280x720.png
+- page_background_1438x810.png
+- community_icon_184x184.png
+- 7× 1920×1080 screenshots（screenshots_1920/）
+- trailer_capture_30s.mp4（auto-bot 实机 capture 版）
+- 商店文案（中英，docs/store/PAGE.md）
+- 系统需求 / 无障碍 / 隐私说明 / 反馈表单
+- 正式 key art 仍是占位，上架前替换
+- AI 生成内容披露：按实际素材来源填写，不猜
 
 ## 6. 成就/统计（可选，未接）
 
@@ -84,7 +102,9 @@
 
 ## 9. 当前阻塞
 
-- 没有 AppID/DepotID
-- 没有 Steamworks SDK 接入
-- 没有真实商店素材/预告片
-- 没有真实 Playtest
+- 没有 AppID/DepotID（未支付/未创建）
+- 没有 Steamworks SDK/overlay/成就接入
+- key art/capsule 仍是程序化占位
+- 预告片是 auto-bot capture，不是人手实机/正式配乐
+- 没有真实 Playtest 反馈
+- 没有 Deck/Proton 实机验证
