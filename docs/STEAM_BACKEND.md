@@ -63,7 +63,7 @@
 
 ## 6. 成就/统计（可选，未接）
 
-本地徽章：FIRST WIN / ALL CLASSES / FLAWLESS / CHUNK HUNTER。接 Steam 时映射为 Stat/Achievement，不改变单机逻辑。
+本地徽章：FIRST WIN / ALL CLASSES / FLAWLESS / CHUNK HUNTER / DAILY DELVER。接 Steam 时映射为 Stat/Achievement，不改变单机逻辑。
 
 ## 7. 测试矩阵
 
