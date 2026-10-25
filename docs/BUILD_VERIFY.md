@@ -61,6 +61,15 @@ HP 184 与战士平衡后的基础生命一致。
 - 没有真实 playtest 反馈
 - 包内暂无正式 key art/实机 trailer
 
+## 一键发版门禁
+
+~~~powershell
+pwsh -File tools/release_gate.ps1
+pwsh -File tools/release_gate.ps1 -DryRun
+~~~
+
+顺序：preflight -> playtest_pack -> press_kit -> steam_check -> steam_package_check -> 三个 SHA。
+
 ## 一键 preflight
 
     $env:VX_PYTHON = <python.exe>
