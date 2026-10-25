@@ -70,6 +70,7 @@ Loot is automatic and build-defining: weapons, armor, trinkets and consumables f
 - A starting fire bomb (B) gives every class a one-use area answer; shops refill it for 40 gold.
 - Seven elite affixes that change target priority: SWIFT / ARMORED / VAMPIRIC / VOLATILE / FROST / SPLIT / BERSERK.
 - 17 items across weapons, armor, trinkets and consumables, including the rare AETHER LENS.
+- Six floor modifiers (EMBER / FROST / MIASMA / GILDED / BLOODMOON / SURGE) that change the rules of a floor.
 - A daily challenge with one seed per UTC day, a win streak, and six permanent badges.
 - Status durations are visible on enemies (STUN2 / SLOW2 / BURN2x3), so control builds stay legible.
 - Rotatable top-down camera, pixel-art software renderer, integer scaling.
