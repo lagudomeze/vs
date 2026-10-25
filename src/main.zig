@@ -571,6 +571,28 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                 platform.playSound(.ui);
             } else {
                 var settings_dirty = false;
+                if (pin.step_n) game.settings_index = (game.settings_index + 10) % 11;
+                if (pin.step_s) game.settings_index = (game.settings_index + 1) % 11;
+                if (pin.step_w or pin.step_e or pin.cast) {
+                    const dir: i8 = if (pin.step_w) -1 else 1;
+                    const change = game.cycleSetting(dir);
+                    switch (change) {
+                        .fullscreen => platform.setFullscreen(game.settings_fullscreen),
+                        .vsync => platform.setVSync(game.settings_vsync),
+                        .scale => platform.setWindowScale(game.settings_scale),
+                        .volume => {
+                            platform.setAudioVolume(game.settings_volume);
+                            platform.playSound(.ui);
+                        },
+                        .ambient => platform.setAmbient(game.settings_ambient),
+                        .pad_swap => platform.setPadSwap(game.settings_pad_swap),
+                        .esdf => platform.setEsdf(game.settings_esdf),
+                        .chunks => game.setChunks(game.settings_chunks),
+                        .language => game.hud_state.language = vx.i18n.code(),
+                        .shake, .none => {},
+                    }
+                    if (change != .none) settings_dirty = true;
+                }
                 if (pin.talent_1) {
                     game.settings_fullscreen = !game.settings_fullscreen;
                     platform.setFullscreen(game.settings_fullscreen);

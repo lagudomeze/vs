@@ -67,6 +67,7 @@ pub const State = struct {
     gold: u32 = 0,
     shop_open: bool = false,
     settings_open: bool = false,
+    settings_index: u8 = 0,
     settings_fullscreen: bool = false,
     settings_vsync: bool = true,
     settings_scale: u8 = 3,
@@ -1039,7 +1040,12 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     };
     const lines = if (i18n.current == .en) &lines_en else &lines_zh;
     for (lines, 0..) |line, i| {
-        r.drawText(px + 28, py + 52 + @as(i32, @intCast(i)) * 20, line, palette.cream, 1, false);
+        const y = py + 52 + @as(i32, @intCast(i)) * 20;
+        if (i == state.settings_index) {
+            r.fillRect(px + 16, y - 2, pw - 32, 12, palette.deep);
+            r.drawText(px + 18, y, ">", palette.gold, 1, false);
+        }
+        r.drawText(px + 28, y, line, if (i == state.settings_index) palette.gold_light else palette.cream, 1, false);
     }
 
     var vbuf: [64]u8 = undefined;
@@ -1062,7 +1068,7 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     r.drawText(px + @divTrunc(pw - vw, 2), py + 274, v1, palette.cyan_light, 1, false);
     const vw2 = renderer.Renderer.textWidth(v2, 1);
     r.drawText(px + @divTrunc(pw - vw2, 2), py + 292, v2, palette.cyan_light, 1, false);
-    r.drawText(px + 16, py + ph - 18, i18n.t("Esc 关闭   F2 切换   L 语言", "Esc CLOSE   F2 TOGGLE   L LANGUAGE"), palette.muted, 1, false);
+    r.drawText(px + 16, py + ph - 18, i18n.t("Esc 关闭  F2 切换  L 语言  DPAD/A", "Esc CLOSE  F2 TOGGLE  L LANGUAGE  DPAD/A"), palette.muted, 1, false);
 }
 
 fn drawShop(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
