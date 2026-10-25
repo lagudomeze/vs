@@ -1527,7 +1527,14 @@ pub const RunGame = struct {
             self.equipBag(@intCast(input.talent));
         }
         if (self.panel == .inventory and input.click) {
-            if (self.bagRowAt(input.mouse_x, input.mouse_y)) |idx| self.equipBag(idx);
+            if (self.bagRowAt(input.mouse_x, input.mouse_y)) |idx| {
+                const item = self.inventory.at(idx);
+                if (item < self.content.items.len and self.content.items[item].use() != null) {
+                    _ = self.usePotion(true);
+                } else {
+                    self.equipBag(idx);
+                }
+            }
         }
         if (self.panel == .inventory and input.use_item) {
             _ = self.usePotion(true);
@@ -3365,6 +3372,28 @@ test "run game: shop loot purchase adds an item and spends gold" {
     try std.testing.expect(g.sim.shop_used);
     // The drop may auto-equip, so total items can stay flat; gold and shop prove the purchase.
     _ = before;
+}
+
+test "run game: mouse click drinks a bag potion" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
+    defer g.destroy();
+    g.inventory = .{};
+    var potion: ?usize = null;
+    for (g.content.items, 0..) |def, i| {
+        if (def.use() != null) {
+            potion = i;
+            break;
+        }
+    }
+    const id = potion orelse return error.NoPotion;
+    _ = g.inventory.pickup(@intCast(id));
+    g.panel = .inventory;
+    g.sim.hero.vitals.val = 10;
+    g.fillHudState();
+    g.update(.{ .mouse_x = 32, .mouse_y = 54, .click = true }, 1.0 / 60.0);
+    try std.testing.expectEqual(@as(usize, 0), g.inventory.count());
+    try std.testing.expect(g.sim.hero.vitals.val > 10);
 }
 
 test "run game: mouse click equips a bag item" {
