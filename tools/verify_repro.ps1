@@ -9,7 +9,8 @@ Set-Location $root
 $artifacts = @(
     "dist/vx-0.1.0-win64.zip",
     "dist/demo/vx-demo-0.1.0.zip",
-    "dist/playtest/vx-playtest-0.1.0.zip"
+    "dist/playtest/vx-playtest-0.1.0.zip",
+    "dist/press-kit/vx-press-kit-0.1.0.zip"
 )
 
 function Run-Gate() {

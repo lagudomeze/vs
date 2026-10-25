@@ -4,7 +4,7 @@
 HEAD：d25ecf2
 
 
-> Zip 由 tools/zip_dir.ps1 生成：条目排序 + 固定 1980 时间戳。同样内容重建 SHA 一致（已连续两次全链验证）。
+> Zip 由 tools/zip_dir.ps1 生成：条目排序 + 固定 1980 时间戳。同样内容重建 SHA 一致（全量/Demo/Playtest/Press 已连续两次全链验证）。
 
 ## 全量包
 
@@ -79,7 +79,7 @@ pwsh -File tools/release_gate.ps1 -DryRun
 pwsh -File tools/verify_repro.ps1 -SkipPreflight
 ~~~
 
-连续两次 gate，比较全量/Demo/Playtest SHA；任何 DIFF 直接失败。
+连续两次 gate，比较全量/Demo/Playtest/Press SHA；任何 DIFF 直接失败。
 
 ## 一键 preflight
 
