@@ -41,6 +41,10 @@
 - 可以在 Demo 页写 English beta available via settings
 - 正式版英文化完成前，默认语言仍是简体中文
 
+## 残留审计
+
+启发式审计见 [I18N_REMAINING.md](I18N_REMAINING.md)（当前 318 条未映射，含中文 fallback 数组/未展示内容，需人工筛）。
+
 ## 验证
 
 - zig build test 232
