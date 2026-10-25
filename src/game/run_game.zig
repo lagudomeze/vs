@@ -3413,6 +3413,8 @@ test "run game: void pearl is a manual risk item" {
     defer g.destroy();
     const pearl = g.content.item("void_pearl") orelse return error.MissingItem;
     try std.testing.expect(RunGame.itemScore(pearl) < 0);
+    const ironwood = g.content.item("ironwood_heart") orelse return error.MissingItem;
+    try std.testing.expect(RunGame.itemScore(ironwood) > 0);
 }
 
 test "run game: mouse click drinks a bag potion" {
