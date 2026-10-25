@@ -505,6 +505,7 @@ pub const RunGame = struct {
             self.records.best_floor = @max(self.records.best_floor, self.sim.floor);
             self.records.best_kills = @max(self.records.best_kills, self.sim.kills);
             self.records.best_gold = @max(self.records.best_gold, self.sim.gold);
+            const daily_ok_before = self.daily and self.records.daily_day == self.daily_day and self.records.daily_best_floor >= 3;
             if (self.daily) {
                 if (self.records.daily_day != self.daily_day) {
                     self.records.daily_day = self.daily_day;
@@ -513,6 +514,9 @@ pub const RunGame = struct {
                 } else {
                     self.records.daily_best_floor = @max(self.records.daily_best_floor, self.sim.floor);
                     self.records.daily_best_kills = @max(self.records.daily_best_kills, self.sim.kills);
+                }
+                if (!daily_ok_before and self.records.daily_best_floor >= 3 and !std.mem.startsWith(u8, self.sim.notice, "BADGE:")) {
+                    self.sim.notice = "BADGE: DAILY DELVER";
                 }
             }
             var clears: u32 = 0;
@@ -2802,6 +2806,26 @@ test "run game: daily best hides yesterday record" {
     g.fillHudState();
     try std.testing.expectEqual(@as(u8, 0), g.hud_state.daily_best_floor);
     try std.testing.expect(g.records.daily_day != g.daily_day);
+}
+
+test "run game: daily delver notice appears once" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.openMenu();
+    g.startDaily(1_700_000_000);
+    g.started = true;
+    g.sim.floor = 3;
+    g.sim.kills = 9;
+    g.last_state = .playing;
+    g.sim.state = .dead;
+    g.trackRunEnd();
+    try std.testing.expectEqualStrings("BADGE: DAILY DELVER", g.sim.notice);
+    g.sim.notice = "";
+    g.last_state = .playing;
+    g.sim.state = .dead;
+    g.trackRunEnd();
+    try std.testing.expectEqualStrings("", g.sim.notice);
 }
 
 test "run game: shop panel buys a heal once" {
