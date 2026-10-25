@@ -398,8 +398,11 @@ fn runRunHeadless(game: *vx.RunGame, io: std.Io, options: Options) !void {
         if (options.record_dir) |dir| {
             if (frame % 2 == 0) {
                 game.render();
-                var fbuf: [64]u8 = undefined;
-                const fpath = std.fmt.bufPrint(&fbuf, "{s}/frame_{d:0>4}.png", .{ dir, frame / 2 }) catch continue;
+                var fbuf: [512]u8 = undefined;
+                const fpath = std.fmt.bufPrint(&fbuf, "{s}/frame_{d:0>4}.png", .{ dir, frame / 2 }) catch |err| {
+                    std.debug.print("record path error: {s}\n", .{@errorName(err)});
+                    continue;
+                };
                 ensureParent(io, fpath);
                 game.saveScreenshot(io, fpath) catch |err| std.debug.print("record error: {s} {s}\n", .{ @errorName(err), fpath });
             }
@@ -495,6 +498,9 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         elapsed += dt;
 
         const pin = platform.poll(dt);
+        var modal_consumed = false;
+        var pause_resumed = false;
+        var escape_consumed = false;
         if (pin.toggle_fullscreen) {
             platform.playSound(.ui);
             _ = platform.toggleFullscreen();
@@ -545,6 +551,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                     game.settings_key_mode = false;
                     game.hud_state.keys_mode = false;
                     game.settings_key_error = false;
+                    escape_consumed = true;
                 } else if (pin.key_code == 42) {
                     settings.keys = .{};
                     settings = settings.sanitized();
@@ -687,13 +694,13 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             platform.playSound(.ui);
         }
         if (game.pause_open and pin.help) {
-            if (game.pause_confirm_quit) {
-                if (game.autosave_pending) game.flushAutosave(io);
-                if (game.records_dirty) _ = game.saveRecords(io);
-                break;
-            }
-            game.pause_confirm_quit = true;
-            game.hud_state.pause_confirm_quit = true;
+            game.pause_open = false;
+            game.pause_confirm_quit = false;
+            game.show_help = true;
+            game.hud_state.pause_open = false;
+            game.hud_state.pause_confirm_quit = false;
+            game.hud_state.help = true;
+            modal_consumed = true;
             platform.playSound(.ui);
         }
         const bomb_ok = game.started and game.sim.state == .playing and
@@ -701,7 +708,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             !game.pause_open and !game.settings_open and !game.chunk_map_open and !game.badges_open and !game.show_help and game.slot_menu == .none;
         // Escape is hierarchical: cancel aim first (never lose the run just
         // for cancelling a target), then close a modal panel, then quit.
-        if (pin.escape and !(pin.use_bomb and bomb_ok)) {
+        if (pin.escape and !escape_consumed and !(pin.use_bomb and bomb_ok)) {
             if (game.settings_open) {
                 game.settings_open = false;
             } else if (game.chunk_map_open) {
@@ -716,17 +723,17 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                 game.closeShop();
             } else if (game.panel != .none) {
                 game.panel = .none;
+            } else if (game.show_help) {
+                game.show_help = false;
+            } else if (game.badges_open) {
+                game.badges_open = false;
+            } else if (game.pause_open) {
+                game.pause_open = false;
+                game.pause_confirm_quit = false;
+                game.hud_state.pause_open = false;
+                game.hud_state.pause_confirm_quit = false;
             } else if (!game.cancelAim()) {
-                if (game.show_help) {
-                    game.show_help = false;
-                } else if (game.badges_open) {
-                    game.badges_open = false;
-                } else if (game.pause_open) {
-                    game.pause_open = false;
-                    game.pause_confirm_quit = false;
-                    game.hud_state.pause_open = false;
-                    game.hud_state.pause_confirm_quit = false;
-                } else if (game.started and game.sim.state == .playing) {
+                if (game.started and game.sim.state == .playing) {
                     game.pause_open = true;
                     game.pause_confirm_quit = false;
                     game.hud_state.pause_open = true;
@@ -743,16 +750,22 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                 game.settings_key_error = false;
                 game.hud_state.keys_mode = false;
                 game.hud_state.keys_error = false;
+                modal_consumed = true;
             } else if (game.pause_open) {
                 game.pause_open = false;
                 game.pause_confirm_quit = false;
                 game.hud_state.pause_open = false;
                 game.hud_state.pause_confirm_quit = false;
-            } else if (game.started and game.sim.state == .playing) {
+                modal_consumed = true;
+            } else if (game.started and game.sim.state == .playing and
+                game.panel == .none and !game.shop_open and !game.shrine_open and !game.show_help and
+                !game.chunk_map_open and !game.badges_open and game.slot_menu == .none)
+            {
                 game.pause_open = true;
                 game.pause_confirm_quit = false;
                 game.hud_state.pause_open = true;
                 game.hud_state.pause_confirm_quit = false;
+                modal_consumed = true;
             }
             platform.playSound(.ui);
         }
@@ -761,6 +774,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             game.pause_confirm_quit = false;
             game.hud_state.pause_open = false;
             game.hud_state.pause_confirm_quit = false;
+            pause_resumed = true;
             platform.playSound(.ui);
         }
         if (game.pause_open and pin.character) {
@@ -808,15 +822,16 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             if (pin.talent_1) input.talent = 0;
             if (pin.talent_2) input.talent = 1;
             if (pin.talent_3) input.talent = 2;
-            input.confirm = pin.cast;
-            input.wait = pin.wait;
+            input.confirm = pin.cast and !pause_resumed;
+            input.wait = pin.wait and !pause_resumed;
             input.target_next = pin.toggle_hero;
             input.inventory = pin.inventory;
             input.character = pin.character;
-            input.restart = pin.reset or (pin.pause and game.started and (game.sim.state == .dead or game.sim.state == .victory));
+            input.restart = pin.reset or (pin.pause and !modal_consumed and game.started and (game.sim.state == .dead or game.sim.state == .victory));
             input.help = pin.help;
             input.difficulty = pin.difficulty;
             input.use_item = pin.use_item;
+            input.use_bomb = pin.use_bomb and bomb_ok;
             input.mouse_x = pin.mouse_x;
             input.mouse_y = pin.mouse_y;
             input.click = pin.click;

@@ -273,7 +273,7 @@ fn drawPause(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     r.drawText(px + @divTrunc(pw - tw, 2), py + 20, title, palette.gold_light, 2, true);
     r.drawText(px + 30, py + 64, "START/A  RESUME", palette.cream, 1, false);
     r.drawText(px + 30, py + 80, "ESC/B    RESUME", palette.cream, 1, false);
-    r.drawText(px + 30, py + 96, "Y    HELP", palette.cream, 1, false);
+    r.drawText(px + 30, py + 96, "Y/H  HELP", palette.cream, 1, false);
     r.drawText(px + 30, py + 112, "F2   SETTINGS", palette.cream, 1, false);
     if (state.pause_confirm_quit) {
         r.drawText(px + 30, py + 128, "Q AGAIN TO QUIT", palette.red, 1, false);
