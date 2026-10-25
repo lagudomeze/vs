@@ -22,7 +22,7 @@
 | src/game/items.zig | 18 | 10 |
 | src/game/run_game.zig | 102 | 45 |
 | src/game/run_hud.zig | 131 | 61 |
-| src/game/run_sim.zig | 103 | 41 |
+| src/game/run_sim.zig | 104 | 41 |
 | src/game/run_target.zig | 10 | 4 |
 | src/game/save.zig | 8 | 1 |
 | src/game/status_def.zig | 6 | 6 |

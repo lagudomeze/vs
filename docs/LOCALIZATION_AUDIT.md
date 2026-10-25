@@ -5,9 +5,9 @@
 ## 总计
 
 - 文件：18
-- 字符串出现次数：757
+- 字符串出现次数：758
 - 去重字符串：461
-- CJK 字符数：3950
+- CJK 字符数：3953
 
 ## 按文件
 
@@ -25,7 +25,7 @@
 | src/game/items.zig | 18 | 16 | 130 |
 | src/game/run_game.zig | 102 | 71 | 407 |
 | src/game/run_hud.zig | 131 | 110 | 449 |
-| src/game/run_sim.zig | 103 | 67 | 392 |
+| src/game/run_sim.zig | 104 | 67 | 395 |
 | src/game/run_target.zig | 10 | 9 | 88 |
 | src/game/save.zig | 8 | 8 | 28 |
 | src/game/status_def.zig | 6 | 6 | 12 |
@@ -36,7 +36,7 @@
 
 | 字符串 | 次数 |
 | --- | --- |
-| 骷髅兵 | 53 |
+| 骷髅兵 | 54 |
 | 深渊守卫 | 16 |
 | 空 | 14 |
 | 幽魂 | 10 |
