@@ -52,6 +52,7 @@ const Options = struct {
     boss_screen: bool = false,
     boss_enraged_screen: bool = false,
     badges_screen: bool = false,
+    lang: ?u8 = null,
     pause_screen: bool = false,
     quit_confirm_screen: bool = false,
     boss_defeat_screen: bool = false,
@@ -106,6 +107,7 @@ fn usage() void {
         \\  --boss            jump to the floor-3 boss (screenshot/QA)
         \\  --boss-enraged    show the enraged boss bar (screenshot/QA)
         \\  --badges          show the badges panel (screenshot/QA)
+        \\  --lang zh|en      select language (i18n foundation; UI not translated yet)
         \\  --pause           show the pause menu (screenshot/QA)
         \\  --quit-confirm    show the quit confirmation (screenshot/QA)
         \\  --boss-defeat     show the boss defeat banner (screenshot/QA)
@@ -221,6 +223,9 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.boss_enraged_screen = true;
         } else if (std.mem.eql(u8, a, "--badges")) {
             o.badges_screen = true;
+        } else if (std.mem.eql(u8, a, "--lang")) {
+            const v = try argAt(argv, &i);
+            if (std.mem.eql(u8, v, "zh")) o.lang = 0 else if (std.mem.eql(u8, v, "en")) o.lang = 1 else return error.BadLanguage;
         } else if (std.mem.eql(u8, a, "--pause")) {
             o.pause_screen = true;
         } else if (std.mem.eql(u8, a, "--quit-confirm")) {
@@ -444,6 +449,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     }
     game.settings_scale = settings.scale;
     game.settings_vsync = settings.vsync;
+    vx.i18n.set(options.lang orelse settings.language);
     game.settings_volume = settings.volume;
     game.settings_ambient = settings.ambient;
     game.settings_pad_swap = settings.pad_swap;
@@ -791,6 +797,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
         error.MissingValue, error.BadResolution, error.UnknownOption => return err,
         else => return err,
     };
+    if (options.lang) |lang| vx.i18n.set(lang);
     if (options.version) {
         std.debug.print("vx 0.1.0\n", .{});
         return;
@@ -869,8 +876,8 @@ pub fn main(init: std.process.Init.Minimal) !void {
         const cwd_raw = std.c.getcwd(&cwd_buf, cwd_buf.len) orelse cwd_buf[0..0].ptr;
         const cwd = std.mem.sliceTo(cwd_raw, 0);
         std.debug.print(
-            "vx 0.1.0\nsave_root: {s}\nsaves: {s}/saves\nsettings: {s}/saves/settings.json\nrecords: {s}/saves/records.json\nportable: {s}\n",
-            .{ cwd, cwd, cwd, cwd, if (options.portable) "yes" else "no" },
+            "vx 0.1.0\nsave_root: {s}\nsaves: {s}/saves\nsettings: {s}/saves/settings.json\nrecords: {s}/saves/records.json\nportable: {s}\nlang: {s}\n",
+            .{ cwd, cwd, cwd, cwd, if (options.portable) "yes" else "no", if (vx.i18n.current == .en) "en" else "zh" },
         );
         return;
     }
