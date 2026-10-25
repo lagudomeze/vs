@@ -17,6 +17,17 @@ pub fn t(zh: []const u8, en: []const u8) []const u8 {
     return if (current == .en) en else zh;
 }
 
+pub fn statShort(zh: []const u8) []const u8 {
+    if (current != .en) return zh;
+    if (std.mem.eql(u8, zh, "力量")) return "STR";
+    if (std.mem.eql(u8, zh, "魔力")) return "MAG";
+    if (std.mem.eql(u8, zh, "意志")) return "WILL";
+    if (std.mem.eql(u8, zh, "体质")) return "CON";
+    if (std.mem.eql(u8, zh, "敏捷")) return "AGI";
+    if (std.mem.eql(u8, zh, "感知")) return "PER";
+    return zh;
+}
+
 pub fn enemyName(zh: []const u8) []const u8 {
     if (current != .en) return zh;
     if (std.mem.eql(u8, zh, "骷髅兵")) return "SKELETON";

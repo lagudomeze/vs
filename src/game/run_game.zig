@@ -1742,7 +1742,7 @@ pub const RunGame = struct {
                 const sx: i32 = @intFromFloat(sp.x);
                 const sy: i32 = @intFromFloat(sp.y);
                 const sealed = self.sim.floor >= self.sim.floors and self.sim.hasLivingBoss();
-                const label = if (sealed) "楼梯 封印" else "楼梯";
+                const label = if (sealed) i18n.t("楼梯 封印", "STAIRS SEALED") else i18n.t("楼梯", "STAIRS");
                 const tw = renderer.Renderer.textWidth(label, 1);
                 const lx = std.math.clamp(sx - @divTrunc(tw, 2), 3, w - tw - 3);
                 const ly = @max(68, sy - 12);
@@ -2242,6 +2242,7 @@ pub const RunGame = struct {
                 break :blk n;
             }),
             .stairs_hint = self.sim.stairsHint(),
+            .stairs_dir = self.sim.stairsDirCode(),
             .stairs_dist = @intCast(@abs(self.sim.stairs.x - self.sim.hero.pos.x) + @abs(self.sim.stairs.y - self.sim.hero.pos.y)),
             .panel = self.panel,
             .dead = self.sim.state == .dead,

@@ -1998,6 +1998,14 @@ pub const Sim = struct {
         return true;
     }
 
+    pub fn stairsDirCode(self: *const Sim) u8 {
+        const dx = self.stairs.x - self.hero.pos.x;
+        const dy = self.stairs.y - self.hero.pos.y;
+        if (@abs(dx) + @abs(dy) <= 1) return 'X';
+        if (@abs(dx) > @abs(dy)) return if (dx > 0) 'E' else 'W';
+        return if (dy > 0) 'S' else 'N';
+    }
+
     pub fn stairsHint(self: *const Sim) []const u8 {
         const dx = self.stairs.x - self.hero.pos.x;
         const dy = self.stairs.y - self.hero.pos.y;
