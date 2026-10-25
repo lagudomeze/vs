@@ -90,6 +90,7 @@ pub const State = struct {
     pause_confirm_quit: bool = false,
     badges_open: bool = false,
     daily: bool = false,
+    daily_best_floor: u8 = 0,
     victory_hold: bool = false,
     boss_active: bool = false,
     boss_hp: f32 = 0,
@@ -344,11 +345,18 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     r.drawText(@divTrunc(w, 2) - @divTrunc(tw, 2), 7, title, palette.gold, 2, true);
     var sub_buf: [64]u8 = undefined;
     const sub = if (state.daily)
-        fmt(&sub_buf, "SEED {d}  {s}  DAILY", .{ state.menu_seed, switch (state.difficulty) {
-            1 => "HARD",
-            2 => "EASY",
-            else => "NORMAL",
-        } })
+        if (state.daily_best_floor > 0)
+            fmt(&sub_buf, "SEED {d}  {s}  DAILY F{d}", .{ state.menu_seed, switch (state.difficulty) {
+                1 => "HARD",
+                2 => "EASY",
+                else => "NORMAL",
+            }, state.daily_best_floor })
+        else
+            fmt(&sub_buf, "SEED {d}  {s}  DAILY", .{ state.menu_seed, switch (state.difficulty) {
+                1 => "HARD",
+                2 => "EASY",
+                else => "NORMAL",
+            } })
     else
         fmt(&sub_buf, "SEED {d}  {s} [D] {s}", .{ state.menu_seed, switch (state.difficulty) {
             1 => "HARD",
