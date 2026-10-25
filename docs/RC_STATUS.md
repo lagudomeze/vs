@@ -4,7 +4,7 @@ Snapshot: main 0071731 (2026-10-26). This page is the single list of what code c
 
 ## Verified in this repo
 
-- zig build test: 268/268; test-qa: 145/145; test-qa3: 252/252.
+- zig build test: 269/269; test-qa: 145/145; test-qa3: 253/253.
 - PREFLIGHT PASS; static Deck checks only.
 - Deterministic packages: full D45B7AAE..., demo B61E9C3A..., playtest 349016B9..., press A8651D09...
 - Full and demo run from a clean unzip; no AppID, no local saves shipped.

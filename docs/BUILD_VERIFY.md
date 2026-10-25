@@ -51,9 +51,9 @@ HP 184 与战士平衡后的基础生命一致。
 
 ## 测试
 
-    zig build test      268/268
+    zig build test      269/269
     zig build test-qa   145/145
-    zig build test-qa3  252/252
+    zig build test-qa3  253/253
 
 ## 仍未验证
 
@@ -86,7 +86,7 @@ pwsh -File tools/verify_repro.ps1 -SkipPreflight
     $env:VX_PYTHON = <python.exe>
     tools/preflight.ps1
 
-结果：PREFLIGHT PASS -SkipPackage（fmt、268/268、145/145、252/252、Deck 静态、i18n、截图）；package/steam_check/steam_package_check/demo_pack 单独通过。
+结果：PREFLIGHT PASS -SkipPackage（fmt、269/269、145/145、253/253、Deck 静态、i18n、截图）；package/steam_check/steam_package_check/demo_pack 单独通过。
 
 ## 商店 capture
 
