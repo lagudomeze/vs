@@ -1,10 +1,10 @@
 # Roadmap / 发行顺序
 
-Snapshot: main 80ff9bc (2026-10-26). No dates; order matters more than speed.
+Snapshot: main 3065e6d (2026-10-26). No dates; order matters more than speed.
 
 ## Now: external playtest
 
-- Entry: #441, pre-release v0.1.0-playtest.
+- Entry: #441, pre-release v0.1.1-playtest.
 - Goal: 5-10 real sessions, not downloads.
 - Triage:
   - P0: crash, save loss, cannot start, soft-lock.

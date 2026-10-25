@@ -53,14 +53,14 @@ pwsh -File tools/playtest_pack.ps1
 
 ## 当前状态
 
-已生成 vx-playtest-0.1.0.zip（2,728,116 bytes）：中英说明、CONSENT、KNOWN_ISSUES、FEEDBACK、exe 均存在；解包运行 exit 0；无 steam_appid.txt。
+已生成 vx-playtest-0.1.0.zip（2,730,932 bytes）：中英说明、CONSENT、KNOWN_ISSUES、FEEDBACK、exe 均存在；解包运行 exit 0；无 steam_appid.txt。
 
-SHA256: 3282DFE1BA4F21E0D2922B6A139393FC4501E3441E00FBDE57821988DA87EFF9
+SHA256: 2DEDFBF1FCD46ECA555F3FE34A70AF64710579FEB197DCCD22D34F51E570A28F
 
 尚未招募真实测试者。
 
 ## 下载
 
-GitHub pre-release: https://github.com/lagudomeze/vs/releases/tag/v0.1.0-playtest
+GitHub pre-release: https://github.com/lagudomeze/vs/releases/tag/v0.1.1-playtest
 Feedback thread: https://github.com/lagudomeze/vs/issues/441
 SHA256SUMS.txt: attached to the release

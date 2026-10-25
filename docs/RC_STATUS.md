@@ -6,7 +6,7 @@ Snapshot: main 40e5963 (2026-10-26). This page is the single list of what code c
 
 - zig build test: 271/271; test-qa: 145/145; test-qa3: 255/255.
 - PREFLIGHT PASS; static Deck checks only.
-- Deterministic packages: full E5674437..., demo 4A470F4B..., playtest 3282DFE1..., press 45093E76...; verify_repro PASS (two runs)
+- Deterministic packages: full 9306ADF5..., demo 4329215E..., playtest 2DEDFBF1..., press 489E6D8F...; verify_repro PASS (two runs)
 - Full and demo run from a clean unzip; no AppID, no local saves shipped.
 - Save v3 accepts v2, rejects v1; BLOODMOON/SURGE round-trip covered.
 - Demo and playtest consent/feedback templates are static files.
