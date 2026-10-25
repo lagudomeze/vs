@@ -489,6 +489,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     game.settings_pad_swap = settings.pad_swap;
     game.settings_esdf = settings.esdf;
     game.settings_chunks = settings.chunks;
+    game.seen_intro = settings.seen_intro;
     game.settings_shake = settings.shake;
     if (settings.chunks) game.setChunks(true);
 
@@ -901,6 +902,10 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         const kills_before = game.sim.kills;
         const state_before = game.sim.state;
         game.update(input, dt);
+        if (game.seen_intro and !settings.seen_intro) {
+            settings.seen_intro = true;
+            vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
+        }
         const audio_target = if (game.pause_open) 0 else game.settings_volume;
         const audio_step = dt * 8.0;
         if (audio_gain < audio_target) {
