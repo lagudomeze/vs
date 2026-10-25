@@ -1141,6 +1141,7 @@ pub const RunGame = struct {
                 if (better) {
                     self.inventory.equip(self.content.items, item) catch {};
                     self.rebuildMods();
+                    self.sim.pushLog("自动装备 {s}", .{def.name});
                 }
             }
         }

@@ -147,6 +147,7 @@ pub fn logLine(line: []const u8, buf: []u8) []const u8 {
     if (std.mem.eql(u8, line, "读档")) return "LOADED";
     if (afterPrefix(line, "获得 ")) |name| return std.fmt.bufPrint(buf, "OBTAINED {s}", .{itemName(name)}) catch line;
     if (afterPrefix(line, "装备 ")) |name| return std.fmt.bufPrint(buf, "EQUIPPED {s}", .{itemName(name)}) catch line;
+    if (afterPrefix(line, "自动装备 ")) |name| return std.fmt.bufPrint(buf, "AUTO-EQUIP {s}", .{itemName(name)}) catch line;
 
     if (afterPrefix(line, "进入第 ")) |rest| {
         if (std.mem.endsWith(u8, rest, " 层")) {
@@ -287,6 +288,7 @@ test "i18n: battle log lines translate common formats" {
     try std.testing.expectEqualStrings("LOAD FAILED", logLine("读档失败：文件损坏", &buf));
     try std.testing.expectEqualStrings("OBTAINED LEATHER ARMOR", logLine("获得 皮甲", &buf));
     try std.testing.expectEqualStrings("BAG FULL", logLine("背包已满", &buf));
+    try std.testing.expectEqualStrings("AUTO-EQUIP LEATHER ARMOR", logLine("自动装备 皮甲", &buf));
     try std.testing.expectEqualStrings("TIME STOP: STUN 2 SLOW 2", logLine("时间停滞：眩晕2 减速2", &buf));
     try std.testing.expectEqualStrings("REWIND 3 TILES +8% HP", logLine("时间回溯：后退3格 回复8%", &buf));
     try std.testing.expectEqualStrings("GOLEM SLAM -7", logLine("石魔像 震地 -7 生命", &buf));
