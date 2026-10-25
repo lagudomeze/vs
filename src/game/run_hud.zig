@@ -4,6 +4,7 @@ const color = @import("../core/color.zig");
 const palette = @import("../core/palette.zig");
 const renderer = @import("../engine/renderer.zig");
 const settings_mod = @import("settings.zig");
+const i18n = @import("i18n.zig");
 
 pub const Panel = enum(u8) { none, character, inventory };
 
@@ -84,6 +85,7 @@ pub const State = struct {
     chunk_cleared: [9]bool = @splat(false),
     demo_end: bool = false,
     demo: bool = false,
+    language: u8 = 0,
     pause_open: bool = false,
     pause_confirm_quit: bool = false,
     badges_open: bool = false,
@@ -316,14 +318,15 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
 
     const plate_w: i32 = 210;
     backPanel(r, @divTrunc(w, 2) - @divTrunc(plate_w, 2), 4, plate_w, 48);
-    const tw = renderer.Renderer.textWidth(menu_title, 2);
-    r.drawText(@divTrunc(w, 2) - @divTrunc(tw, 2), 7, menu_title, palette.gold, 2, true);
+    const title = i18n.t(menu_title, "CHOOSE CLASS");
+    const tw = renderer.Renderer.textWidth(title, 2);
+    r.drawText(@divTrunc(w, 2) - @divTrunc(tw, 2), 7, title, palette.gold, 2, true);
     var sub_buf: [64]u8 = undefined;
-    const sub = fmt(&sub_buf, "SEED {d}  {s} [D] 切换", .{ state.menu_seed, switch (state.difficulty) {
+    const sub = fmt(&sub_buf, "SEED {d}  {s} [D] {s}", .{ state.menu_seed, switch (state.difficulty) {
         1 => "HARD",
         2 => "EASY",
         else => "NORMAL",
-    } });
+    }, i18n.t("切换", "TOGGLE") });
     const sw = renderer.Renderer.textWidth(sub, 1);
     r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), 27, sub, switch (state.difficulty) {
         1 => palette.red,
@@ -402,7 +405,10 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         r.drawText(@divTrunc(w, 2) - @divTrunc(bw, 2), h - 45, badges, palette.cyan_light, 1, false);
     }
 
-    const footer_text = if (state.demo) "1 选择  2/3 DEMO LOCKED  F9 读档  R 重开" else menu_footer;
+    const footer_text = if (state.demo)
+        i18n.t("1 选择  2/3 DEMO LOCKED  F9 读档  R 重开", "1 SELECT  2/3 DEMO LOCKED  F9 LOAD  R RESTART")
+    else
+        i18n.t(menu_footer, "1/2/3 SELECT  D SWITCH  F9 LOAD  R RESTART");
     const fw = renderer.Renderer.textWidth(footer_text, 1);
     r.drawText(@divTrunc(w, 2) - @divTrunc(fw, 2), h - 18, footer_text, palette.muted, 1, false);
 }
@@ -853,7 +859,7 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         return;
     }
     const pw: i32 = 320;
-    const ph: i32 = 330;
+    const ph: i32 = 352;
     const px = @divTrunc(w - pw, 2);
     const py = @divTrunc(h - ph, 2);
     r.fillRect(0, 0, w, h, palette.deep);
@@ -862,11 +868,24 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     r.fillRect(px + 2, py + 2, pw - 4, 2, palette.gold_light);
 
     r.drawIcon(.gear, px + 14, py + 6, palette.gold, 2);
-    const title = "SETTINGS";
+    const title = i18n.t("设置", "SETTINGS");
     const tw = renderer.Renderer.textWidth(title, 2);
     r.drawText(px + @divTrunc(pw - tw, 2), py + 12, title, palette.gold_light, 2, true);
 
-    const lines = [_][]const u8{
+    const lines_zh = [_][]const u8{
+        "1 全屏          ON/OFF",
+        "2 垂直同步      ON/OFF",
+        "3 窗口缩放      2x/3x/4x",
+        "4 音量          0/55/100%",
+        "5 环境音        ON/OFF",
+        "6 手柄 A/B      交换",
+        "7 移动          WASD/ESDF",
+        "8 重绑按键",
+        "9 3x3 地图      ON/OFF",
+        "0 屏幕震动      ON/OFF",
+        "L 语言          ZH/EN",
+    };
+    const lines_en = [_][]const u8{
         "1 FULLSCREEN    ON/OFF",
         "2 VSYNC         ON/OFF",
         "3 WINDOW SCALE  2x/3x/4x",
@@ -877,9 +896,11 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         "8 REMAP KEYS",
         "9 CHUNKS 3x3    ON/OFF",
         "0 SCREEN SHAKE  ON/OFF",
+        "L LANGUAGE      ZH/EN",
     };
+    const lines = if (i18n.current == .en) &lines_en else &lines_zh;
     for (lines, 0..) |line, i| {
-        r.drawText(px + 28, py + 54 + @as(i32, @intCast(i)) * 22, line, palette.cream, 1, false);
+        r.drawText(px + 28, py + 52 + @as(i32, @intCast(i)) * 20, line, palette.cream, 1, false);
     }
 
     var vbuf: [64]u8 = undefined;
@@ -891,17 +912,18 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         if (state.settings_ambient) "ON" else "OFF",
     });
     var vbuf2: [64]u8 = undefined;
-    const v2 = fmt(&vbuf2, "PAD {s} MOVE {s} CH {s} SH {s}", .{
+    const v2 = fmt(&vbuf2, "PAD {s} MOVE {s} CH {s} SH {s} LANG {s}", .{
         if (state.settings_pad_swap) "SWAP" else "STD",
         if (state.settings_esdf) "ESDF" else "WASD",
         if (state.settings_chunks) "ON" else "OFF",
         if (state.settings_shake) "ON" else "OFF",
+        if (state.language == 1) "EN" else "ZH",
     });
     const vw = renderer.Renderer.textWidth(v1, 1);
     r.drawText(px + @divTrunc(pw - vw, 2), py + 274, v1, palette.cyan_light, 1, false);
     const vw2 = renderer.Renderer.textWidth(v2, 1);
     r.drawText(px + @divTrunc(pw - vw2, 2), py + 292, v2, palette.cyan_light, 1, false);
-    r.drawText(px + 16, py + ph - 18, "Esc CLOSE   F2 TOGGLE", palette.muted, 1, false);
+    r.drawText(px + 16, py + ph - 18, i18n.t("Esc 关闭   F2 切换   L 语言", "Esc CLOSE   F2 TOGGLE   L LANGUAGE"), palette.muted, 1, false);
 }
 
 fn drawShop(r: *renderer.Renderer, state: State, w: i32, h: i32) void {

@@ -22,6 +22,7 @@ const status_def = @import("status_def.zig");
 const gear_save = @import("gear_save.zig");
 const slot_bundle = @import("slot_bundle.zig");
 const records_mod = @import("records.zig");
+const i18n = @import("i18n.zig");
 
 fn detailAppend(buf: []u8, off: *usize, comptime f: []const u8, args: anytype) void {
     const written = std.fmt.bufPrint(buf[off.*..], f, args) catch return;
@@ -2169,6 +2170,7 @@ pub const RunGame = struct {
             .chunk_map_open = self.chunk_map_open,
             .demo_end = self.demo_end,
             .demo = self.demo,
+            .language = i18n.code(),
             .pause_open = self.pause_open,
             .pause_confirm_quit = self.pause_confirm_quit,
             .badges_open = self.badges_open,
