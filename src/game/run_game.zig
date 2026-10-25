@@ -200,6 +200,7 @@ pub const RunGame = struct {
     pause_open: bool = false,
     pause_confirm_quit: bool = false,
     badges_open: bool = false,
+    daily: bool = false,
     victory_hold: f32 = 0,
     skip_victory_banner: bool = false,
     toast_text: []const u8 = "",
@@ -423,7 +424,17 @@ pub const RunGame = struct {
     /// picking a class keeps it and regenerates the dungeon for that class.
     pub fn rerollSeed(self: *RunGame) void {
         if (self.started) return;
+        self.daily = false;
         self.seed = freshSeed();
+        self.seed_locked = false;
+        self.openMenu();
+    }
+
+    pub fn startDaily(self: *RunGame, unix_seconds: i64) void {
+        if (self.started) return;
+        const day: u64 = @intCast(@divFloor(unix_seconds, 86400));
+        self.daily = true;
+        self.seed = sim_mod.nextSeed(day ^ 0xda11c0de);
         self.seed_locked = false;
         self.openMenu();
     }
@@ -2203,6 +2214,7 @@ pub const RunGame = struct {
             .pause_open = self.pause_open,
             .pause_confirm_quit = self.pause_confirm_quit,
             .badges_open = self.badges_open,
+            .daily = self.daily,
             .victory_hold = self.victory_hold > 0,
             .boss_active = boss_active,
             .boss_hp = boss_hp,
@@ -2536,6 +2548,22 @@ test "run game: sim notice becomes a HUD toast" {
     try std.testing.expectEqualStrings("TEST NOTICE", g.hud_state.toast);
     try std.testing.expect(g.toast_time > 0);
     try std.testing.expectEqualStrings("", g.sim.notice);
+}
+
+test "run game: daily seed is stable per UTC day" {
+    const gpa = std.testing.allocator;
+    const a = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer a.destroy();
+    a.openMenu();
+    a.startDaily(1_700_000_000);
+    const first = a.seed;
+    try std.testing.expect(a.daily);
+    a.startDaily(1_700_000_100);
+    try std.testing.expectEqual(first, a.seed);
+    a.startDaily(1_700_100_000);
+    try std.testing.expect(a.seed != first);
+    a.rerollSeed();
+    try std.testing.expect(!a.daily);
 }
 
 test "run game: demo locks non-warrior classes" {

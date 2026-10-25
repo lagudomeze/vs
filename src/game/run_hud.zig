@@ -89,6 +89,7 @@ pub const State = struct {
     pause_open: bool = false,
     pause_confirm_quit: bool = false,
     badges_open: bool = false,
+    daily: bool = false,
     victory_hold: bool = false,
     boss_active: bool = false,
     boss_hp: f32 = 0,
@@ -342,11 +343,18 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const tw = renderer.Renderer.textWidth(title, 2);
     r.drawText(@divTrunc(w, 2) - @divTrunc(tw, 2), 7, title, palette.gold, 2, true);
     var sub_buf: [64]u8 = undefined;
-    const sub = fmt(&sub_buf, "SEED {d}  {s} [D] {s}", .{ state.menu_seed, switch (state.difficulty) {
-        1 => "HARD",
-        2 => "EASY",
-        else => "NORMAL",
-    }, i18n.t("切换", "TOGGLE") });
+    const sub = if (state.daily)
+        fmt(&sub_buf, "SEED {d}  {s}  DAILY", .{ state.menu_seed, switch (state.difficulty) {
+            1 => "HARD",
+            2 => "EASY",
+            else => "NORMAL",
+        } })
+    else
+        fmt(&sub_buf, "SEED {d}  {s} [D] {s}", .{ state.menu_seed, switch (state.difficulty) {
+            1 => "HARD",
+            2 => "EASY",
+            else => "NORMAL",
+        }, i18n.t("切换", "TOGGLE") });
     const sw = renderer.Renderer.textWidth(sub, 1);
     r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), 27, sub, switch (state.difficulty) {
         1 => palette.red,
