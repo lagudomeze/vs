@@ -40,6 +40,7 @@ if (-not $python) {
     if ($cmd) { $python = $cmd.Source; $pyArgs = @("-3") }
 }
 if ($python) {
+    Step "link check" { & $python @pyArgs (Join-Path $PSScriptRoot "check_links.py") }
     Step "i18n audit" { & $python @pyArgs (Join-Path $PSScriptRoot "i18n_audit.py") }
     Step "i18n remaining" { & $python @pyArgs (Join-Path $PSScriptRoot "i18n_visible_audit.py") }
     Step "screenshot shrink check" { & $python @pyArgs (Join-Path $PSScriptRoot "shrink_shots.py") --check docs/screenshots }
