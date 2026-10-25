@@ -1169,6 +1169,10 @@ fn expectGlyphs(text: []const u8) !void {
 
 test "run hud: every builtin item name has a glyph" {
     const content = @import("content.zig");
+    const sim = @import("run_sim.zig");
+    for (sim.class_names) |name| try expectGlyphs(name);
+    for (content.builtin_enemies) |enemy| try expectGlyphs(enemy.name);
+    for (content.builtin_skills) |skill| try expectGlyphs(skill.name);
     for (content.builtin_items) |item| {
         expectGlyphs(item.name) catch {
             std.debug.print("missing item glyph: {s}\n", .{item.name});
