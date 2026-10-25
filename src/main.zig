@@ -800,7 +800,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             input.target_next = pin.toggle_hero;
             input.inventory = pin.inventory;
             input.character = pin.character;
-            input.restart = pin.reset;
+            input.restart = pin.reset or (pin.pause and game.started and (game.sim.state == .dead or game.sim.state == .victory));
             input.help = pin.help;
             input.difficulty = pin.difficulty;
             input.use_item = pin.use_item;
