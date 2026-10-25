@@ -896,6 +896,12 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         }
         const sw = renderer.Renderer.textWidth(sub, 1);
         r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), @divTrunc(h, 2) + 26, sub, palette.muted, 1, true);
+        if (state.daily and state.daily_best_floor > 0) {
+            var dbuf: [40]u8 = undefined;
+            const daily = fmt(&dbuf, "DAILY BEST F{d}", .{state.daily_best_floor});
+            const dw = renderer.Renderer.textWidth(daily, 1);
+            r.drawText(@divTrunc(w, 2) - @divTrunc(dw, 2), @divTrunc(h, 2) + 36, daily, palette.cyan_light, 1, true);
+        }
         const hint = "F4 COPY DIAGNOSTICS";
         const hw = renderer.Renderer.textWidth(hint, 1);
         r.drawText(@divTrunc(w, 2) - @divTrunc(hw, 2), @divTrunc(h, 2) + 35, hint, palette.gold, 1, true);
