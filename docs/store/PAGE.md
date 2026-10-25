@@ -79,18 +79,30 @@ Loot is automatic and build-defining: weapons, armor, trinkets and consumables f
 - OS: Windows 10 64-bit
 - CPU: dual-core 2.0 GHz
 - RAM: 2 GB
-- GPU: integrated graphics with OpenGL 3.3 / Direct3D 11
+- GPU: any Direct3D 11 / OpenGL 3.3-capable driver; the game renders at 640x360 in software, so integrated graphics are enough
 - Storage: 200 MB
-- Display: 1280×720
+- Display: 1280x720
+- Input: keyboard + mouse; gamepad recommended
+- Note: Steam Deck/Proton is expected to work but has not been hardware-verified
 
 ### Recommended
 
 - OS: Windows 10/11 64-bit
 - CPU: quad-core 2.5 GHz
 - RAM: 4 GB
-- GPU: discrete GPU or modern integrated
+- GPU: integrated graphics is enough; no discrete GPU required
 - Storage: 500 MB
-- Display: 1920×1080
+- Display: 1920x1080
+- Input: gamepad or keyboard/mouse
+
+## Accessibility
+
+- Remappable keyboard bindings (F2 -> REMAP KEYS)
+- Gamepad navigation for menus, settings, shop, shrine, inventory and character panels
+- Fullscreen, VSync and integer scale options
+- Separate screen-shake toggle
+- UI language: Chinese default; English beta via F2 -> L or --lang en
+- No flashing/strobe effects
 
 ## Tags
 
@@ -118,5 +130,5 @@ Roguelike, Turn-Based, Dungeon Crawler, Pixel Art, Singleplayer, Procedural Gene
 - [ ] 人手实机 capture + 正式配乐
 - [ ] Steam AppID / DepotID
 - [ ] 商店页审核（Short Description ≤300 字符）
-- [ ] Demo 分支与存档隔离
-- [ ] Playtest 反馈表
+- [x] Demo 分支与存档隔离（%APPDATA%/lagudomeze/vx/demo）
+- [x] Playtest 反馈表（docs/PLAYTEST.md）
