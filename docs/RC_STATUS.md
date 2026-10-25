@@ -1,12 +1,12 @@
 # RC Status / Human-Only Remaining Steps
 
-Snapshot: main 0071731 (2026-10-26). This page is the single list of what code can and cannot finish.
+Snapshot: main 7dfae32 (2026-10-26). This page is the single list of what code can and cannot finish.
 
 ## Verified in this repo
 
 - zig build test: 269/269; test-qa: 145/145; test-qa3: 253/253.
 - PREFLIGHT PASS; static Deck checks only.
-- Deterministic packages: full D45B7AAE..., demo B61E9C3A..., playtest 349016B9..., press A8651D09...
+- Deterministic packages: full D8DC600C..., demo DEB16378..., playtest 38A0B5A3..., press D2A63A3E...
 - Full and demo run from a clean unzip; no AppID, no local saves shipped.
 - Save v3 accepts v2, rejects v1; BLOODMOON/SURGE round-trip covered.
 - Demo and playtest consent/feedback templates are static files.
