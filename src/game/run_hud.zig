@@ -203,6 +203,24 @@ const help_lines = [_][]const u8{
     "ENEMY: GOLEM QUAKE / WRAITH DRAIN / SKEL GUARD",
     "F2 SETTINGS  F3 FEEDBACK  F11 FULL  F12 SHOT",
 };
+const help_lines_en = [_][]const u8{
+    "MOVE  WASD / ARROWS / NUMPAD",
+    "TALENTS  1/2/3 AIM, SPACE/SAME KEY CONFIRM",
+    "WAIT  5 / .      INVENTORY I      CHARACTER C",
+    "P POTION  anytime, no cost at full",
+    "SHOP/SHRINE  1-6 select",
+    "ESC CANCEL/PAUSE   Q QUIT FROM PAUSE",
+    "SAVE F5  LOAD F9 SLOTS  AUTOSAVE F10",
+    "CAMERA Q/E/RIGHT-DRAG  WHEEL ZOOM  M CHUNK MAP",
+    "LEVEL C PANEL 1-6 SPEND  R RESTART",
+    "GOAL  KILL THE FLOOR-3 ABYSS WARDEN",
+    "STAIRS ARE SEALED WHILE THE BOSS LIVES",
+    "LOOT AUTO-EQUIPS; 1/2/3 IN INVENTORY",
+    "STATUS STUN/SLOW/BURN/VULN/GUARD/BUFF",
+    "BURN max 3 stacks; VULN +20% dmg",
+    "ENEMY: GOLEM QUAKE / WRAITH DRAIN / SKEL GUARD",
+    "F2 SETTINGS  F3 FEEDBACK  F11 FULL  F12 SHOT",
+};
 const aim_hint = "空格/同键/左键确认  Esc取消  Tab换目标";
 
 /// Pre-run class selection. A checkerboard dim keeps the 3D dungeon visible
@@ -420,11 +438,13 @@ fn drawHelp(r: *renderer.Renderer, w: i32, h: i32) void {
     const ph: i32 = @min(h - 32, 256);
     const py: i32 = @divTrunc(h - ph, 2);
     backPanel(r, px, py, pw, ph);
-    const tw = renderer.Renderer.textWidth(help_title, 2);
-    r.drawText(px + @divTrunc(pw - tw, 2), py + 8, help_title, palette.gold, 2, true);
+    const title = i18n.t(help_title, "CONTROLS");
+    const tw = renderer.Renderer.textWidth(title, 2);
+    r.drawText(px + @divTrunc(pw - tw, 2), py + 8, title, palette.gold, 2, true);
 
+    const lines = if (i18n.current == .en) &help_lines_en else &help_lines;
     var y = py + 30;
-    for (help_lines) |line| {
+    for (lines) |line| {
         r.drawText(px + 18, y, line, palette.cream, 1, false);
         y += 12;
     }
@@ -795,12 +815,15 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
             drawVictoryBanner(r, w, h);
             return;
         }
-        const title = if (state.demo_end) "DEMO END" else if (state.victory) "胜利" else "死亡";
+        const title = if (state.demo_end) "DEMO END" else if (state.victory) i18n.t("胜利", "VICTORY") else i18n.t("死亡", "DEFEAT");
         var best_buf: [96]u8 = undefined;
         const sub = if (state.record_wins > 0)
-            fmt(&best_buf, "BEST F{d} T{d} K{d} G{d}   R 重开", .{ state.record_best_floor, state.record_best_turn, state.record_best_kills, state.record_best_gold })
+            if (i18n.current == .en)
+                fmt(&best_buf, "BEST F{d} T{d} K{d} G{d}   R RESTART", .{ state.record_best_floor, state.record_best_turn, state.record_best_kills, state.record_best_gold })
+            else
+                fmt(&best_buf, "BEST F{d} T{d} K{d} G{d}   R 重开", .{ state.record_best_floor, state.record_best_turn, state.record_best_kills, state.record_best_gold })
         else
-            "按 R 重开 同职业";
+            i18n.t("按 R 重开 同职业", "R RESTART SAME CLASS");
         const cause = if (state.log_count > 0) state.log_lines[state.log_count - 1] else "";
         var sbuf: [96]u8 = undefined;
         const summary = if (state.demo_end)
