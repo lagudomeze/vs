@@ -8,7 +8,7 @@ RC /人工剩余步骤见 [RC_STATUS.md](RC_STATUS.md)。
 
 无。没有已知崩溃/坏档/无法启动。
 
-当前验证：267/145/251；PREFLIGHT PASS；SURGE 稀有化后 QA normal 65.0% / hard 37.7% / easy 89.0%。
+当前验证：268/145/252；PREFLIGHT PASS；SURGE 稀有化后 QA normal 65.0% / hard 37.7% / easy 89.0%。
 第 200 轮里程碑：17 物品、6 层词条、首次引导、鼠标全主要面板、一键 release gate。
 
 ## P1

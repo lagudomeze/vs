@@ -163,6 +163,7 @@ pub const State = struct {
     item_deltas: [12]i16 = @splat(0),
     item_delta_valid: [12]bool = @splat(false),
     item_delta_new: [12]bool = @splat(false),
+    item_risk: [12]bool = @splat(false),
     item_count: usize = 0,
     dead: bool = false,
     victory: bool = false,
@@ -861,7 +862,9 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                     r.drawText(ix + 16 + col * 190, y, label, palette.cream, 1, false);
                     if (i < state.item_delta_valid.len and state.item_delta_valid[i]) {
                         var dbuf: [16]u8 = undefined;
-                        const dtext = if (state.item_delta_new[i])
+                        const dtext = if (state.item_risk[i])
+                            "RISK"
+                        else if (state.item_delta_new[i])
                             "NEW"
                         else if (state.item_deltas[i] > 0)
                             fmt(&dbuf, "+{d}", .{state.item_deltas[i]})
@@ -869,7 +872,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                             fmt(&dbuf, "{d}", .{state.item_deltas[i]})
                         else
                             "=";
-                        const dcol = if (state.item_delta_new[i] or state.item_deltas[i] > 0) color.pack(143, 209, 102) else if (state.item_deltas[i] < 0) palette.red else palette.muted;
+                        const dcol = if (state.item_risk[i]) palette.red else if (state.item_delta_new[i] or state.item_deltas[i] > 0) color.pack(143, 209, 102) else if (state.item_deltas[i] < 0) palette.red else palette.muted;
                         r.drawText(ix + 16 + col * 190 + 150, y, dtext, dcol, 1, false);
                     }
                     if (i < state.item_details.len and state.item_details[i].len > 0) {
