@@ -25,6 +25,39 @@ pub fn statShort(zh: []const u8) []const u8 {
     if (std.mem.eql(u8, zh, "体质")) return "CON";
     if (std.mem.eql(u8, zh, "敏捷")) return "AGI";
     if (std.mem.eql(u8, zh, "感知")) return "PER";
+    if (std.mem.eql(u8, zh, "攻击")) return "ATK";
+    if (std.mem.eql(u8, zh, "护甲")) return "ARMOR";
+    if (std.mem.eql(u8, zh, "暴击")) return "CRIT";
+    if (std.mem.eql(u8, zh, "速度")) return "SPD";
+    if (std.mem.eql(u8, zh, "生命")) return "HP";
+    if (std.mem.eql(u8, zh, "回复")) return "REGEN";
+    return zh;
+}
+
+pub fn quality(zh: []const u8) []const u8 {
+    if (current != .en) return zh;
+    if (std.mem.eql(u8, zh, "普通")) return "COMMON";
+    if (std.mem.eql(u8, zh, "稀有")) return "RARE";
+    if (std.mem.eql(u8, zh, "史诗")) return "EPIC";
+    if (std.mem.eql(u8, zh, "首领")) return "BOSS";
+    return zh;
+}
+
+pub fn itemName(zh: []const u8) []const u8 {
+    if (current != .en) return zh;
+    if (std.mem.eql(u8, zh, "铁剑")) return "IRON SWORD";
+    if (std.mem.eql(u8, zh, "法杖")) return "STAFF";
+    if (std.mem.eql(u8, zh, "皮甲")) return "LEATHER ARMOR";
+    if (std.mem.eql(u8, zh, "秘银甲")) return "MITHRIL ARMOR";
+    if (std.mem.eql(u8, zh, "猛虎护符")) return "TIGER AMULET";
+    if (std.mem.eql(u8, zh, "时光沙漏")) return "HOURGLASS";
+    if (std.mem.eql(u8, zh, "战斧")) return "BATTLE AXE";
+    if (std.mem.eql(u8, zh, "时刃")) return "TIMEBLADE";
+    if (std.mem.eql(u8, zh, "霜晶球")) return "FROST ORB";
+    if (std.mem.eql(u8, zh, "骨甲")) return "BONE ARMOR";
+    if (std.mem.eql(u8, zh, "生命瓶")) return "HEALTH VIAL";
+    if (std.mem.eql(u8, zh, "魔力瓶")) return "MANA VIAL";
+    if (std.mem.eql(u8, zh, "齿轮印记")) return "GEAR SIGIL";
     return zh;
 }
 

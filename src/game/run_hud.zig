@@ -707,10 +707,10 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         r.fillRect(ix, iy, iw, ih, palette.panel);
         r.strokeRect(ix, iy, iw, ih, palette.border);
         r.fillRect(ix + 2, iy + 2, 54, 2, palette.gold);
-        const title = if (state.panel == .inventory) "背包" else "角色";
+        const title = if (state.panel == .inventory) i18n.t("背包", "BAG") else i18n.t("角色", "CHARACTER");
         r.drawIcon(if (state.panel == .inventory) .bag else .hero, ix + 12, iy + 5, palette.gold, 2);
         r.drawText(ix + 42, iy + 10, title, palette.gold, 1, false);
-        r.drawText(ix + iw - 62, iy + 10, "关闭", palette.muted, 1, false);
+        r.drawText(ix + iw - 62, iy + 10, i18n.t("关闭", "CLOSE"), palette.muted, 1, false);
 
         if (state.panel == .character) {
             const labels = [_][]const u8{ "力量", "敏捷", "体质", "感知", "魔力", "意志" };
@@ -720,23 +720,23 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                 const row = @as(i32, @intCast(i / 2));
                 const ax = ix + 16 + col * 150;
                 const ay = iy + 42 + row * 22;
-                r.drawText(ax, ay, label, palette.cream, 1, false);
+                r.drawText(ax, ay, i18n.statShort(label), palette.cream, 1, false);
                 const val = fmt(&abuf, "{d}", .{state.attrs[i]});
                 r.drawText(ax + 48, ay, val, palette.gold_light, 1, false);
             }
             var dbuf: [40]u8 = undefined;
-            r.drawText(ix + 278, iy + 42, "战斗", palette.gold, 1, false);
-            r.drawText(ix + 278, iy + 64, fmt(&dbuf, "生命 {d:.0}/{d:.0}", .{ state.hp, state.hp_max }), palette.cream, 1, false);
+            r.drawText(ix + 278, iy + 42, i18n.t("战斗", "COMBAT"), palette.gold, 1, false);
+            r.drawText(ix + 278, iy + 64, fmt(&dbuf, "{s} {d:.0}/{d:.0}", .{ i18n.t("生命", "HP"), state.hp, state.hp_max }), palette.cream, 1, false);
             r.drawText(ix + 278, iy + 84, fmt(&dbuf, "{s} {d:.0}/{d:.0}", .{ state.resource_label, state.resource, state.resource_max }), palette.cream, 1, false);
-            r.drawText(ix + 278, iy + 104, fmt(&dbuf, "攻击 {d:.0}", .{state.attack}), palette.cream, 1, false);
-            r.drawText(ix + 278, iy + 124, fmt(&dbuf, "护甲 {d:.0}", .{state.armor}), palette.cream, 1, false);
-            r.drawText(ix + 278, iy + 144, fmt(&dbuf, "暴击 {d:.0}%", .{state.crit * 100.0}), palette.cream, 1, false);
-            r.drawText(ix + 278, iy + 164, fmt(&dbuf, "速度 {d:.0}", .{state.speed}), palette.cream, 1, false);
-            r.drawText(ix + 278, iy + 184, fmt(&dbuf, "回复 {d:.1}/回合", .{state.res_per_turn}), palette.cream, 1, false);
+            r.drawText(ix + 278, iy + 104, fmt(&dbuf, "{s} {d:.0}", .{ i18n.t("攻击", "ATK"), state.attack }), palette.cream, 1, false);
+            r.drawText(ix + 278, iy + 124, fmt(&dbuf, "{s} {d:.0}", .{ i18n.t("护甲", "ARMOR"), state.armor }), palette.cream, 1, false);
+            r.drawText(ix + 278, iy + 144, fmt(&dbuf, "{s} {d:.0}%", .{ i18n.t("暴击", "CRIT"), state.crit * 100.0 }), palette.cream, 1, false);
+            r.drawText(ix + 278, iy + 164, fmt(&dbuf, "{s} {d:.0}", .{ i18n.t("速度", "SPD"), state.speed }), palette.cream, 1, false);
+            r.drawText(ix + 278, iy + 184, fmt(&dbuf, "{s} {d:.1}", .{ i18n.t("回复", "REGEN"), state.res_per_turn }), palette.cream, 1, false);
 
-            r.drawText(ix + 16, iy + 106, fmt(&dbuf, "属性点 {d}  按 1-6 加点", .{state.pending_points}), palette.gold_light, 1, false);
-            r.drawText(ix + 16, iy + 126, "装备", palette.gold, 1, false);
-            const slot_labels = [_][]const u8{ "主手", "身体", "饰品" };
+            r.drawText(ix + 16, iy + 106, fmt(&dbuf, "{s} {d}  1-6", .{ i18n.t("属性点", "POINTS"), state.pending_points }), palette.gold_light, 1, false);
+            r.drawText(ix + 16, iy + 126, i18n.t("装备", "EQUIPMENT"), palette.gold, 1, false);
+            const slot_labels = [_][]const u8{ i18n.t("主手", "MAIN"), i18n.t("身体", "BODY"), i18n.t("饰品", "TRINKET") };
             var ebuf: [40]u8 = undefined;
             for (slot_labels, 0..) |label, i| {
                 const ey = iy + 148 + @as(i32, @intCast(i)) * 20;
@@ -749,13 +749,13 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
             r.fillRect(ix + 16, iy + 202, iw - 32, 1, palette.border);
             var tbuf: [96]u8 = undefined;
             for (state.hotbar, 0..) |slot, i| {
-                const prefix = if (i == 0) "天赋 " else "     ";
-                const line = fmt(&tbuf, "{s}{d} {s}：{s}", .{ prefix, i + 1, slot.name, state.talent_descs[i] });
+                const prefix = if (i == 0) i18n.t("天赋 ", "TALENT ") else "       ";
+                const line = fmt(&tbuf, "{s}{d} {s}{s}{s}", .{ prefix, i + 1, slot.name, i18n.t("：", ": "), state.talent_descs[i] });
                 r.drawText(ix + 16, iy + 204 + @as(i32, @intCast(i)) * 14, line, if (i == 0) palette.gold_light else palette.cream, 1, false);
             }
         } else {
             if (state.item_count == 0) {
-                r.drawText(ix + 16, iy + 42, "背包是空的", palette.muted, 1, false);
+                r.drawText(ix + 16, iy + 42, i18n.t("背包是空的", "BAG IS EMPTY"), palette.muted, 1, false);
             } else {
                 const n = @min(state.item_count, state.items.len);
                 var ibuf: [48]u8 = undefined;
@@ -784,8 +784,8 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
                 }
             }
             r.fillRect(ix + 16, iy + ih - 104, iw - 32, 1, palette.border);
-            r.drawText(ix + 16, iy + ih - 96, "装备", palette.gold, 1, false);
-            const slot_labels = [_][]const u8{ "主手", "身体", "饰品" };
+            r.drawText(ix + 16, iy + ih - 96, i18n.t("装备", "EQUIPMENT"), palette.gold, 1, false);
+            const slot_labels = [_][]const u8{ i18n.t("主手", "MAIN"), i18n.t("身体", "BODY"), i18n.t("饰品", "TRINKET") };
             var ebuf: [40]u8 = undefined;
             for (slot_labels, 0..) |label, i| {
                 const name = if (state.equip[i].len > 0) state.equip[i] else "-";

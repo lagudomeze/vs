@@ -21,13 +21,15 @@
 - 死亡原因
 - 商店 6 项/祭坛 4 项/footer
 - 罗盘 N/E/S/W、世界 STAIRS/STAIRS SEALED
+- 物品名/品质/属性细节（IRON SWORD/RARE/ATK）
+- 背包/角色面板标签、装备槽、天赋速查
 - F2 按 L 切换 ZH/EN，settings.language 持久化
 - --lang en 可直接看英文设置/菜单
 
 ## 没有
 
 - 暂停/BADGES 仍是英文固定文案（中文模式下不切换）
-- 物品名/描述/背包/角色面板/天赋瞄准提示未翻译
+- 天赋瞄准提示/部分目标面板标签未翻译
 - 没有语言选择 UI（F2 里没有）
 - 没有英文截图/字体溢出验收
 - 没有内容翻译（406 去重字符串）
@@ -45,4 +47,4 @@
 - 历史日志切语言后不会重译
 - CJK 字体子集不影响 ASCII，但英文排版需重新测宽
 
-当前状态：**导航 + 职业卡 + 核心 HUD 部分英文**，不是完整英文版。截图：settings_en.png / menu_en.png / gameplay_en.png / help_en.png / death_en.png / shop_en.png / shrine_en.png；日志为显示层翻译，存档仍存中文。
+当前状态：**导航 + 职业卡 + 核心 HUD 部分英文**，不是完整英文版。截图：settings_en.png / menu_en.png / gameplay_en.png / help_en.png / death_en.png / shop_en.png / shrine_en.png / inventory_en.png / character_en.png；日志为显示层翻译，存档仍存中文。
