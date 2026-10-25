@@ -501,6 +501,17 @@ pub const RunGame = struct {
         return true;
     }
 
+    fn bagRowAt(self: *const RunGame, sx: f32, sy: f32) ?u8 {
+        if (sx < 24 or sx > 620) return null;
+        const iy: f32 = 12;
+        const row = @floor((sy - (iy + 42)) / 28);
+        if (row < 0) return null;
+        const col: f32 = if (sx < 200) 0 else 1;
+        const idx = row * 2 + col;
+        if (idx < 0 or @as(usize, @intFromFloat(idx)) >= self.inventory.count()) return null;
+        return @intFromFloat(idx);
+    }
+
     fn statRowAt(self: *const RunGame, sx: f32, sy: f32) ?u8 {
         _ = self;
         if (sx < 24 or sx > 340) return null;
@@ -1508,6 +1519,9 @@ pub const RunGame = struct {
         }
         if (self.panel == .inventory and input.talent >= 0) {
             self.equipBag(@intCast(input.talent));
+        }
+        if (self.panel == .inventory and input.click) {
+            if (self.bagRowAt(input.mouse_x, input.mouse_y)) |idx| self.equipBag(idx);
         }
         if (self.panel == .inventory and input.use_item) {
             _ = self.usePotion(true);
@@ -3329,6 +3343,17 @@ test "run game: shop loot purchase adds an item and spends gold" {
     try std.testing.expect(g.sim.shop_used);
     // The drop may auto-equip, so total items can stay flat; gold and shop prove the purchase.
     _ = before;
+}
+
+test "run game: mouse click equips a bag item" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
+    defer g.destroy();
+    _ = g.inventory.pickup(0);
+    g.panel = .inventory;
+    g.fillHudState();
+    g.update(.{ .mouse_x = 32, .mouse_y = 54, .click = true }, 1.0 / 60.0);
+    try std.testing.expect(g.inventory.equipped.get(.main_hand) != null);
 }
 
 test "run game: mouse click spends a character point" {
