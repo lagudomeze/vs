@@ -3019,6 +3019,22 @@ test "run game: daily victory streak increments once per day" {
     try std.testing.expectEqual(@as(u32, 1), g.records.daily_streak);
 }
 
+test "run game: daily streak does not increment on death" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.started = true;
+    g.daily = true;
+    g.daily_day = 104;
+    g.records.daily_last_win_day = 103;
+    g.records.daily_streak = 4;
+    g.last_state = .playing;
+    g.sim.state = .dead;
+    g.trackRunEnd();
+    try std.testing.expectEqual(@as(u32, 4), g.records.daily_streak);
+    try std.testing.expectEqual(@as(i64, 103), g.records.daily_last_win_day);
+}
+
 test "run game: daily best hides yesterday record" {
     const gpa = std.testing.allocator;
     const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
