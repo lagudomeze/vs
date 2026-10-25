@@ -54,6 +54,7 @@ pub const FrameInput = struct {
     reset: bool = false,
     toggle_debug: bool = false,
     toggle_fullscreen: bool = false,
+    pause: bool = false,
     settings: bool = false,
     feedback: bool = false,
     screenshot: bool = false,
@@ -221,7 +222,7 @@ pub const Platform = struct {
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER)) != 0) input.talent_2 = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_LEFT_STICK)) != 0) input.talent_3 = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_RIGHT_STICK)) != 0) input.map = true;
-        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_START)) != 0) input.help = true;
+        if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_START)) != 0) input.pause = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_BACK)) != 0) input.settings = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_DPAD_UP)) != 0) input.step_n = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_DPAD_DOWN)) != 0) input.step_s = true;
