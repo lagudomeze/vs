@@ -445,6 +445,20 @@ fn ambienceFor(game: *const vx.RunGame) vx.platform.Ambience {
     return .explore;
 }
 
+fn pauseRowAt(sx: f32, sy: f32, w: u32, h: u32) ?u8 {
+    const pw: f32 = 260;
+    const ph: f32 = 170;
+    const px = (@as(f32, @floatFromInt(w)) - pw) / 2;
+    const py = (@as(f32, @floatFromInt(h)) - ph) / 2;
+    if (sx < px + 20 or sx > px + pw - 20) return null;
+    const rows = [_]f32{ 64, 80, 96, 112, 128 };
+    for (rows, 0..) |row, i| {
+        const cy = py + row + 4;
+        if (sy >= cy - 7 and sy <= cy + 7) return @intCast(i);
+    }
+    return null;
+}
+
 fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
     var settings = vx.settings.load(io, game.gpa, vx.settings.default_path) catch vx.settings.Settings{};
     if (options.fullscreen) settings.fullscreen = true;
@@ -502,6 +516,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         var pause_resumed = false;
         var escape_consumed = false;
         var help_consumed = false;
+        var pause_click_consumed = false;
         if (pin.toggle_fullscreen) {
             platform.playSound(.ui);
             _ = platform.toggleFullscreen();
@@ -700,6 +715,47 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             game.hud_state.pause_confirm_quit = true;
             platform.playSound(.ui);
         }
+        if (game.pause_open and !game.settings_open and pin.click) {
+            if (pauseRowAt(pin.mouse_x, pin.mouse_y, options.width, options.height)) |row| {
+                pause_click_consumed = true;
+                if (row == 4) {
+                    if (game.pause_confirm_quit) {
+                        if (game.autosave_pending) game.flushAutosave(io);
+                        if (game.records_dirty) _ = game.saveRecords(io);
+                        break;
+                    }
+                    game.pause_confirm_quit = true;
+                    game.hud_state.pause_confirm_quit = true;
+                    platform.playSound(.ui);
+                } else switch (row) {
+                    0, 1 => {
+                        game.pause_open = false;
+                        game.pause_confirm_quit = false;
+                        game.hud_state.pause_open = false;
+                        game.hud_state.pause_confirm_quit = false;
+                        platform.playSound(.ui);
+                    },
+                    2 => {
+                        game.pause_open = false;
+                        game.show_help = true;
+                        game.hud_state.pause_open = false;
+                        game.hud_state.help = true;
+                        modal_consumed = true;
+                        help_consumed = true;
+                        platform.playSound(.ui);
+                    },
+                    3 => {
+                        game.pause_open = false;
+                        game.settings_open = true;
+                        game.hud_state.pause_open = false;
+                        game.hud_state.settings_open = true;
+                        modal_consumed = true;
+                        platform.playSound(.ui);
+                    },
+                    else => {},
+                }
+            }
+        }
         if (game.pause_open and pin.help) {
             game.pause_open = false;
             game.pause_confirm_quit = false;
@@ -832,6 +888,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         var input = vx.run_game.Input{};
         if (!slot_frame) {
             input = vx.input_map.build(pin, game, bomb_ok, pause_resumed, modal_consumed, help_consumed);
+            if (pause_click_consumed) input.click = false;
             if (input.restart and game.daily and game.started and game.sim.state != .playing) {
                 const now_secs = std.Io.Clock.real.now(io).toSeconds();
                 game.restartDaily(now_secs);
