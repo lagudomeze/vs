@@ -52,6 +52,7 @@ const Options = struct {
     boss_screen: bool = false,
     boss_enraged_screen: bool = false,
     badges_screen: bool = false,
+    daily_screen: bool = false,
     lang: ?u8 = null,
     pause_screen: bool = false,
     quit_confirm_screen: bool = false,
@@ -107,6 +108,7 @@ fn usage() void {
         \\  --boss            jump to the floor-3 boss (screenshot/QA)
         \\  --boss-enraged    show the enraged boss bar (screenshot/QA)
         \\  --badges          show the badges panel (screenshot/QA)
+        \\  --daily           open the daily challenge menu (screenshot/QA)
         \\  --lang zh|en      select language (i18n foundation; UI not translated yet)
         \\  --pause           show the pause menu (screenshot/QA)
         \\  --quit-confirm    show the quit confirmation (screenshot/QA)
@@ -223,6 +225,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.boss_enraged_screen = true;
         } else if (std.mem.eql(u8, a, "--badges")) {
             o.badges_screen = true;
+        } else if (std.mem.eql(u8, a, "--daily")) {
+            o.daily_screen = true;
         } else if (std.mem.eql(u8, a, "--lang")) {
             const v = try argAt(argv, &i);
             if (std.mem.eql(u8, v, "zh")) o.lang = 0 else if (std.mem.eql(u8, v, "en")) o.lang = 1 else return error.BadLanguage;
@@ -491,6 +495,10 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             game.hud_state.badges_open = game.badges_open;
         }
         if (!game.started and pin.key_code == vx.platform.scancode_f8) game.rerollSeed();
+        if (!game.started and pin.key_code == vx.platform.scancode_f6) {
+            const now_secs = std.Io.Clock.real.now(io).toSeconds();
+            game.startDaily(now_secs);
+        }
         if (pin.diagnostics) {
             var dbuf: [512:0]u8 = undefined;
             platform.setClipboard(game.diagnostics(&dbuf));
@@ -1012,10 +1020,11 @@ pub fn main(init: std.process.Init.Minimal) !void {
     // instant-start behaviour unless --start-menu is explicit. --hero always
     // skips the menu so scripted screenshots stay stable.
     const wants_menu = !options.hero_set and (options.start_menu or !options.headless);
-    if (wants_menu and !options.hide_hud and !options.inventory and !options.character and options.loot == 0) {
+    if ((wants_menu or options.daily_screen) and !options.hide_hud and !options.inventory and !options.character and options.loot == 0) {
         game.openMenu();
     }
 
+    if (options.daily_screen) game.startDaily(std.Io.Clock.real.now(io).toSeconds());
     if (options.inventory) game.panel = .inventory;
     if (options.character) game.panel = .character;
     if (options.slots_shot) game.openSlotMenu(io, .save);
