@@ -13,7 +13,10 @@ if (-not $pkg) {
     if (-not (Test-Path $exe)) {
         $fail += "vx.exe missing from package root"
     } else {
-        $version = (& $exe --version 2>&1 | Out-String).Trim()
+        Push-Location (Split-Path $exe)
+        $raw = (cmd /c ".\vx.exe --version 2>&1" | Out-String).Trim()
+        Pop-Location
+        $version = ($raw -replace '^.*?:\s*', '')
         if ($version -notmatch "^vx ") { $fail += "unexpected --version: $version" }
         else { Write-Output ("package version: " + $version) }
         $built = Join-Path $root "zig-out/bin/vx.exe"
