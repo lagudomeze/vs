@@ -206,6 +206,8 @@ pub const RunGame = struct {
     daily: bool = false,
     daily_day: i64 = 0,
     menu_selection: u8 = 0,
+    menu_mouse_x: f32 = -1,
+    menu_mouse_y: f32 = -1,
     shop_index: u8 = 0,
     shrine_index: u8 = 0,
     stat_index: u8 = 0,
@@ -466,6 +468,8 @@ pub const RunGame = struct {
 
     pub fn openMenu(self: *RunGame) void {
         self.started = false;
+        self.menu_mouse_x = -1;
+        self.menu_mouse_y = -1;
         self.resetRun();
     }
 
@@ -1278,8 +1282,11 @@ pub const RunGame = struct {
 
         if (!self.started) {
             if (input.difficulty) self.toggleDifficulty();
+            const mouse_moved = input.mouse_x != self.menu_mouse_x or input.mouse_y != self.menu_mouse_y;
+            self.menu_mouse_x = input.mouse_x;
+            self.menu_mouse_y = input.mouse_y;
             if (self.menuColumnAt(input.mouse_x, input.mouse_y)) |col| {
-                self.menu_selection = col;
+                if (mouse_moved) self.menu_selection = col;
                 if (input.click) self.selectClass(sim_mod.classFromIndex(col));
             }
             if (input.step_x < 0) {
@@ -2775,6 +2782,19 @@ test "run game: menu click selects then starts a class" {
     g.update(.{ .mouse_x = 320, .mouse_y = 180, .click = true }, 1.0 / 60.0);
     try std.testing.expect(g.started);
     try std.testing.expectEqual(sim_mod.Class.mage, g.class);
+}
+
+test "run game: keyboard wins over a stationary mouse" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 0);
+    defer g.destroy();
+    g.openMenu();
+    g.update(.{ .mouse_x = 320, .mouse_y = 180 }, 1.0 / 60.0);
+    try std.testing.expectEqual(@as(u8, 1), g.menu_selection);
+    g.update(.{ .mouse_x = 320, .mouse_y = 180, .step_x = -1 }, 1.0 / 60.0);
+    try std.testing.expectEqual(@as(u8, 0), g.menu_selection);
+    g.update(.{ .mouse_x = 320, .mouse_y = 180 }, 1.0 / 60.0);
+    try std.testing.expectEqual(@as(u8, 0), g.menu_selection);
 }
 
 test "run game: gamepad menu cycles and confirms a class" {
