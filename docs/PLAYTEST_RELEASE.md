@@ -28,4 +28,6 @@ Windows 10/11 x64. Not a Steam release. No AppID, no installer, no telemetry.
 
 Use https://github.com/lagudomeze/vs/issues/441 or the F3 feedback form. Include the build tag and seed if possible.
 
-Build: v0.1.0-playtest (40e5963). SHA256: see docs/BUILD_VERIFY.md.
+Build: v0.1.0-playtest (40e5963).
+SHA256SUMS.txt is attached; verify the zip before running.
+
