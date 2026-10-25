@@ -34,6 +34,8 @@ pub const Bindings = struct {
 pub const FrameInput = struct {
     quit: bool = false,
     escape: bool = false,
+    /// Gamepad B: cancel/close, never quit the app.
+    back: bool = false,
     move_x: f32 = 0,
     move_z: f32 = 0,
     yaw_delta: f32 = 0,
@@ -217,6 +219,7 @@ pub const Platform = struct {
         }
         if (east) {
             input.escape = true;
+            input.back = true;
             input.use_bomb = true;
         }
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_WEST)) != 0) input.inventory = true;
