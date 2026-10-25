@@ -7,7 +7,7 @@ Single-hero, turn-based, grid roguelike. Windows x64, software renderer, 640x360
 ### Content
 
 - 3 classes: Warrior, Mage, Chronomancer; 3 floors; Abyss Warden boss.
-- 17 items, 7 elite affixes, 6 floor modifiers (EMBER / FROST / MIASMA / GILDED / BLOODMOON / SURGE).
+- 18 items, 7 elite affixes, 6 floor modifiers (EMBER / FROST / MIASMA / GILDED / BLOODMOON / SURGE).
 - Daily challenge: one UTC seed per day, win streak, 6 badges.
 - Shrines, shops, cursed chests, traps, chunks/minimap, visible enemy intents.
 - Turn-based combat with telegraphed attacks; B fire bomb; talents 1/2/3.
