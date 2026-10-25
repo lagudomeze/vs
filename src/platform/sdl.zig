@@ -11,6 +11,9 @@ pub fn prefPath(alloc: std.mem.Allocator) ![]u8 {
     return alloc.dupe(u8, std.mem.span(raw));
 }
 
+pub const scancode_f7: u32 = 64;
+pub const scancode_f8: u32 = 65;
+
 pub const Sound = enum(u8) { step, hit, cast, pickup, death, victory, ui };
 
 pub const Ambience = enum { explore, danger, shop, death, victory };
@@ -606,4 +609,9 @@ test "platform: fit scale respects display bounds" {
     try std.testing.expectEqual(@as(u8, 2), Platform.fitScale(640, 360, 3, 1280, 800));
     try std.testing.expectEqual(@as(u8, 3), Platform.fitScale(640, 360, 3, 1920, 1080));
     try std.testing.expectEqual(@as(u8, 1), Platform.fitScale(640, 360, 4, 800, 600));
+}
+
+test "platform: function-key scancodes match SDL" {
+    try std.testing.expectEqual(@as(u32, @intCast(c.SDL_SCANCODE_F7)), scancode_f7);
+    try std.testing.expectEqual(@as(u32, @intCast(c.SDL_SCANCODE_F8)), scancode_f8);
 }
