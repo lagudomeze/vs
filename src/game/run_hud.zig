@@ -609,7 +609,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         else if (std.mem.eql(u8, state.floor_mod_label, "GILDED"))
             "GOLD +50%"
         else
-            "XP +50%";
+            "XP +50% DMG +10%";
         var mod_buf: [48]u8 = undefined;
         const mod = fmt(&mod_buf, "MOD {s} {s}", .{ state.floor_mod_label, mod_desc });
         const mw = renderer.Renderer.textWidth(mod, 1);

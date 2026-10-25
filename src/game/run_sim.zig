@@ -67,6 +67,10 @@ pub const FloorMod = enum(u8) {
     pub fn xpScale(self: FloorMod) f32 {
         return if (self == .bloodmoon) 1.5 else 1.0;
     }
+
+    pub fn enemyDamageScale(self: FloorMod) f32 {
+        return if (self == .bloodmoon) 1.10 else 1.0;
+    }
 };
 
 pub const Difficulty = enum(u8) {
@@ -1587,6 +1591,7 @@ pub const Sim = struct {
         const e = &self.enemies[idx];
         var raw = e.combat.attack.val * 0.72;
         if (e.affix == .berserk and e.vitals.val < e.vitals.full * 0.5) raw *= 1.25;
+        raw *= self.floor_mod.enemyDamageScale();
         raw *= e.status.slowDamageScale();
         const dmg = combat.resolve(.{ .raw = raw }, .{ .armor = self.hero.combat.armor.val }).amount * self.hero.status.damageTakenScale();
         self.hero.vitals.val = @max(0, self.hero.vitals.val - dmg);
@@ -2514,6 +2519,20 @@ test "run sim: bloodmoon grants bonus xp" {
     const before = s.hero.progression.xp;
     s.killEnemy(0);
     try std.testing.expectEqual(before + 15, s.hero.progression.xp);
+}
+
+test "run sim: bloodmoon enemies hit harder" {
+    var s = Sim.init(97, .warrior);
+    s.floor_mod = .bloodmoon;
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{ .kind = 0, .name = "骷髅兵", .pos = .{ .x = s.hero.pos.x + 1, .y = s.hero.pos.y }, .hp = 40, .hp_max = 40, .attack = 20, .armor = 0, .speed = 100, .range = 1, .xp = 5 });
+    const hp = s.hero.vitals.val;
+    s.enemyAttack(0);
+    const hit = hp - s.hero.vitals.val;
+    s.hero.vitals.val = hp;
+    s.floor_mod = .none;
+    s.enemyAttack(0);
+    try std.testing.expect(hit > hp - s.hero.vitals.val);
 }
 
 test "run sim: cursed chest damages and pays more gold" {
