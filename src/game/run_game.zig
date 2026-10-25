@@ -527,6 +527,13 @@ pub const RunGame = struct {
                 if (!daily_ok_before and self.records.daily_best_floor >= 3 and !std.mem.startsWith(u8, self.sim.notice, "BADGE:")) {
                     self.sim.notice = "BADGE: DAILY DELVER";
                 }
+                if (self.sim.state == .victory and self.records.daily_last_win_day != self.daily_day) {
+                    self.records.daily_streak = if (self.records.daily_last_win_day == self.daily_day - 1)
+                        self.records.daily_streak +| 1
+                    else
+                        1;
+                    self.records.daily_last_win_day = self.daily_day;
+                }
             }
             var clears: u32 = 0;
             for (self.sim.cleared_chunks) |c| {
@@ -2350,6 +2357,7 @@ pub const RunGame = struct {
             .badges_open = self.badges_open,
             .daily = self.daily,
             .daily_best_floor = if (self.records.daily_day == self.daily_day) self.records.daily_best_floor else 0,
+            .daily_streak = self.records.daily_streak,
             .menu_selection = self.menu_selection,
             .shop_index = self.shop_index,
             .shrine_index = self.shrine_index,
@@ -2979,6 +2987,36 @@ test "run game: daily run records best floor and kills" {
     try std.testing.expectEqual(@as(u8, 2), g.records.daily_best_floor);
     try std.testing.expectEqual(@as(u32, 5), g.records.daily_best_kills);
     try std.testing.expect(g.records_dirty);
+}
+
+test "run game: daily victory streak increments once per day" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.started = true;
+    g.daily = true;
+    g.daily_day = 100;
+    g.records.daily_last_win_day = 99;
+    g.records.daily_streak = 2;
+    g.last_state = .playing;
+    g.sim.state = .victory;
+    g.trackRunEnd();
+    try std.testing.expectEqual(@as(u32, 3), g.records.daily_streak);
+    try std.testing.expectEqual(@as(i64, 100), g.records.daily_last_win_day);
+
+    g.last_state = .playing;
+    g.trackRunEnd();
+    try std.testing.expectEqual(@as(u32, 3), g.records.daily_streak);
+
+    g.daily_day = 101;
+    g.last_state = .playing;
+    g.trackRunEnd();
+    try std.testing.expectEqual(@as(u32, 4), g.records.daily_streak);
+
+    g.daily_day = 103;
+    g.last_state = .playing;
+    g.trackRunEnd();
+    try std.testing.expectEqual(@as(u32, 1), g.records.daily_streak);
 }
 
 test "run game: daily best hides yesterday record" {

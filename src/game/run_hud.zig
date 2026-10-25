@@ -92,6 +92,7 @@ pub const State = struct {
     badges_open: bool = false,
     daily: bool = false,
     daily_best_floor: u8 = 0,
+    daily_streak: u32 = 0,
     menu_selection: u8 = 0,
     shop_index: u8 = 0,
     shrine_index: u8 = 0,
@@ -352,19 +353,24 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const tw = renderer.Renderer.textWidth(title, 2);
     r.drawText(@divTrunc(w, 2) - @divTrunc(tw, 2), 7, title, palette.gold, 2, true);
     var sub_buf: [64]u8 = undefined;
+    var streak_buf: [12]u8 = undefined;
+    const streak_suffix = if (state.daily_streak > 0)
+        fmt(&streak_buf, " S{d}", .{state.daily_streak})
+    else
+        "";
     const sub = if (state.daily)
         if (state.daily_best_floor > 0)
-            fmt(&sub_buf, "SEED {d}  {s}  DAILY F{d}", .{ state.menu_seed, switch (state.difficulty) {
+            fmt(&sub_buf, "SEED {d}  {s}  DAILY F{d}{s}", .{ state.menu_seed, switch (state.difficulty) {
                 1 => "HARD",
                 2 => "EASY",
                 else => "NORMAL",
-            }, state.daily_best_floor })
+            }, state.daily_best_floor, streak_suffix })
         else
-            fmt(&sub_buf, "SEED {d}  {s}  DAILY", .{ state.menu_seed, switch (state.difficulty) {
+            fmt(&sub_buf, "SEED {d}  {s}  DAILY{s}", .{ state.menu_seed, switch (state.difficulty) {
                 1 => "HARD",
                 2 => "EASY",
                 else => "NORMAL",
-            } })
+            }, streak_suffix })
     else
         fmt(&sub_buf, "SEED {d}  {s} [D] {s}", .{ state.menu_seed, switch (state.difficulty) {
             1 => "HARD",
@@ -938,7 +944,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         r.drawText(@divTrunc(w, 2) - @divTrunc(sw, 2), @divTrunc(h, 2) + 26, sub, palette.muted, 1, true);
         if (state.daily and state.daily_best_floor > 0) {
             var dbuf: [40]u8 = undefined;
-            const daily = fmt(&dbuf, "DAILY BEST F{d}", .{state.daily_best_floor});
+            const daily = fmt(&dbuf, "DAILY BEST F{d}{s}", .{ state.daily_best_floor, if (state.daily_streak > 0) " S" else "" });
             const dw = renderer.Renderer.textWidth(daily, 1);
             r.drawText(@divTrunc(w, 2) - @divTrunc(dw, 2), @divTrunc(h, 2) + 36, daily, palette.cyan_light, 1, true);
         }
