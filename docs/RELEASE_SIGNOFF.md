@@ -14,6 +14,7 @@
 - commit：40e5963
 - playtest tag：v0.1.0-playtest（仅供构建定位，不是 Steam 正式发布）
 - GitHub pre-release：https://github.com/lagudomeze/vs/releases/tag/v0.1.0-playtest（2,728,116 bytes）；反馈 #441
+- GitHub 附件 SHA256SUMS.txt 覆盖四包。
 - GitHub 资产复验：下载 SHA 3282DFE1… 匹配，vx.exe 输出 vx 0.1.0，exit 0；含 CONSENT/FEEDBACK/README_ZH。
 
 
