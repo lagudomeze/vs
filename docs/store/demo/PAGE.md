@@ -4,7 +4,7 @@
 
 ## 语言说明（重要）
 
-当前 Demo 默认 **简体中文**；可用 --lang en 或 F2 -> L 开启 English beta。核心菜单/HUD/商店/物品/常见日志已英文化，但仍有少量回退中文，**不宣称完整英文本地化**。覆盖矩阵见 [I18N_COVERAGE.md](../../I18N_COVERAGE.md)，审计见 [LOCALIZATION_AUDIT.md](../LOCALIZATION_AUDIT.md)。
+当前 Demo 默认 **简体中文**；可用 --lang en 或 F2 -> L 开启 English beta。核心菜单/HUD/商店/物品/常见日志已英文化，但仍有少量回退中文，**不宣称完整英文本地化**。覆盖矩阵见 [I18N_COVERAGE.md](../../I18N_COVERAGE.md)，审计见 [LOCALIZATION_AUDIT.md](../../LOCALIZATION_AUDIT.md)。
 
 ## 短描述（EN，≤300 字符）
 
