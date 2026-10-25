@@ -33,13 +33,17 @@ python tools/store_extra_assets.py
 
 ## 商店截图（7 张，16:9）
 
-| 文件 | 场景 |
-| --- | --- |
-| screenshots/01_combat.png | 战斗 HUD、敌人意图、天赋栏 |
-| screenshots/02_character.png | 角色属性/装备/天赋 |
-| screenshots/03_aim.png | 冲锋瞄准、距离/伤害预览 |
-| screenshots/04_shop.png | 商店面板 |
-| screenshots/05_chunks.png | 3×3 边缘邻接 + minimap 标记 |
+| 文件 | 场景 | 语言 |
+| --- | --- | --- |
+| screenshots_1920/gameplay_en_1920.png | 战斗 HUD、敌人意图、天赋栏 | 英 |
+| screenshots_1920/combat_bomb_hud_1920.png | 战斗/炸弹 HUD | 中 |
+| screenshots_1920/character_en_1920.png | 角色属性/装备/天赋 | 英 |
+| screenshots_1920/shop_en_1920.png | 商店面板 | 英 |
+| screenshots_1920/boss_hud_1920.png | Boss 血条 | 英 |
+| screenshots_1920/daily_menu_1920.png | 每日挑战菜单 | 中 |
+| screenshots_1920/victory_badge_1920.png | 胜利/徽章 | 英 |
+
+旧 screenshots/ 下 5 张为历史版本，不作为当前上传集。
 
 ## Capsule 文件
 
