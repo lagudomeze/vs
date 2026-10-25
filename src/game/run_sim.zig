@@ -36,6 +36,7 @@ pub const FloorMod = enum(u8) {
     miasma,
     gilded,
     bloodmoon,
+    surge,
 
     pub fn label(self: FloorMod) []const u8 {
         return switch (self) {
@@ -45,6 +46,7 @@ pub const FloorMod = enum(u8) {
             .miasma => "MIASMA",
             .gilded => "GILDED",
             .bloodmoon => "BLOODMOON",
+            .surge => "SURGE",
         };
     }
 
@@ -53,7 +55,11 @@ pub const FloorMod = enum(u8) {
     }
 
     pub fn enemySpeedScale(self: FloorMod) f32 {
-        return if (self == .frost) 0.90 else 1.0;
+        return switch (self) {
+            .frost => 0.90,
+            .surge => 1.05,
+            else => 1.0,
+        };
     }
 
     pub fn resourceScale(self: FloorMod) f32 {
@@ -65,7 +71,11 @@ pub const FloorMod = enum(u8) {
     }
 
     pub fn xpScale(self: FloorMod) f32 {
-        return if (self == .bloodmoon) 1.5 else 1.0;
+        return switch (self) {
+            .bloodmoon => 1.5,
+            .surge => 1.25,
+            else => 1.0,
+        };
     }
 
     pub fn enemyDamageScale(self: FloorMod) f32 {
@@ -709,11 +719,12 @@ pub const Sim = struct {
         const h = seed ^ (@as(u64, floor) *% 0x94d049bb133111eb) ^ 0x9e3779b97f4a7c15;
         var rng = std.Random.DefaultPrng.init(h);
         const roll = rng.random().float(f32);
-        if (roll < 0.20) return .ember;
-        if (roll < 0.40) return .frost;
-        if (roll < 0.60) return .miasma;
-        if (roll < 0.80) return .gilded;
-        return .bloodmoon;
+        if (roll < 0.17) return .ember;
+        if (roll < 0.34) return .frost;
+        if (roll < 0.50) return .miasma;
+        if (roll < 0.67) return .gilded;
+        if (roll < 0.84) return .bloodmoon;
+        return .surge;
     }
 
     fn chooseShrine(self: *Sim) void {
@@ -2166,6 +2177,8 @@ test "run sim: floor modifiers are deterministic and scale the right knobs" {
     try std.testing.expectApproxEqAbs(@as(f32, 0.5), FloorMod.miasma.resourceScale(), 0.001);
     try std.testing.expectApproxEqAbs(@as(f32, 1.5), FloorMod.gilded.goldScale(), 0.001);
     try std.testing.expectApproxEqAbs(@as(f32, 1.5), FloorMod.bloodmoon.xpScale(), 0.001);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.05), FloorMod.surge.enemySpeedScale(), 0.001);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.25), FloorMod.surge.xpScale(), 0.001);
 }
 
 test "run sim: abyss wraith ranged hit applies burn" {

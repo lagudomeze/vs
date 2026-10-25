@@ -619,6 +619,8 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
             color.pack(185, 128, 230)
         else if (std.mem.eql(u8, state.floor_mod_label, "GILDED"))
             palette.gold
+        else if (std.mem.eql(u8, state.floor_mod_label, "SURGE"))
+            color.pack(255, 150, 60)
         else
             color.pack(220, 80, 80);
         const mod_desc: []const u8 = if (std.mem.eql(u8, state.floor_mod_label, "EMBER"))
@@ -629,6 +631,8 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
             "RES REGEN -50%"
         else if (std.mem.eql(u8, state.floor_mod_label, "GILDED"))
             "GOLD +50%"
+        else if (std.mem.eql(u8, state.floor_mod_label, "SURGE"))
+            "ENEMY SPD +5% XP +25%"
         else
             "XP +50% DMG +10%";
         var mod_buf: [48]u8 = undefined;
