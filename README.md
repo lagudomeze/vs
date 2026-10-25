@@ -229,7 +229,7 @@ docs/           RUN_V1 / SAVE / ART_PASS / UX_REVIEW_RUN / screenshots
 - 一条命令发版自检：tools/preflight.ps1（fmt/三层测试/打包/Steam/Demo/Deck 静态/i18n/截图）；Python 可设 VX_PYTHON。
 - headless：可生成职业菜单/开始/战斗/角色/背包/胜利截图；`--start-menu` 输出 `docs/screenshots/run_select.png`。
 - 职业菜单显示的 SEED 就是本局真实 seed；选择职业只按同一 seed 重开；R 保留职业，未锁定时换新 seed。
-- 大图 QA（100 seed × 3 职业，纯逻辑 bot）：普通 65.3%（196/300）：狂战士 54%、元素法师 80%、时空法师 62%；困难 39.0%（117/300）；简单 89.7%（269/300），0 超时/不变量违规；test-qa 145/145、test-qa3 250/250。
+- 大图 QA（100 seed × 3 职业，纯逻辑 bot）：普通 65.0%（195/300）：狂战士 53%、元素法师 79%、时空法师 63%；困难 37.7%（113/300）；简单 89.0%（267/300），0 超时/不变量违规；test-qa 145/145、test-qa3 250/250。
 - auto 是演示/巡检 bot，不保证通关；31×31 + 楼层 Boss 下可能停在 Boss 层，实际 QA 以 test-qa 为准。
 - Boss 深渊斩每 3 个敌方回合预警一次，半径 0.9 格；走出标记格即可躲开；Boss 存活时第 3 层楼梯封印。
 - 速度机制已改为 energy 银行：精英幽魂 150 积累双动，石魔像 70 隔回合少动。

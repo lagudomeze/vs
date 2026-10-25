@@ -323,6 +323,19 @@
         { "stat": "will", "flat": 1 }
       ],
       "description": "+18 HP, +2 ARMOR, +1 WILL. Slow, stubborn, alive."
+    },
+    {
+      "id": "void_pearl",
+      "name": "VOID PEARL",
+      "slot": "trinket",
+      "quality": "rare",
+      "weight": 0.55,
+      "mods": [
+        { "stat": "will", "flat": 3 },
+        { "stat": "crit", "flat": 0.04 },
+        { "stat": "hp_max", "flat": -8 }
+      ],
+      "description": "+3 WILL, +4% CRIT, -8 HP. The dark looks back."
     }
   ]
 }

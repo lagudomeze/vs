@@ -538,6 +538,21 @@ pub const builtin_items = [_]items.ItemDef{
         } },
         .description = "+18 HP, +2 ARMOR, +1 WILL. Slow, stubborn, alive.",
     },
+    .{
+        .id = "void_pearl",
+        .name = "VOID PEARL",
+        .quality = .rare,
+        .drop = .{ .weight = 0.55 },
+        .kind = .{ .equipment = .{
+            .slot = .trinket,
+            .mods = &.{
+                .{ .stat = .will, .flat = 3 },
+                .{ .stat = .crit, .flat = 0.04 },
+                .{ .stat = .hp_max, .flat = -8 },
+            },
+        } },
+        .description = "+3 WILL, +4% CRIT, -8 HP. The dark looks back.",
+    },
 };
 
 /// assets/data/enemies.json 的镜像。
@@ -1248,7 +1263,7 @@ test "embedded tables match the RUN v1 content plan" {
     var content = try load(std.testing.allocator);
     defer content.deinit();
 
-    try std.testing.expectEqual(@as(usize, 17), content.items.len);
+    try std.testing.expectEqual(@as(usize, 18), content.items.len);
     try std.testing.expectEqual(@as(usize, 7), content.enemies.len);
     try std.testing.expectEqual(@as(usize, 10), content.skills.len);
 

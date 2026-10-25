@@ -25,7 +25,7 @@
 | src/game/attributes.zig | StatKind / StatRef / Stats / Modifier / recompute / caps / Progression(XP/等级) |
 | src/game/items.zig | ItemDef / Slot / Quality / Inventory / EquipmentSlots / ModifierSet / CharacterPanel |
 | src/game/content.zig | 内嵌 JSON 解析、校验、内置回退、掉落抽取、职业天赋表 |
-| assets/data/{items,enemies,skills}.json | 17 物品 / 7 敌人 / 10 技能 |
+| assets/data/{items,enemies,skills}.json | 18 物品 / 7 敌人 / 10 技能 |
 | assets/data/data.zig | @embedFile 原始 JSON（Zig 不允许 embed 包外文件，故单独成模块） |
 
 build.zig 给 vx 模块加了匿名导入 data；src/root.zig 导出 attributes / items / content。
@@ -95,5 +95,6 @@ content.zig
 | --- | --- | --- | --- | --- | --- |
 | aether_lens | 以太透镜 | trinket | rare | +2 PER / +2 MAG / +5% CRIT | 法术/暴击 |
 | ironwood_heart | 铁木之心 | trinket | rare | +18 HP / +2 ARMOR / +1 WILL | 防御/续航 |
+| void_pearl | VOID PEARL | trinket | rare | +3 WILL / +4% CRIT / -8 HP | 法术风险 |
 
-两件都走 items.json + builtin_items 镜像，掉落权重 0.45/0.55；QA2 复测见 QA_RUN2.md。
+三件都走 items.json + builtin_items 镜像，掉落权重 0.45/0.55/0.55；QA2 复测见 QA_RUN2.md。
