@@ -110,6 +110,8 @@ pub const Input = struct {
 
 var seed_state: u64 = 0;
 
+pub const SettingChange = enum { none, fullscreen, vsync, scale, volume, ambient, pad_swap, esdf, chunks, shake, language };
+
 pub const RunGame = struct {
     gpa: std.mem.Allocator,
     arena_alloc: std.heap.ArenaAllocator,
@@ -192,6 +194,7 @@ pub const RunGame = struct {
     settings_key_mode: bool = false,
     settings_key_index: u8 = 0,
     settings_key_error: bool = false,
+    settings_index: u8 = 0,
     settings_chunks: bool = false,
     settings_shake: bool = true,
     chunk_map_open: bool = false,
@@ -1131,6 +1134,66 @@ pub const RunGame = struct {
         }
     }
 
+    pub fn cycleSetting(self: *RunGame, dir: i8) SettingChange {
+        const forward = dir >= 0;
+        switch (self.settings_index) {
+            0 => {
+                self.settings_fullscreen = !self.settings_fullscreen;
+                return .fullscreen;
+            },
+            1 => {
+                self.settings_vsync = !self.settings_vsync;
+                return .vsync;
+            },
+            2 => {
+                const scales = [_]u8{ 2, 3, 4 };
+                var at: usize = 0;
+                for (scales, 0..) |v, i| {
+                    if (v == self.settings_scale) at = i;
+                }
+                at = if (forward) (at + 1) % scales.len else (at + scales.len - 1) % scales.len;
+                self.settings_scale = scales[at];
+                return .scale;
+            },
+            3 => {
+                const levels = [_]f32{ 0.0, 0.55, 1.0 };
+                var at: usize = 1;
+                for (levels, 0..) |v, i| {
+                    if (@abs(v - self.settings_volume) < 0.01) at = i;
+                }
+                at = if (forward) (at + 1) % levels.len else (at + levels.len - 1) % levels.len;
+                self.settings_volume = levels[at];
+                return .volume;
+            },
+            4 => {
+                self.settings_ambient = !self.settings_ambient;
+                return .ambient;
+            },
+            5 => {
+                self.settings_pad_swap = !self.settings_pad_swap;
+                return .pad_swap;
+            },
+            6 => {
+                self.settings_esdf = !self.settings_esdf;
+                return .esdf;
+            },
+            7 => return .none,
+            8 => {
+                self.settings_chunks = !self.settings_chunks;
+                return .chunks;
+            },
+            9 => {
+                self.settings_shake = !self.settings_shake;
+                return .shake;
+            },
+            10 => {
+                i18n.set(if (i18n.current == .en) 0 else 1);
+                return .language;
+            },
+            else => return .none,
+        }
+    }
+
     pub fn update(self: *RunGame, input: Input, dt_raw: f32) void {
         const dt = @min(0.05, dt_raw);
         self.dt = dt;
@@ -1152,7 +1215,10 @@ pub const RunGame = struct {
             if (self.victory_hold == 0) self.hud_state.victory_hold = false;
             return;
         }
-        if (self.chunk_map_open or self.pause_open or self.badges_open) return;
+        if (self.settings_open or self.chunk_map_open or self.pause_open or self.badges_open) {
+            self.fillHudState();
+            return;
+        }
         self.camera.yaw += input.yaw_delta;
         self.camera.distance = std.math.clamp(self.camera.distance - input.zoom_delta * 0.35, 10.0, 28.0);
         self.step_cooldown = @max(0, self.step_cooldown - dt);
@@ -2225,6 +2291,7 @@ pub const RunGame = struct {
             .gold = self.sim.gold,
             .shop_open = self.shop_open,
             .settings_open = self.settings_open,
+            .settings_index = self.settings_index,
             .settings_fullscreen = self.settings_fullscreen,
             .settings_vsync = self.settings_vsync,
             .settings_scale = self.settings_scale,
@@ -2675,6 +2742,38 @@ test "run game: pause blocks world movement" {
     try std.testing.expectEqual(pos.x, g.sim.hero.pos.x);
     try std.testing.expectEqual(pos.y, g.sim.hero.pos.y);
     try std.testing.expectEqual(turn, g.sim.turn);
+}
+
+test "run game: settings open blocks world movement" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.started = true;
+    g.settings_open = true;
+    const pos = g.sim.hero.pos;
+    const turn = g.sim.turn;
+    g.update(.{ .step_x = 1 }, 0.016);
+    try std.testing.expectEqual(pos.x, g.sim.hero.pos.x);
+    try std.testing.expectEqual(pos.y, g.sim.hero.pos.y);
+    try std.testing.expectEqual(turn, g.sim.turn);
+}
+
+test "run game: cycle setting changes values" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.settings_index = 0;
+    const fs = g.settings_fullscreen;
+    try std.testing.expectEqual(SettingChange.fullscreen, g.cycleSetting(1));
+    try std.testing.expect(g.settings_fullscreen != fs);
+    g.settings_index = 2;
+    const scale = g.settings_scale;
+    _ = g.cycleSetting(1);
+    try std.testing.expect(g.settings_scale != scale);
+    g.settings_index = 3;
+    const vol = g.settings_volume;
+    _ = g.cycleSetting(1);
+    try std.testing.expect(g.settings_volume != vol);
 }
 
 test "run game: chunk map blocks world movement" {
