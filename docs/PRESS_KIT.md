@@ -56,3 +56,8 @@ Every run is deterministic from its seed: share a seed, compare routes, or play 
 ## Request
 
 If you cover the game, please label the trailer and screenshots as pre-release placeholder assets. Feedback: GitHub issues.
+
+## 产物校验
+
+- dist/press-kit/vx-press-kit-0.1.0.zip
+- SHA256: 52474D2D85F551DA6B7F23E1705A5FA0592FC337EFC364882C1BB59D5F5FFD62
