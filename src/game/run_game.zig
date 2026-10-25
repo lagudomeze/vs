@@ -1162,6 +1162,17 @@ pub const RunGame = struct {
         self.sim.pushLog("装备 {s}", .{def.name});
     }
 
+    fn shouldAutoEquip(self: *RunGame, def: *const items_mod.ItemDef) bool {
+        // Risk items are manual choices, even when their net score is positive.
+        if (itemHasRisk(def)) return false;
+        const slot = def.slot() orelse return false;
+        if (self.inventory.equipped.get(slot)) |current| {
+            if (current >= self.content.items.len) return false;
+            return itemScore(def) > itemScore(&self.content.items[current]);
+        }
+        return itemScore(def) > 0;
+    }
+
     fn itemHasRisk(def: *const items_mod.ItemDef) bool {
         for (def.mods()) |m| {
             if ((m.stat == .hp_max or m.stat == .armor) and m.flat < 0) return true;
@@ -1243,18 +1254,9 @@ pub const RunGame = struct {
         }
         const def = &self.content.items[item];
         self.sim.pushLog("获得 {s}", .{def.name});
-        if (def.slot()) |slot| {
+        if (def.slot() != null) {
             if (def.allowsClass(self.classOf())) {
-                var better = false;
-                if (self.inventory.equipped.get(slot)) |current| {
-                    if (current < self.content.items.len) {
-                        better = !itemHasRisk(def) and itemScore(def) > itemScore(&self.content.items[current]);
-                    }
-                } else {
-                    // Risk items are manual choices, even when their net score is positive.
-                    better = !itemHasRisk(def) and itemScore(def) > 0;
-                }
-                if (better) {
+                if (self.shouldAutoEquip(def)) {
                     self.inventory.equip(self.content.items, item) catch {};
                     self.rebuildMods();
                     self.sim.pushLog("自动装备 {s}", .{def.name});
@@ -3414,6 +3416,18 @@ test "run game: mouse click on a bomb does not drink a potion" {
     g.update(.{ .mouse_x = 32, .mouse_y = 54, .click = true }, 1.0 / 60.0);
     try std.testing.expectEqual(@as(usize, 2), g.inventory.count());
     try std.testing.expectEqual(@as(f32, 10), g.sim.hero.vitals.val);
+}
+
+test "run game: auto equip skips risk items" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
+    defer g.destroy();
+    const pearl = g.content.item("void_pearl") orelse return error.MissingItem;
+    const ironwood = g.content.item("ironwood_heart") orelse return error.MissingItem;
+    const charm = g.content.item("bloodmoon_charm") orelse return error.MissingItem;
+    try std.testing.expect(!g.shouldAutoEquip(pearl));
+    try std.testing.expect(!g.shouldAutoEquip(charm));
+    try std.testing.expect(g.shouldAutoEquip(ironwood));
 }
 
 test "run game: bag hud marks risk items" {
