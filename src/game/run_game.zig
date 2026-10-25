@@ -33,28 +33,32 @@ fn detailAppend(buf: []u8, off: *usize, comptime f: []const u8, args: anytype) v
 /// or the consumable's heal/resource effect.
 fn writeItemDetail(buf: []u8, def: *const items_mod.ItemDef) []const u8 {
     var off: usize = 0;
-    detailAppend(buf, &off, "{s}", .{items_mod.qualityLabel(def.quality)});
+    detailAppend(buf, &off, "{s}", .{i18n.quality(items_mod.qualityLabel(def.quality))});
     var shown: usize = 0;
     for (def.mods()) |m| {
         if (shown >= 2) break;
         if (m.flat != 0) {
             const sign: []const u8 = if (m.flat > 0) "+" else "";
             if (m.stat == .crit) {
-                detailAppend(buf, &off, " {s}{s}{d:.0}%", .{ m.stat.label(), sign, m.flat * 100.0 });
+                detailAppend(buf, &off, " {s}{s}{d:.0}%", .{ i18n.statShort(m.stat.label()), sign, m.flat * 100.0 });
             } else {
-                detailAppend(buf, &off, " {s}{s}{d:.0}", .{ m.stat.label(), sign, m.flat });
+                detailAppend(buf, &off, " {s}{s}{d:.0}", .{ i18n.statShort(m.stat.label()), sign, m.flat });
             }
             shown += 1;
         }
         if (m.pct != 0) {
             const sign: []const u8 = if (m.pct > 0) "+" else "";
-            detailAppend(buf, &off, " {s}{s}{d:.0}%", .{ m.stat.label(), sign, m.pct * 100.0 });
+            detailAppend(buf, &off, " {s}{s}{d:.0}%", .{ i18n.statShort(m.stat.label()), sign, m.pct * 100.0 });
             shown += 1;
         }
     }
     if (def.use()) |u| {
-        if (u.heal > 0) detailAppend(buf, &off, " 回复{d:.0}", .{u.heal});
-        if (u.resource > 0) detailAppend(buf, &off, " 资源{d:.0}", .{u.resource});
+        if (u.heal > 0) {
+            if (i18n.current == .en) detailAppend(buf, &off, " HEAL {d:.0}", .{u.heal}) else detailAppend(buf, &off, " 回复{d:.0}", .{u.heal});
+        }
+        if (u.resource > 0) {
+            if (i18n.current == .en) detailAppend(buf, &off, " RES {d:.0}", .{u.resource}) else detailAppend(buf, &off, " 资源{d:.0}", .{u.resource});
+        }
     }
     return buf[0..off];
 }
@@ -2347,7 +2351,7 @@ pub const RunGame = struct {
         for (slots, 0..) |slot, si| {
             self.hud_state.equip[si] = "";
             if (self.inventory.equipped.get(slot)) |item| {
-                if (item < self.content.items.len) self.hud_state.equip[si] = self.content.items[item].name;
+                if (item < self.content.items.len) self.hud_state.equip[si] = i18n.itemName(self.content.items[item].name);
             }
         }
         self.hud_state.item_count = @min(self.inventory.count(), self.hud_state.items.len);
@@ -2356,7 +2360,7 @@ pub const RunGame = struct {
             const item = self.inventory.at(ii);
             if (item < self.content.items.len) {
                 const def = &self.content.items[item];
-                self.hud_state.items[ii] = def.name;
+                self.hud_state.items[ii] = i18n.itemName(def.name);
                 self.hud_state.item_details[ii] = writeItemDetail(&self.item_detail_bufs[ii], def);
             } else {
                 self.hud_state.items[ii] = "";
