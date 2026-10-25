@@ -42,7 +42,7 @@ Wishlist the full game on Steam.
     New-Item -ItemType Directory -Force -Path $outDir | Out-Null
     $zip = Join-Path $outDir ("vx-demo-{0}.zip" -f $Version)
     if (Test-Path $zip) { Remove-Item $zip -Force }
-    Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zip -CompressionLevel Optimal
+    & (Join-Path $PSScriptRoot "zip_dir.ps1") -Source $stage -Destination $zip
     Write-Host ("demo package: {0} ({1:N1} MB)" -f $zip, ((Get-Item $zip).Length / 1MB))
 }
 finally {

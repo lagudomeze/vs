@@ -21,7 +21,7 @@ Set-Content -Path (Join-Path $dist "VERSION.txt") -Value ("vx " + $Version + " /
 
 $zip = Join-Path "dist" "$name.zip"
 if (Test-Path $zip) { Remove-Item -Force $zip }
-Compress-Archive -Path (Join-Path $dist "*") -DestinationPath $zip -Force
+& (Join-Path $PSScriptRoot "zip_dir.ps1") -Source $dist -Destination $zip
 
 $size = (Get-Item $zip).Length
 Write-Host ("packaged: {0} ({1:N1} MB)" -f $zip, ($size / 1MB))
