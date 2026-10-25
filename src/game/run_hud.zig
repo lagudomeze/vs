@@ -124,6 +124,7 @@ pub const State = struct {
     kills: u32 = 0,
     enemies_left: u32 = 0,
     stairs_hint: []const u8 = "",
+    stairs_dir: u8 = 0,
     stairs_dist: u16 = 0,
     hotbar: [3]HotbarSlot = .{ .{}, .{}, .{} },
     talent_descs: [3][]const u8 = .{ "", "", "" },
@@ -527,7 +528,15 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     // top-right: floor / enemies / stairs / turn / initiative
     backPanel(r, w - 154, 5, 154, 60);
     var floor_buf: [96]u8 = undefined;
-    const dir = if (state.stairs_hint.len >= 3) state.stairs_hint[state.stairs_hint.len - 3 ..] else "";
+    const dir = if (i18n.current == .en)
+        switch (state.stairs_dir) {
+            'N' => "N",
+            'E' => "E",
+            'S' => "S",
+            'W' => "W",
+            else => "",
+        }
+    else if (state.stairs_hint.len >= 3) state.stairs_hint[state.stairs_hint.len - 3 ..] else "";
     const floor = if (i18n.current == .en)
         if (state.stairs_hint.len > 0)
             fmt(&floor_buf, "F{d}/{d} {s}{d}", .{ state.floor, state.floors, dir, state.stairs_dist })
@@ -997,11 +1006,13 @@ fn drawShop(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const gw = renderer.Renderer.textWidth(gold, 1);
     r.drawText(px + @divTrunc(pw - gw, 2), py + 38, gold, palette.gold, 1, false);
 
-    const lines = [_][]const u8{ "1 治疗 25G", "2 主属性 +2 60G", "3 体质 +2 60G", "4 CLEANSE 20G", "5 LOOT 80G", "6 BOMB 40G" };
+    const lines_zh = [_][]const u8{ "1 治疗 25G", "2 主属性 +2 60G", "3 体质 +2 60G", "4 CLEANSE 20G", "5 LOOT 80G", "6 BOMB 40G" };
+    const lines_en = [_][]const u8{ "1 HEAL 25G", "2 MAIN +2 60G", "3 CON +2 60G", "4 CLEANSE 20G", "5 LOOT 80G", "6 BOMB 40G" };
+    const lines = if (i18n.current == .en) &lines_en else &lines_zh;
     for (lines, 0..) |line, i| {
         r.drawText(px + 40, py + 58 + @as(i32, @intCast(i)) * 20, line, if (i == 3) palette.cyan_light else if (i >= 4) palette.gold_light else palette.cream, 1, false);
     }
-    r.drawText(px + 16, py + ph - 20, "1/2/3/4/5/6 选择   Esc 关闭", palette.muted, 1, false);
+    r.drawText(px + 16, py + ph - 20, i18n.t("1/2/3/4/5/6 选择   Esc 关闭", "1/2/3/4/5/6 SELECT   ESC CLOSE"), palette.muted, 1, false);
 }
 
 fn drawShrine(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
@@ -1022,13 +1033,16 @@ fn drawShrine(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const sw = renderer.Renderer.textWidth(sub, 1);
     r.drawText(px + @divTrunc(pw - sw, 2), py + 38, sub, palette.muted, 1, false);
 
-    const lines = [_][]const u8{ "  +2", "体质 +2", "意志 +2", "主属性 +4 体质 -2" };
+    const lines_zh = [_][]const u8{ "  +2", "体质 +2", "意志 +2", "主属性 +4 体质 -2" };
+    const lines_en = [_][]const u8{ "  +2", "CON +2", "WILL +2", "MAIN +4 CON -2" };
+    const lines = if (i18n.current == .en) &lines_en else &lines_zh;
     var buf: [64]u8 = undefined;
     for (lines, 0..) |suffix, i| {
-        const line = if (i == 0) fmt(&buf, "1 {s}{s}", .{ state.shrine_main_label, suffix }) else fmt(&buf, "{d} {s}", .{ i + 1, suffix });
+        const main_label = if (i18n.current == .en) i18n.statShort(state.shrine_main_label) else state.shrine_main_label;
+        const line = if (i == 0) fmt(&buf, "1 {s}{s}", .{ main_label, suffix }) else fmt(&buf, "{d} {s}", .{ i + 1, suffix });
         r.drawText(px + 34, py + 58 + @as(i32, @intCast(i)) * 21, line, if (i == 3) palette.red else palette.cream, 1, false);
     }
-    r.drawText(px + 16, py + ph - 20, "1/2/3/4 选择   Esc 关闭", palette.muted, 1, false);
+    r.drawText(px + 16, py + ph - 20, i18n.t("1/2/3/4 选择   Esc 关闭", "1/2/3/4 SELECT   ESC CLOSE"), palette.muted, 1, false);
 }
 
 fn expectGlyphs(text: []const u8) !void {
