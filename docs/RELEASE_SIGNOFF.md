@@ -11,7 +11,8 @@
 
 ## 证据
 
-- commit：d25ecf2
+- commit：40e5963
+- playtest tag：v0.1.0-playtest（仅供构建定位，不是 Steam 正式发布）
 - 全量包：dist/vx-0.1.0-win64.zip
 - 全量 SHA256：E567443719E8FB8D5323AE1072C5D86022CEA8DE57F68CD1819F79BD0726E31C
 - Demo 包：dist/demo/vx-demo-0.1.0.zip
