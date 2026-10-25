@@ -1770,11 +1770,20 @@ pub const RunGame = struct {
             if (self.sim.intentFor(i)) |intent| {
                 var ibuf: [24]u8 = undefined;
                 const label = switch (intent.kind) {
-                    .aoe => std.fmt.bufPrint(&ibuf, "深渊斩 -{d:.0}", .{intent.damage_preview}) catch "",
-                    .melee => std.fmt.bufPrint(&ibuf, "攻击 -{d:.0}", .{intent.damage_preview}) catch "",
-                    .ranged => std.fmt.bufPrint(&ibuf, "远程 -{d:.0}", .{intent.damage_preview}) catch "",
-                    .chase => "追击",
-                    .wait => "晕",
+                    .aoe => if (i18n.current == .en)
+                        std.fmt.bufPrint(&ibuf, "ABYSS CLEAVE -{d:.0}", .{intent.damage_preview}) catch ""
+                    else
+                        std.fmt.bufPrint(&ibuf, "深渊斩 -{d:.0}", .{intent.damage_preview}) catch "",
+                    .melee => if (i18n.current == .en)
+                        std.fmt.bufPrint(&ibuf, "ATK -{d:.0}", .{intent.damage_preview}) catch ""
+                    else
+                        std.fmt.bufPrint(&ibuf, "攻击 -{d:.0}", .{intent.damage_preview}) catch "",
+                    .ranged => if (i18n.current == .en)
+                        std.fmt.bufPrint(&ibuf, "RANGED -{d:.0}", .{intent.damage_preview}) catch ""
+                    else
+                        std.fmt.bufPrint(&ibuf, "远程 -{d:.0}", .{intent.damage_preview}) catch "",
+                    .chase => i18n.t("追击", "CHASE"),
+                    .wait => i18n.t("晕", "STUN"),
                 };
                 if (label.len > 0) {
                     var aim_buf: [48]u8 = undefined;
@@ -1849,7 +1858,7 @@ pub const RunGame = struct {
                 const aim_col: u32 = if (aim_ok) color.pack(80, 235, 150) else color.pack(255, 64, 64);
                 var tbuf: [64]u8 = undefined;
                 const speed_mark = if (e.combat.speed.val >= 150) " x2" else if (e.combat.speed.val <= 75) " 慢" else "";
-                const tname = std.fmt.bufPrint(&tbuf, "{s} {d:.0}/{d:.0}{s}", .{ e.identity.name, e.vitals.val, e.vitals.full, speed_mark }) catch e.identity.name;
+                const tname = std.fmt.bufPrint(&tbuf, "{s} {d:.0}/{d:.0}{s}", .{ i18n.enemyName(e.identity.name), e.vitals.val, e.vitals.full, speed_mark }) catch e.identity.name;
                 const tw = renderer.Renderer.textWidth(tname, 1);
                 const lx = std.math.clamp(x - @divTrunc(tw, 2), 2, w - tw - 2);
                 const ly = @max(68, y - 13);
@@ -2064,12 +2073,13 @@ pub const RunGame = struct {
     }
 
     fn shortEnemyName(name: []const u8) []const u8 {
+        if (i18n.current == .en) return i18n.enemyShort(name);
         if (name.len >= 6) return name[0..6];
         return name;
     }
 
     fn initiativeNames(self: *const RunGame) [3][]const u8 {
-        var names = [3][]const u8{ "玩家", "", "" };
+        var names = [3][]const u8{ i18n.t("玩家", "YOU"), "", "" };
         var first: ?usize = null;
         var second: ?usize = null;
         var i: usize = 0;
@@ -2279,7 +2289,7 @@ pub const RunGame = struct {
         self.hud_state.target_range = 0;
         if (target) |ti| {
             const e = self.sim.enemies[ti];
-            self.hud_state.target_name = e.identity.name;
+            self.hud_state.target_name = i18n.enemyName(e.identity.name);
             self.hud_state.target_hp = e.vitals.val;
             self.hud_state.target_hp_max = e.vitals.full;
             const dx = e.pos.x - self.sim.hero.pos.x;
@@ -2313,7 +2323,7 @@ pub const RunGame = struct {
                     .aoe_radius = p.spec.aoe_radius,
                     .reason = if (p.valid()) "" else p.reason(),
                 };
-                if (p.target) |ti| aim.target = self.sim.enemies[ti].identity.name;
+                if (p.target) |ti| aim.target = i18n.enemyName(self.sim.enemies[ti].identity.name);
                 self.hud_state.aim = aim;
             }
         }

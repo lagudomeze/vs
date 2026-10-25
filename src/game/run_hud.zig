@@ -624,7 +624,7 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
 
     // hotbar: name, cost/base cooldown, then live availability
     backPanel(r, 6, h - 60, 265, 54);
-    r.drawText(10, h - 56, talent_label, palette.gold, 1, false);
+    r.drawText(10, h - 56, i18n.t(talent_label, "TALENTS"), palette.gold, 1, false);
     for (state.hotbar, 0..) |slot, i| {
         const sx: i32 = 10 + @as(i32, @intCast(i)) * 85;
         const sy: i32 = h - 45;
