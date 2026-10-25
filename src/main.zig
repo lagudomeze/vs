@@ -599,6 +599,11 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                     platform.setEsdf(game.settings_esdf);
                     settings_dirty = true;
                 }
+                if (pin.key_code == 15) {
+                    vx.i18n.set(if (vx.i18n.current == .en) 0 else 1);
+                    game.hud_state.language = vx.i18n.code();
+                    settings_dirty = true;
+                }
                 if (settings_dirty) {
                     settings.fullscreen = game.settings_fullscreen;
                     settings.vsync = game.settings_vsync;
@@ -609,6 +614,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                     settings.esdf = game.settings_esdf;
                     settings.chunks = game.settings_chunks;
                     settings.shake = game.settings_shake;
+                    settings.language = vx.i18n.code();
                     vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
                 }
             }
