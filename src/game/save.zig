@@ -1441,6 +1441,24 @@ test "save: enemy name table matches the simulation" {
     }
 }
 
+test "save: random and nested bytes never panic" {
+    const alloc = std.testing.allocator;
+    var prng = std.Random.DefaultPrng.init(0x5a17c0de);
+    var buf: [512]u8 = undefined;
+    var i: usize = 0;
+    while (i < 300) : (i += 1) {
+        const len = prng.random().intRangeAtMost(usize, 0, buf.len);
+        prng.random().bytes(buf[0..len]);
+        if (loadAlloc(alloc, buf[0..len])) |_| {} else |_| {}
+    }
+
+    var deep: [1024]u8 = undefined;
+    var n: usize = 0;
+    while (n < deep.len / 2) : (n += 1) deep[n] = '[';
+    while (n < deep.len) : (n += 1) deep[n] = ']';
+    if (loadAlloc(alloc, deep[0..])) |_| {} else |_| {}
+}
+
 test "save: dead run with no enemies round-trips" {
     const alloc = testing.allocator;
     var sim = Sim.init(8080, .chronomancer);
