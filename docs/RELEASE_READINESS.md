@@ -37,7 +37,7 @@
 
 ## 代码健康
 
-- zig build test 245
+- zig build test 248
 - test-qa 145
 - test-qa3 232
 - PREFLIGHT PASS

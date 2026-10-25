@@ -31,6 +31,7 @@ pub const settings = @import("game/settings.zig");
 pub const i18n = @import("game/i18n.zig");
 pub const save_migrate = @import("game/save_migrate.zig");
 pub const run_game = @import("game/run_game.zig");
+pub const input_map = @import("game/input_map.zig");
 pub const RunGame = @import("game/run_game.zig").RunGame;
 pub const systems = @import("game/systems.zig");
 pub const hud = @import("game/hud.zig");
