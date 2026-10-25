@@ -12,9 +12,9 @@
 | Demo 代码 | 绿 | 单层/单职业/独立存档/结束页 | 独立 App/Depot |
 | 商店素材 | 黄 | 程序化占位截图/capsule/分镜 | 正式手绘/MP4 |
 | 音频 | 黄 | 程序化 SFX/ambience/victory | 未实机试听 |
-| 本地化 | 红 | 406 去重中文，英文 UI 未做 | 英文化 |
+| 本地化 | 黄 | English beta 覆盖 10+ 屏；仍有回退中文 | 完整英文化/验收 |
 | Playtest | 红 | 0 名真实玩家 | 招募/反馈 |
-| Steam 后台 | 红 | 无 AppID/DepotID/SDK | 账号/费用 |
+| Steam 后台 | 红 | 无 AppID/DepotID/SDK；清单见 STEAM_BACKEND.md | 账号/费用/审核 |
 | Deck | 黄 | 静态预检 0 fail；自动 2× | 无实机 |
 | 预告片 | 黄 | 20s 分镜板 | 无 MP4/音频 |
 | 法务/许可 | 绿 | CC0/OFL/字体/隐私说明 | 正式发行前复核 |
@@ -22,7 +22,7 @@
 ## 不能对外宣称
 
 - 不能称 "Steam Deck Verified"
-- 不能称 "英文支持"
+- 不能称 "完整英文支持"（English beta 可写）
 - 不能称 "预告片已完成"
 - 不能称 "已有真实试玩好评"
 - 不能称 "已上架 Steam"
