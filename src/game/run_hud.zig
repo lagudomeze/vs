@@ -1167,6 +1167,16 @@ fn expectGlyphs(text: []const u8) !void {
     }
 }
 
+test "run hud: every builtin item name has a glyph" {
+    const content = @import("content.zig");
+    for (content.builtin_items) |item| {
+        expectGlyphs(item.name) catch {
+            std.debug.print("missing item glyph: {s}\n", .{item.name});
+            return error.MissingGlyph;
+        };
+    }
+}
+
 test "run hud: hint strings have embedded CJK glyphs" {
     const sim = @import("run_sim.zig");
     const fixed = [_][]const u8{
