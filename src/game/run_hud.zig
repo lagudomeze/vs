@@ -93,6 +93,8 @@ pub const State = struct {
     daily: bool = false,
     daily_best_floor: u8 = 0,
     menu_selection: u8 = 0,
+    shop_index: u8 = 0,
+    shrine_index: u8 = 0,
     victory_hold: bool = false,
     boss_active: bool = false,
     boss_hp: f32 = 0,
@@ -1094,9 +1096,15 @@ fn drawShop(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const lines_en = [_][]const u8{ "1 HEAL 25G", "2 MAIN +2 60G", "3 CON +2 60G", "4 CLEANSE 20G", "5 LOOT 80G", "6 BOMB 40G" };
     const lines = if (i18n.current == .en) &lines_en else &lines_zh;
     for (lines, 0..) |line, i| {
-        r.drawText(px + 40, py + 58 + @as(i32, @intCast(i)) * 20, line, if (i == 3) palette.cyan_light else if (i >= 4) palette.gold_light else palette.cream, 1, false);
+        const y = py + 58 + @as(i32, @intCast(i)) * 20;
+        if (i == state.shop_index) {
+            r.fillRect(px + 28, y - 3, pw - 44, 16, palette.deep);
+            r.drawText(px + 30, y, ">", palette.gold, 1, false);
+        }
+        const row_color = if (i == state.shop_index) palette.gold_light else if (i == 3) palette.cyan_light else if (i >= 4) palette.gold_light else palette.cream;
+        r.drawText(px + 40, y, line, row_color, 1, false);
     }
-    r.drawText(px + 16, py + ph - 20, i18n.t("1/2/3/4/5/6 选择   Esc 关闭", "1/2/3/4/5/6 SELECT   ESC CLOSE"), palette.muted, 1, false);
+    r.drawText(px + 16, py + ph - 20, i18n.t("1-6 选择  DPAD/A  Esc 关闭", "1-6 SELECT  DPAD/A  ESC CLOSE"), palette.muted, 1, false);
 }
 
 fn drawShrine(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
@@ -1124,9 +1132,15 @@ fn drawShrine(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     for (lines, 0..) |suffix, i| {
         const main_label = if (i18n.current == .en) i18n.statShort(state.shrine_main_label) else state.shrine_main_label;
         const line = if (i == 0) fmt(&buf, "1 {s}{s}", .{ main_label, suffix }) else fmt(&buf, "{d} {s}", .{ i + 1, suffix });
-        r.drawText(px + 34, py + 58 + @as(i32, @intCast(i)) * 21, line, if (i == 3) palette.red else palette.cream, 1, false);
+        const y = py + 58 + @as(i32, @intCast(i)) * 21;
+        if (i == state.shrine_index) {
+            r.fillRect(px + 22, y - 3, pw - 38, 16, palette.deep);
+            r.drawText(px + 24, y, ">", palette.gold, 1, false);
+        }
+        const row_color = if (i == state.shrine_index) palette.gold_light else if (i == 3) palette.red else palette.cream;
+        r.drawText(px + 34, y, line, row_color, 1, false);
     }
-    r.drawText(px + 16, py + ph - 20, i18n.t("1/2/3/4 选择   Esc 关闭", "1/2/3/4 SELECT   ESC CLOSE"), palette.muted, 1, false);
+    r.drawText(px + 16, py + ph - 20, i18n.t("1-4 选择  DPAD/A  Esc 关闭", "1-4 SELECT  DPAD/A  ESC CLOSE"), palette.muted, 1, false);
 }
 
 fn expectGlyphs(text: []const u8) !void {

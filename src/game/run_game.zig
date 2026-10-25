@@ -206,6 +206,8 @@ pub const RunGame = struct {
     daily: bool = false,
     daily_day: i64 = 0,
     menu_selection: u8 = 0,
+    shop_index: u8 = 0,
+    shrine_index: u8 = 0,
     victory_hold: f32 = 0,
     skip_victory_banner: bool = false,
     toast_text: []const u8 = "",
@@ -578,6 +580,15 @@ pub const RunGame = struct {
         }
         self.shop_open = false;
         self.fillHudState();
+    }
+
+    fn buyShopIndex(self: *RunGame, index: usize) void {
+        switch (index) {
+            0, 1, 2, 3 => self.buyShop(index),
+            4 => self.buyShopLoot(),
+            5 => self.buyShopBomb(),
+            else => {},
+        }
     }
 
     fn buyShop(self: *RunGame, index: usize) void {
@@ -1244,10 +1255,14 @@ pub const RunGame = struct {
         }
 
         if (self.shrine_open) {
+            if (input.step_y < 0) self.shrine_index = (self.shrine_index + 3) % 4;
+            if (input.step_y > 0) self.shrine_index = (self.shrine_index + 1) % 4;
             if (input.talent >= 0) {
                 self.chooseShrine(@intCast(input.talent));
             } else if (input.stat == 3) {
                 self.chooseShrine(3);
+            } else if (input.confirm) {
+                self.chooseShrine(self.shrine_index);
             }
             self.syncVisuals(false);
             self.updateVisuals(dt);
@@ -1257,6 +1272,8 @@ pub const RunGame = struct {
         }
 
         if (self.shop_open) {
+            if (input.step_y < 0) self.shop_index = (self.shop_index + 5) % 6;
+            if (input.step_y > 0) self.shop_index = (self.shop_index + 1) % 6;
             if (input.talent >= 0) {
                 self.buyShop(@intCast(input.talent));
             } else if (input.stat == 3) {
@@ -1265,6 +1282,8 @@ pub const RunGame = struct {
                 self.buyShopLoot();
             } else if (input.stat == 5) {
                 self.buyShopBomb();
+            } else if (input.confirm) {
+                self.buyShopIndex(self.shop_index);
             }
             self.syncVisuals(false);
             self.updateVisuals(dt);
@@ -2314,6 +2333,8 @@ pub const RunGame = struct {
             .daily = self.daily,
             .daily_best_floor = if (self.records.daily_day == self.daily_day) self.records.daily_best_floor else 0,
             .menu_selection = self.menu_selection,
+            .shop_index = self.shop_index,
+            .shrine_index = self.shrine_index,
             .victory_hold = self.victory_hold > 0,
             .boss_active = boss_active,
             .boss_hp = boss_hp,
@@ -2952,6 +2973,25 @@ test "run game: daily delver notice appears once" {
     g.sim.state = .dead;
     g.trackRunEnd();
     try std.testing.expectEqualStrings("", g.sim.notice);
+}
+
+test "run game: gamepad shop index buys heal" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.sim.shop = g.sim.hero.pos;
+    g.sim.shop_active = true;
+    g.debugShop();
+    g.started = true;
+    g.sim.state = .playing;
+    g.shop_index = 0;
+    g.sim.gold = 75;
+    g.sim.hero.vitals.val = 50;
+    const hp = g.sim.hero.vitals.val;
+    g.update(.{ .confirm = true }, 1.0 / 60.0);
+    try std.testing.expect(!g.shop_open);
+    try std.testing.expect(g.sim.hero.vitals.val > hp);
+    try std.testing.expectEqual(@as(u32, 50), g.sim.gold);
 }
 
 test "run game: shop panel buys a heal once" {
