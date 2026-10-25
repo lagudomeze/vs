@@ -2121,6 +2121,7 @@ pub const RunGame = struct {
         var boss_active = false;
         var boss_hp: f32 = 0;
         var boss_hp_max: f32 = 1;
+        var boss_enraged = false;
         var bi: usize = 0;
         while (bi < self.sim.enemy_count) : (bi += 1) {
             const e = &self.sim.enemies[bi];
@@ -2128,6 +2129,7 @@ pub const RunGame = struct {
             boss_active = true;
             boss_hp = e.vitals.val;
             boss_hp_max = e.vitals.full;
+            boss_enraged = self.sim.boss_enraged;
             break;
         }
         var potion_count: u8 = 0;
@@ -2170,6 +2172,7 @@ pub const RunGame = struct {
             .boss_active = boss_active,
             .boss_hp = boss_hp,
             .boss_hp_max = boss_hp_max,
+            .boss_enraged = boss_enraged,
             .chunk = self.sim.chunk,
             .chunk_visited = self.sim.visited_chunks,
             .chunk_cleared = self.sim.cleared_chunks,
