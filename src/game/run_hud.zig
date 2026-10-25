@@ -91,6 +91,7 @@ pub const State = struct {
     badges_open: bool = false,
     daily: bool = false,
     daily_best_floor: u8 = 0,
+    menu_selection: u8 = 0,
     victory_hold: bool = false,
     boss_active: bool = false,
     boss_hp: f32 = 0,
@@ -181,7 +182,7 @@ fn fmt(buf: []u8, comptime f: []const u8, args: anytype) []const u8 {
 
 const menu_title = "选职业";
 const menu_hint = "按 1 / 2 / 3 开始";
-const menu_footer = "1/2/3 选择  D 切换  F6 DAILY  F8 SEED  F9 读档  R 重开";
+const menu_footer = "1/2/3 选择  D 切换  A 开始  F6 DAILY  F8 SEED  F9 读档  R 重开";
 const talent_label = "天赋";
 const help_title = "操作说明";
 const help_footer = "H CLOSE   PAD A OK  B BACK";
@@ -382,6 +383,9 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     for (state.menu_cards, 0..) |card, i| {
         const x = x0 + @as(i32, @intCast(i)) * (card_w + gap);
         r.fillRect(x, y0, card_w, card_h, palette.panel);
+        if (i == state.menu_selection) {
+            r.strokeRect(x - 2, y0 - 2, card_w + 4, card_h + 4, accents[i]);
+        }
         r.strokeRect(x, y0, card_w, card_h, palette.border);
         r.fillRect(x + 2, y0 + 2, card_w - 4, 2, accents[i]);
 
@@ -443,9 +447,9 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     }
 
     const footer_text = if (state.demo)
-        i18n.t("1 选择  2/3 DEMO LOCKED  F6 DAILY  F8 SEED  F9 读档  R 重开", "1 SELECT  2/3 DEMO LOCKED  F6 DAILY  F8 NEW SEED  F9 LOAD  R RESTART")
+        i18n.t("1 选择  A 开始  2/3 DEMO LOCKED  F6 DAILY  F8 SEED  F9 读档  R 重开", "1 SELECT  A START  2/3 DEMO LOCKED  F6 DAILY  F8 NEW SEED  F9 LOAD  R RESTART")
     else
-        i18n.t(menu_footer, "1/2/3 SELECT  D SWITCH  F6 DAILY  F8 NEW SEED  F9 LOAD  R RESTART");
+        i18n.t(menu_footer, "1/2/3 SELECT  D SWITCH  A START  F6 DAILY  F8 NEW SEED  F9 LOAD  R RESTART");
     const fw = renderer.Renderer.textWidth(footer_text, 1);
     r.drawText(@divTrunc(w, 2) - @divTrunc(fw, 2), h - 18, footer_text, palette.muted, 1, false);
 }
