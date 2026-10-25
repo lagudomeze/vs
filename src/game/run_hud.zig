@@ -908,11 +908,11 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         var best_buf: [96]u8 = undefined;
         const sub = if (state.record_wins > 0)
             if (i18n.current == .en)
-                fmt(&best_buf, "BEST F{d} T{d} K{d} G{d}   R RESTART", .{ state.record_best_floor, state.record_best_turn, state.record_best_kills, state.record_best_gold })
+                fmt(&best_buf, "BEST F{d} T{d} K{d} G{d}   R/START RESTART", .{ state.record_best_floor, state.record_best_turn, state.record_best_kills, state.record_best_gold })
             else
-                fmt(&best_buf, "BEST F{d} T{d} K{d} G{d}   R 重开", .{ state.record_best_floor, state.record_best_turn, state.record_best_kills, state.record_best_gold })
+                fmt(&best_buf, "BEST F{d} T{d} K{d} G{d}   R/START 重开", .{ state.record_best_floor, state.record_best_turn, state.record_best_kills, state.record_best_gold })
         else
-            i18n.t("按 R 重开 同职业", "R RESTART SAME CLASS");
+            i18n.t("R/START 重开 同职业", "R/START RESTART SAME CLASS");
         const cause = if (state.log_count > 0) state.log_lines[state.log_count - 1] else "";
         var sbuf: [96]u8 = undefined;
         const summary = if (state.demo_end)

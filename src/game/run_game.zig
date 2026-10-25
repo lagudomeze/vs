@@ -1223,7 +1223,7 @@ pub const RunGame = struct {
         }
         if (self.victory_hold > 0) {
             self.victory_hold = @max(0, self.victory_hold - dt);
-            if (input.confirm or input.wait) self.victory_hold = 0;
+            if (input.confirm or input.wait or input.restart) self.victory_hold = 0;
             if (self.victory_hold == 0) self.hud_state.victory_hold = false;
             return;
         }
