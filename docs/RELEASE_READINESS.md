@@ -37,9 +37,9 @@
 
 ## 代码健康
 
-- zig build test 262
+- zig build test 263
 - test-qa 145
-- test-qa3 246
+- test-qa3 247
 - PREFLIGHT PASS
 - 开放 issue：#123/#122/#121/#120/#115
 - 无开放 PR；main 干净

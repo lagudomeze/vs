@@ -204,6 +204,7 @@ pub const RunGame = struct {
     pause_confirm_quit: bool = false,
     badges_open: bool = false,
     daily: bool = false,
+    seen_intro: bool = false,
     daily_day: i64 = 0,
     menu_selection: u8 = 0,
     menu_mouse_x: f32 = -1,
@@ -487,6 +488,11 @@ pub const RunGame = struct {
         self.class = class;
         self.restart();
         self.sim.pushLog("开始：{s}", .{sim_mod.class_names[@backingInt(self.class)]});
+        if (!self.seen_intro) {
+            self.seen_intro = true;
+            self.toast_text = i18n.t("WASD 移动  /  1-6 天赋  /  H HELP  /  B BOMB", "WASD MOVE / 1-6 TALENTS / H HELP / B BOMB");
+            self.toast_time = 8.0;
+        }
         self.fillHudState();
     }
 
@@ -3137,6 +3143,22 @@ test "run game: daily run records best floor and kills" {
     try std.testing.expectEqual(@as(u8, 2), g.records.daily_best_floor);
     try std.testing.expectEqual(@as(u32, 5), g.records.daily_best_kills);
     try std.testing.expect(g.records_dirty);
+}
+
+test "run game: first class select shows intro once" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 0);
+    defer g.destroy();
+    g.openMenu();
+    try std.testing.expect(!g.seen_intro);
+    g.selectClass(.warrior);
+    try std.testing.expect(g.seen_intro);
+    try std.testing.expect(g.toast_time > 0);
+    g.restart();
+    g.toast_time = 0;
+    g.toast_text = "";
+    g.selectClass(.mage);
+    try std.testing.expectEqual(@as(f32, 0), g.toast_time);
 }
 
 test "run game: daily seed survives class selection" {
