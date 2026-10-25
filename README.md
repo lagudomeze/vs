@@ -115,7 +115,7 @@ zig build run -- --arena       # 旧版实时 5 波竞技场（保留作对照�
 | H | 打开/关闭操作说明（可在 F2 REMAP 中改） |
 | M | 3×3 chunks 开启时：打开/关闭九宫格地图 |
 | F2 | 快速设置：1 全屏 / 2 垂直同步 / 3 窗口倍率 / 4 音量 / 5 环境音 / 6 手柄 A/B 交换 / 7 WASD/ESDF / 8 REMAP KEYS / 9 CHUNKS 3x3 / 0 SCREEN SHAKE；键位细节见 [docs/KEYS.md](docs/KEYS.md) |
-| F3 | 打开反馈表单（GitHub issue） |
+| F3 | 复制诊断并打开反馈表单（GitHub issue） |
 | F4 | 复制诊断（版本/种子/职业/层数/回合/HP/设置）到剪贴板 |
 | F7 | 打开 BADGES 本地成就面板 |
 | F6 | 开局菜单进入每日挑战（UTC 种子） |
