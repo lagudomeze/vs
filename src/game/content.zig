@@ -508,6 +508,21 @@ pub const builtin_items = [_]items.ItemDef{
         } },
         .description = "+7 ATK, +4% CRIT, -3 ARMOR. Risk for reward.",
     },
+    .{
+        .id = "aether_lens",
+        .name = "以太透镜",
+        .quality = .rare,
+        .drop = .{ .weight = 0.45 },
+        .kind = .{ .equipment = .{
+            .slot = .trinket,
+            .mods = &.{
+                .{ .stat = .perception, .flat = 2 },
+                .{ .stat = .magic, .flat = 2 },
+                .{ .stat = .crit, .flat = 0.05 },
+            },
+        } },
+        .description = "+2 PER, +2 MAG, +5% CRIT. See the weave.",
+    },
 };
 
 /// assets/data/enemies.json 的镜像。
@@ -1218,7 +1233,7 @@ test "embedded tables match the RUN v1 content plan" {
     var content = try load(std.testing.allocator);
     defer content.deinit();
 
-    try std.testing.expectEqual(@as(usize, 15), content.items.len);
+    try std.testing.expectEqual(@as(usize, 16), content.items.len);
     try std.testing.expectEqual(@as(usize, 7), content.enemies.len);
     try std.testing.expectEqual(@as(usize, 10), content.skills.len);
 
