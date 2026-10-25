@@ -490,6 +490,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             game.badges_open = !game.badges_open;
             game.hud_state.badges_open = game.badges_open;
         }
+        if (!game.started and pin.key_code == 39) game.rerollSeed();
         if (pin.diagnostics) {
             var dbuf: [512:0]u8 = undefined;
             platform.setClipboard(game.diagnostics(&dbuf));
