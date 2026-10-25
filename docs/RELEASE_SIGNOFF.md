@@ -15,7 +15,7 @@
 - 全量包：dist/vx-0.1.0-win64.zip
 - 全量 SHA256：EBD40A3F5CF0B49C5EB2CC7F908A9575C3E414B8D6E4381A6E4C60545683CB72
 - Demo 包：dist/demo/vx-demo-0.1.0.zip
-- Demo SHA256：219FD841EEEB6AEF4E3B867879437BA88AEE4873DB47E7F55E5991332B0B2D5F
+- Demo SHA256：859001A8C160124F34CFFF99D71EB5BA264D015C7F63699B714236A52782F145
 - release_gate：-SkipPreflight 实跑 exit 0（playtest/press/steam_check/package_check + 三个 SHA）
 - preflight：PASS（-SkipPackage；fmt/三层测试/Deck 静态/i18n/截图）
 - steam_check：exit 0，SteamPipe-ready（AppID/DepotID 待填）
