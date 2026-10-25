@@ -1,10 +1,12 @@
 # 项目状态 / 责任矩阵
 
-快照：main 14591ba（2026-10-25）。没有外部团队；"负责人"是当前会话承担的角色帽子，不是虚构的人。
+快照：main c31462c（2026-10-25）。没有外部团队；"负责人"是当前会话承担的角色帽子，不是虚构的人。
 
 ## P0
 
 无。没有已知崩溃/坏档/无法启动。
+
+当前验证：263/145/247；PREFLIGHT PASS；IRONWOOD HEART 后 QA normal 65.7%。
 
 ## P1
 
@@ -17,7 +19,7 @@
 
 | Issue | 标签 | 负责人帽子 | 状态 | 下一步 | 阻塞 |
 | --- | --- | --- | --- | --- | --- |
-| #123 | area:input / priority:p2 | UI/Input | 默认手柄、A/B swap、全屏、设置、帮助入口、鼠标职业卡已可用 | 手柄重绑定、Steam Input API、鼠标商店/暂停 | 无硬阻塞；Deck 实机未测 |
+| #123 | area:input / priority:p2 | UI/Input | 默认手柄、A/B swap、全屏、设置、首次引导、鼠标职业/暂停/商店/祭坛/角色/背包已可用 | Steam Input 官方映射、手柄重绑定、Deck 实机 | 无硬阻塞；Deck 实机未测 |
 | #120 | area:engine / priority:p2 | Engine | ECS 仅渲染 scene graph；反射受阻于 zflecs 命名/脚本 | 等上游或写 C shim | 技术阻塞，非产品阻塞 |
 | #115 | area:gameplay / priority:p2 | Gameplay | 时空法师反馈/状态时长已加；架构重构未做 | 先收集实际试玩反馈再定 | 反馈不足 |
 
