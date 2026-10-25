@@ -62,3 +62,4 @@ SHA256: 3282DFE1BA4F21E0D2922B6A139393FC4501E3441E00FBDE57821988DA87EFF9
 ## 下载
 
 GitHub pre-release: https://github.com/lagudomeze/vs/releases/tag/v0.1.0-playtest
+Feedback thread: https://github.com/lagudomeze/vs/issues/441
