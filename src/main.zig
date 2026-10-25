@@ -501,6 +501,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         var modal_consumed = false;
         var pause_resumed = false;
         var escape_consumed = false;
+        var help_consumed = false;
         if (pin.toggle_fullscreen) {
             platform.playSound(.ui);
             _ = platform.toggleFullscreen();
@@ -701,6 +702,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             game.hud_state.pause_confirm_quit = false;
             game.hud_state.help = true;
             modal_consumed = true;
+            help_consumed = true;
             platform.playSound(.ui);
         }
         const bomb_ok = game.started and game.sim.state == .playing and
@@ -784,6 +786,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             game.hud_state.pause_open = false;
             game.hud_state.pause_confirm_quit = false;
             game.hud_state.help = true;
+            help_consumed = true;
             platform.playSound(.ui);
         }
         if (pin.toggle_debug) game.debug = !game.debug;
@@ -817,7 +820,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
 
         var input = vx.run_game.Input{};
         if (!slot_frame) {
-            input = vx.input_map.build(pin, game, bomb_ok, pause_resumed, modal_consumed);
+            input = vx.input_map.build(pin, game, bomb_ok, pause_resumed, modal_consumed, help_consumed);
         }
 
         const hp_before = game.sim.hero.vitals.val;

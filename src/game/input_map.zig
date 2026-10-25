@@ -13,6 +13,7 @@ pub fn build(
     bomb_ok: bool,
     pause_resumed: bool,
     modal_consumed: bool,
+    help_consumed: bool,
 ) Input {
     var input = Input{};
     input.step_x = @as(i32, @intFromBool(pin.step_e)) - @as(i32, @intFromBool(pin.step_w));
@@ -28,7 +29,7 @@ pub fn build(
     input.restart = pin.reset or
         (pin.pause and !modal_consumed and game.started and
             (game.sim.state == .dead or game.sim.state == .victory));
-    input.help = pin.help;
+    input.help = pin.help and !help_consumed;
     input.difficulty = pin.difficulty;
     input.use_item = pin.use_item;
     input.use_bomb = pin.use_bomb and bomb_ok;
@@ -49,8 +50,8 @@ test "input map: forwards bomb only in a bomb-safe frame" {
     g.sim.state = .playing;
 
     const pin = platform.FrameInput{ .use_bomb = true };
-    try std.testing.expect(build(pin, g, true, false, false).use_bomb);
-    try std.testing.expect(!build(pin, g, false, false, false).use_bomb);
+    try std.testing.expect(build(pin, g, true, false, false, false).use_bomb);
+    try std.testing.expect(!build(pin, g, false, false, false, false).use_bomb);
 }
 
 test "input map: pause resume does not repeat the action" {
@@ -61,11 +62,15 @@ test "input map: pause resume does not repeat the action" {
     g.sim.state = .playing;
 
     const pin = platform.FrameInput{ .cast = true, .wait = true };
-    const resumed = build(pin, g, true, true, true);
+    const resumed = build(pin, g, true, true, true, false);
     try std.testing.expect(!resumed.confirm);
     try std.testing.expect(!resumed.wait);
-    const normal = build(pin, g, true, false, false);
+    const normal = build(pin, g, true, false, false, false);
     try std.testing.expect(normal.confirm);
+
+    const h = platform.FrameInput{ .help = true };
+    try std.testing.expect(!build(h, g, true, false, true, true).help);
+    try std.testing.expect(build(h, g, true, false, false, false).help);
 }
 
 test "input map: start restarts end screen unless a modal consumed it" {
@@ -76,8 +81,8 @@ test "input map: start restarts end screen unless a modal consumed it" {
     g.sim.state = .dead;
 
     const pin = platform.FrameInput{ .pause = true };
-    try std.testing.expect(build(pin, g, false, false, false).restart);
-    try std.testing.expect(!build(pin, g, false, false, true).restart);
+    try std.testing.expect(build(pin, g, false, false, false, false).restart);
+    try std.testing.expect(!build(pin, g, false, false, true, false).restart);
     const r = platform.FrameInput{ .reset = true, .pause = true };
-    try std.testing.expect(build(r, g, false, false, true).restart);
+    try std.testing.expect(build(r, g, false, false, true, false).restart);
 }
