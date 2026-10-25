@@ -51,6 +51,7 @@ const Options = struct {
     demo_end_screen: bool = false,
     boss_screen: bool = false,
     boss_enraged_screen: bool = false,
+    badges_screen: bool = false,
     pause_screen: bool = false,
     quit_confirm_screen: bool = false,
     boss_defeat_screen: bool = false,
@@ -104,6 +105,7 @@ fn usage() void {
         \\  --demo-end        show the demo end screen (screenshot/QA)
         \\  --boss            jump to the floor-3 boss (screenshot/QA)
         \\  --boss-enraged    show the enraged boss bar (screenshot/QA)
+        \\  --badges          show the badges panel (screenshot/QA)
         \\  --pause           show the pause menu (screenshot/QA)
         \\  --quit-confirm    show the quit confirmation (screenshot/QA)
         \\  --boss-defeat     show the boss defeat banner (screenshot/QA)
@@ -217,6 +219,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.boss_screen = true;
         } else if (std.mem.eql(u8, a, "--boss-enraged")) {
             o.boss_enraged_screen = true;
+        } else if (std.mem.eql(u8, a, "--badges")) {
+            o.badges_screen = true;
         } else if (std.mem.eql(u8, a, "--pause")) {
             o.pause_screen = true;
         } else if (std.mem.eql(u8, a, "--quit-confirm")) {
@@ -476,6 +480,10 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             vx.settings.save(io, game.gpa, vx.settings.default_path, settings) catch {};
         }
         if (pin.feedback) _ = vx.platform.openUrl("https://github.com/lagudomeze/vs/issues/new?template=feedback.yml");
+        if (pin.key_code == 38) {
+            game.badges_open = !game.badges_open;
+            game.hud_state.badges_open = game.badges_open;
+        }
         if (pin.diagnostics) {
             var dbuf: [512:0]u8 = undefined;
             platform.setClipboard(game.diagnostics(&dbuf));
@@ -644,6 +652,8 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                     game.show_help = false;
                 } else if (game.panel != .none) {
                     game.panel = .none;
+                } else if (game.badges_open) {
+                    game.badges_open = false;
                 } else if (game.pause_open) {
                     game.pause_open = false;
                     game.pause_confirm_quit = false;
@@ -952,6 +962,10 @@ pub fn main(init: std.process.Init.Minimal) !void {
         game.hud_state.victory = true;
         game.hud_state.dead = false;
         game.hud_state.victory_hold = true;
+    }
+    if (options.badges_screen) {
+        game.badges_open = true;
+        game.hud_state.badges_open = true;
     }
     if (options.boss_screen or options.boss_enraged_screen) {
         game.started = true;

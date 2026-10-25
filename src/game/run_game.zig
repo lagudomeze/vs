@@ -194,6 +194,7 @@ pub const RunGame = struct {
     demo_end: bool = false,
     pause_open: bool = false,
     pause_confirm_quit: bool = false,
+    badges_open: bool = false,
     victory_hold: f32 = 0,
     skip_victory_banner: bool = false,
     toast_text: []const u8 = "",
@@ -338,6 +339,7 @@ pub const RunGame = struct {
         self.demo_end = false;
         self.pause_open = false;
         self.pause_confirm_quit = false;
+        self.badges_open = false;
         self.victory_hold = 0;
         self.inventory = items_mod.Inventory.init();
         self.mods.clear();
@@ -834,6 +836,7 @@ pub const RunGame = struct {
         self.started = true;
         self.shrine_open = self.sim.atShrine();
         self.settings_chunks = self.sim.chunks_enabled;
+        self.badges_open = false;
         self.pause_open = false;
         self.pause_confirm_quit = false;
         self.shop_open = self.sim.atShop();
@@ -1099,7 +1102,7 @@ pub const RunGame = struct {
             if (self.victory_hold == 0) self.hud_state.victory_hold = false;
             return;
         }
-        if (self.chunk_map_open or self.pause_open) return;
+        if (self.chunk_map_open or self.pause_open or self.badges_open) return;
         self.camera.yaw += input.yaw_delta;
         self.camera.distance = std.math.clamp(self.camera.distance - input.zoom_delta * 0.35, 10.0, 28.0);
         self.step_cooldown = @max(0, self.step_cooldown - dt);
@@ -2168,6 +2171,7 @@ pub const RunGame = struct {
             .demo = self.demo,
             .pause_open = self.pause_open,
             .pause_confirm_quit = self.pause_confirm_quit,
+            .badges_open = self.badges_open,
             .victory_hold = self.victory_hold > 0,
             .boss_active = boss_active,
             .boss_hp = boss_hp,
