@@ -1930,6 +1930,7 @@ pub const Sim = struct {
             .chronomancer => {
                 if (i == 2) {
                     const back = self.rewindTarget() orelse return false;
+                    const from = self.hero.pos;
                     self.hero.resource.val -= @floatFromInt(cost);
                     self.hero.talents.cooldowns[i] = self.talentCooldown(i);
                     self.pushHistory();
@@ -1938,7 +1939,8 @@ pub const Sim = struct {
                     self.hero.status.cleanseDebuffs();
                     self.hero.vitals.val = @min(self.hero.vitals.full, self.hero.vitals.val + self.hero.vitals.full * 0.08);
                     self.hero.history_len = 0;
-                    self.pushLog("时间回溯", .{});
+                    const steps = @abs(from.x - back.x) + @abs(from.y - back.y);
+                    self.pushLog("时间回溯：后退{d}格 回复8%", .{steps});
                     self.endTurn();
                     return true;
                 }
@@ -1951,7 +1953,9 @@ pub const Sim = struct {
                 } else {
                     self.playerAttack(idx, 1.2);
                     if (self.enemies[idx].life.alive) _ = self.enemies[idx].status.applySlow(2);
-                    if (!self.enemies[idx].status.applyStun(2)) {
+                    if (self.enemies[idx].status.applyStun(2)) {
+                        self.pushLog("时间停滞：眩晕2 减速2", .{});
+                    } else {
                         if (self.enemies[idx].life.alive) {
                             self.playerAttack(idx, 0.5);
                             self.pushLog("Boss 抗眩晕 减速+反噬", .{});
