@@ -832,6 +832,11 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
         var input = vx.run_game.Input{};
         if (!slot_frame) {
             input = vx.input_map.build(pin, game, bomb_ok, pause_resumed, modal_consumed, help_consumed);
+            if (input.restart and game.daily and game.started and game.sim.state != .playing) {
+                const now_secs = std.Io.Clock.real.now(io).toSeconds();
+                game.restartDaily(now_secs);
+                input.restart = false;
+            }
         }
 
         const hp_before = game.sim.hero.vitals.val;
