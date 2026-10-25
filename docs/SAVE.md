@@ -130,3 +130,17 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 ## 损坏输入
 
 测试覆盖 300 组随机字节与 1024 层嵌套 JSON：解析失败返回错误，不 panic；1 MiB 上限先于解析生效。
+
+## 层词条编号（floor_mod）
+
+| 值 | 词条 |
+| ---: | --- |
+| 0 | none |
+| 1 | EMBER |
+| 2 | FROST |
+| 3 | MIASMA |
+| 4 | GILDED |
+| 5 | BLOODMOON |
+| 6 | SURGE |
+
+校验上界必须等于最后一个枚举值；新增词条时同时更新本表、save.zig 校验与 round-trip 测试。
