@@ -1248,11 +1248,11 @@ pub const RunGame = struct {
                 var better = false;
                 if (self.inventory.equipped.get(slot)) |current| {
                     if (current < self.content.items.len) {
-                        better = itemScore(def) > itemScore(&self.content.items[current]);
+                        better = !itemHasRisk(def) and itemScore(def) > itemScore(&self.content.items[current]);
                     }
                 } else {
-                    // Risk items with a net-negative score must be chosen by the player.
-                    better = itemScore(def) > 0;
+                    // Risk items are manual choices, even when their net score is positive.
+                    better = !itemHasRisk(def) and itemScore(def) > 0;
                 }
                 if (better) {
                     self.inventory.equip(self.content.items, item) catch {};
