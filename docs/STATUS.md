@@ -13,6 +13,8 @@ RC /人工剩余步骤见 [RC_STATUS.md](RC_STATUS.md)。
 
 ## P1
 
+- #441 公开试玩反馈入口（0 条真实反馈）。
+
 | Issue | 标签 | 负责人帽子 | 状态 | 下一步 | 阻塞 |
 | --- | --- | --- | --- | --- | --- |
 | #122 | area:steam / priority:p1 / help wanted | Design + Community | Playtest 包、商店文案、表单就绪；0 名真实测试者 | 招募 3–5 人，按 playtest_session.yml 记录 | 需要真人，不能编数据 |
