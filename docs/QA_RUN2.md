@@ -181,7 +181,7 @@ zig build test-qa --summary all
 | 平均到达层 | 2.99 | 3.00 | 3.00 | 3.00 |
 | 超时 | 0 | 0 | 0 | 0 |
 
-- zig build test：258/258；zig build test-qa：145/145；test-qa3：242/242。
+- zig build test：259/259；zig build test-qa：145/145；test-qa3：243/243。
 - 2026-10-25 战士 buff、AETHER LENS、法师 CON 8->7 后复测；0 不变量违规。
 - 第 9 节的 64.3% 保留为 13×13 历史基线。
 - auto 仍是巡检 bot，在 31×31 Boss 层可能停住；以 test-qa 批量结果为准。
