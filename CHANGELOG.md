@@ -25,7 +25,7 @@ Single-hero, turn-based, grid roguelike. Windows x64, software renderer, 640x360
 
 - Save v3, reads v2, rejects v1; 1 MiB cap, 3 backups, 3 autosaves.
 - Records/daily streak persistence; Steam Auto-Cloud paths *.save + records.json.
-- Deterministic sim + QA3; 266 unit tests, 145 QA2, 250 QA3.
+- Deterministic sim + QA3; 267 unit tests, 145 QA2, 251 QA3.
 - Demo build: Warrior only, floor 1, separate saves.
 
 ### Tooling

@@ -1238,11 +1238,14 @@ pub const RunGame = struct {
         self.sim.pushLog("获得 {s}", .{def.name});
         if (def.slot()) |slot| {
             if (def.allowsClass(self.classOf())) {
-                var better = self.inventory.equipped.get(slot) == null;
+                var better = false;
                 if (self.inventory.equipped.get(slot)) |current| {
                     if (current < self.content.items.len) {
                         better = itemScore(def) > itemScore(&self.content.items[current]);
                     }
+                } else {
+                    // Risk items with a net-negative score must be chosen by the player.
+                    better = itemScore(def) > 0;
                 }
                 if (better) {
                     self.inventory.equip(self.content.items, item) catch {};
@@ -3402,6 +3405,14 @@ test "run game: mouse click on a bomb does not drink a potion" {
     g.update(.{ .mouse_x = 32, .mouse_y = 54, .click = true }, 1.0 / 60.0);
     try std.testing.expectEqual(@as(usize, 2), g.inventory.count());
     try std.testing.expectEqual(@as(f32, 10), g.sim.hero.vitals.val);
+}
+
+test "run game: void pearl is a manual risk item" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
+    defer g.destroy();
+    const pearl = g.content.item("void_pearl") orelse return error.MissingItem;
+    try std.testing.expect(RunGame.itemScore(pearl) < 0);
 }
 
 test "run game: mouse click drinks a bag potion" {
