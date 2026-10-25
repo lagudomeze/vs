@@ -10,12 +10,12 @@
 
 - 玩过 ToME、Slay the Spire、Caves of Qud、DCSS、Into the Breach
 - 接受永久死亡与像素/低多边形画面
-- 愿意用键盘，能接受 30 分钟不跳过对话
+- 愿意用键盘或 Xbox 布局手柄，能接受 30 分钟不跳过对话
 
 不优先：
 
 - 只玩动作/联机游戏
-- 要求完整手柄/云存档/成就
+- 要求联机/云存档/Steam 成就
 - 只想拿 key 不测试
 
 ## 2. 渠道（按优先级）
@@ -42,9 +42,11 @@
 >
 > I am testing VX: Aether Keep, a single-hero turn-based roguelike. Three classes, three floors, visible enemy intents, permanent death. It is an early build: no multiplayer, no cloud saves, no achievements yet.
 >
-> I need 5–10 people who like turn-based roguelikes to play for 20–30 minutes and tell me where they got stuck. You get a zip, no installer. I will not record you or collect personal data; notes are anonymous and you can ask me to delete them.
+> I need 5–10 people who like turn-based roguelikes to play for 20–30 minutes and tell me where they got stuck. You get a zip, no installer; keyboard or Xbox-style gamepad both work. I will not record you or collect personal data; notes are anonymous and you can ask me to delete them.
 >
-> If you are interested, reply/DM and I will send the build + a 4-question feedback form. Please do not share the build outside the test.
+> If you are interested, reply/DM and I will send the build + the structured playtest form: https://github.com/lagudomeze/vs/issues/new?template=playtest_session.yml
+>
+> Please do not share the build outside the test.
 
 ## 4. 中文招募帖模板
 
@@ -59,10 +61,10 @@
 ## 5. 筛选问题
 
 1. 最近玩过的 2 款回合制/Roguelike 游戏？
-2. 能接受永久死亡和键盘操作吗？
+2. 能接受永久死亡吗？用键盘还是手柄？
 3. 本周能否抽出 30 分钟、用 Windows 运行 zip？
 4. 是否同意匿名记录：版本/种子/职业/层数/死亡原因/原话反馈？
-5. 是否同意在测试后回答 4 个问题？
+5. 是否同意在测试后填写结构化反馈表（playtest_session.yml）？
 
 ## 6. 排期
 
