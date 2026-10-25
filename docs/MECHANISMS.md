@@ -302,7 +302,7 @@ raw
 已落地契约（难度/楼层词条/诅咒箱，M9）：
 
 - 难度：Difficulty 只缩放敌人 HP/伤害（hard 1.15/1.08，easy 0.80/0.90），在 spawnEnemyAt 读取；不改变 AI/掉落。
-- FloorMod：由 seed/floor 确定性选择 EMBER/FROST/MIASMA；分别缩放灼烧、敌人速度、玩家资源回复；第 1 层为 none。
+- FloorMod：由 seed/floor 确定性选择 EMBER/FROST/MIASMA/GILDED/BLOODMOON；分别缩放灼烧、敌人速度、玩家资源回复、金币、击杀 XP（各 1.5x）；第 1 层为 none。
 - 诅咒宝箱（CURSED）：seed/floor/chest index 决定 chest_cursed；开箱扣 10% 最大生命、施加 VULN、给 25 金币；普通箱仍回血 25、给 10 金币。
 - 边界：三者都是 M9 的遭遇参数，不进入 M6 公式；楼层切换重新生成，存档保留 floor_mod/chest_cursed。
 - 不做：难度改变地图生成、词条叠加、诅咒箱专属掉落表。
