@@ -22,7 +22,13 @@ try {
     $exe = Get-ChildItem $tmp -Recurse -Filter "vx.exe" | Select-Object -First 1
     if (-not $exe) { throw "vx.exe missing from package" }
 
-    $version = (& $exe.FullName --version 2>&1 | Out-String).Trim()
+    $old_eap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    Push-Location (Split-Path $exe.FullName)
+    $raw = (cmd /c ".\vx.exe --version 2>&1" | Out-String).Trim()
+    Pop-Location
+    $version = ($raw -replace '^.*?:\s*', '')
+    $ErrorActionPreference = $old_eap
     if ($version -notmatch "^vx ") { throw "unexpected --version output: $version" }
 
     $leak = Get-ChildItem $tmp -Recurse -Filter "steam_appid.txt" -ErrorAction SilentlyContinue
