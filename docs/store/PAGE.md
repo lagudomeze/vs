@@ -114,7 +114,7 @@ Roguelike, Turn-Based, Dungeon Crawler, Pixel Art, Singleplayer, Procedural Gene
 - [x] 7 张 1920×1080 截图（见 [SCREENSHOTS.md](SCREENSHOTS.md)）
 - [ ] 最终构图/更多场景截图
 - [x] 30 秒占位 MP4（截图版，见 [TRAILER_MP4.md](TRAILER_MP4.md)）
-- [x] 29.5 秒真实引擎内录屏（auto bot，见 [GAMEPLAY_CAPTURE.md](GAMEPLAY_CAPTURE.md)）
+- [x] 29.5 秒真实引擎内录屏 + 30 秒 capture 版预告片（auto bot，见 [GAMEPLAY_CAPTURE.md](GAMEPLAY_CAPTURE.md)、[TRAILER_CAPTURE.md](TRAILER_CAPTURE.md)）
 - [ ] 人手实机 capture + 正式配乐
 - [ ] Steam AppID / DepotID
 - [ ] 商店页审核（Short Description ≤300 字符）

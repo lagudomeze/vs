@@ -137,6 +137,11 @@ pub fn logLine(line: []const u8, buf: []u8) []const u8 {
     if (std.mem.startsWith(u8, line, "装备存档失败 ")) return "GEAR SAVE FAILED";
     if (std.mem.startsWith(u8, line, "装备读档失败：")) return "GEAR LOAD FAILED";
     if (std.mem.eql(u8, line, "深渊守卫攻击")) return "ABYSS WARDEN ATTACK";
+    if (std.mem.eql(u8, line, "背包已满")) return "BAG FULL";
+    if (std.mem.eql(u8, line, "已存档")) return "SAVED";
+    if (std.mem.eql(u8, line, "读档")) return "LOADED";
+    if (afterPrefix(line, "获得 ")) |name| return std.fmt.bufPrint(buf, "OBTAINED {s}", .{itemName(name)}) catch line;
+    if (afterPrefix(line, "装备 ")) |name| return std.fmt.bufPrint(buf, "EQUIPPED {s}", .{itemName(name)}) catch line;
 
     if (afterPrefix(line, "进入第 ")) |rest| {
         if (std.mem.endsWith(u8, rest, " 层")) {
@@ -247,4 +252,6 @@ test "i18n: battle log lines translate common formats" {
     try std.testing.expectEqualStrings("WRAITH GUARDS", logLine("幽魂 举盾", &buf));
     try std.testing.expectEqualStrings("NOT ENOUGH GOLD", logLine("金币不足", &buf));
     try std.testing.expectEqualStrings("LOAD FAILED", logLine("读档失败：文件损坏", &buf));
+    try std.testing.expectEqualStrings("OBTAINED LEATHER ARMOR", logLine("获得 皮甲", &buf));
+    try std.testing.expectEqualStrings("BAG FULL", logLine("背包已满", &buf));
 }
