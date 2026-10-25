@@ -57,6 +57,7 @@ pub fn itemName(zh: []const u8) []const u8 {
     if (std.mem.eql(u8, zh, "铁剑")) return "IRON SWORD";
     if (std.mem.eql(u8, zh, "法杖")) return "STAFF";
     if (std.mem.eql(u8, zh, "皮甲")) return "LEATHER ARMOR";
+    if (std.mem.eql(u8, zh, "以太透镜")) return "AETHER LENS";
     if (std.mem.eql(u8, zh, "秘银甲")) return "MITHRIL ARMOR";
     if (std.mem.eql(u8, zh, "猛虎护符")) return "TIGER AMULET";
     if (std.mem.eql(u8, zh, "时光沙漏")) return "HOURGLASS";

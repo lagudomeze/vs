@@ -288,6 +288,28 @@
         }
       ],
       "description": "+7 ATK, +4% CRIT, -3 ARMOR. Risk for reward."
+    },
+    {
+      "id": "aether_lens",
+      "name": "以太透镜",
+      "slot": "trinket",
+      "quality": "rare",
+      "weight": 0.45,
+      "mods": [
+        {
+          "stat": "perception",
+          "flat": 2
+        },
+        {
+          "stat": "magic",
+          "flat": 2
+        },
+        {
+          "stat": "crit",
+          "flat": 0.05
+        }
+      ],
+      "description": "+2 PER, +2 MAG, +5% CRIT. See the weave."
     }
   ]
 }
