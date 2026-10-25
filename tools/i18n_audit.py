@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -12,7 +13,7 @@ OUT = ROOT / "docs" / "LOCALIZATION_AUDIT.md"
 CJK = re.compile(r"[\u4e00-\u9fff]")
 LIT = re.compile(r'"([^"\n]*[\u4e00-\u9fff][^"\n]*)"')
 
-def main() -> None:
+def main() -> int:
     rows = []
     all_lits: Counter[str] = Counter()
     total_chars = 0
@@ -94,9 +95,18 @@ def main() -> None:
         "",
         "本文件是审计，不是已完成本地化的声明。",
     ]
+    content = "\n".join(lines) + "\n"
+    summary = f"{OUT.relative_to(ROOT)}: {len(rows)} files, {len(all_lits)} unique strings"
+    if "--check" in sys.argv:
+        if not OUT.exists() or OUT.read_text(encoding="utf-8") != content:
+            print(f"{OUT.relative_to(ROOT)}: STALE (run tools/i18n_audit.py without --check)")
+            return 1
+        print(summary)
+        return 0
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
-    print(f"{OUT.relative_to(ROOT)}: {len(rows)} files, {len(all_lits)} unique strings")
+    OUT.write_text(content, encoding="utf-8", newline="\n")
+    print(summary)
+    return 0
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

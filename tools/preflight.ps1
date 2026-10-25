@@ -10,6 +10,7 @@ Set-Location $root
 function Step([string]$name, [scriptblock]$body) {
     Write-Host ""
     Write-Host ("=== " + $name + " ===")
+    $global:LASTEXITCODE = 0
     & $body
     if ($LASTEXITCODE -ne 0) {
         throw ("preflight failed: " + $name + " (exit " + $LASTEXITCODE + ")")
@@ -41,8 +42,8 @@ if (-not $python) {
 }
 if ($python) {
     Step "link check" { & $python @pyArgs (Join-Path $PSScriptRoot "check_links.py") }
-    Step "i18n audit" { & $python @pyArgs (Join-Path $PSScriptRoot "i18n_audit.py") }
-    Step "i18n remaining" { & $python @pyArgs (Join-Path $PSScriptRoot "i18n_visible_audit.py") }
+    Step "i18n audit" { & $python @pyArgs (Join-Path $PSScriptRoot "i18n_audit.py") --check }
+    Step "i18n remaining" { & $python @pyArgs (Join-Path $PSScriptRoot "i18n_visible_audit.py") --check }
     Step "screenshot shrink check" { & $python @pyArgs (Join-Path $PSScriptRoot "shrink_shots.py") --check docs/screenshots }
 } else {
     Write-Host "WARN python not found (set VX_PYTHON); skipping i18n/screenshot audits"

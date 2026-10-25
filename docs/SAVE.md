@@ -144,3 +144,9 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 | 6 | SURGE |
 
 校验上界必须等于最后一个枚举值；新增词条时同时更新本表、save.zig 校验与 round-trip 测试。
+
+## records.json 损坏恢复
+
+- 解析失败时原文件改名为 records.corrupt-<unix>.json，再读 records.json.bak。
+- 每次保存前把上一份可解析记录写入 records.json.bak。
+- main 只把 FileNotFound 当空记录，其它加载错误记日志。

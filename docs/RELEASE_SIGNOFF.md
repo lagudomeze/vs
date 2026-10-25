@@ -4,7 +4,7 @@
 
 | 目标 | 状态 | 依据 |
 | --- | --- | --- |
-| 内部/好友 Playtest 包 | **READY** | 270/145/254；全量/Demo 包可运行；存档隔离 |
+| 内部/好友 Playtest 包 | **READY** | 271/145/255；全量/Demo 包可运行；存档隔离 |
 | Steam 商店正式版 | **NOT READY** | 无 AppID/DepotID/SDK；key art/预告仍是占位级 |
 
 不要把当前包当作 Steam 正式版上传。可以发给试玩者，但必须说明是 early build。
@@ -28,7 +28,7 @@
 - steam_package_check：PASS，仅 YOUR_APP_ID/YOUR_DEPOT_ID 警告
 - Demo 冒烟：解包运行 exit 0，HP 184，存档在 %APPDATA%/lagudomeze/vx/demo
 - 干净解包冒烟：全量/Demo version=vx 0.1.0，headless exit 0，无 steam_appid，无本地 saves。
-- 包内容：全量/Playtest 均含 CHANGELOG.md，README 为 270/270，vx 0.1.0 可运行。
+- 包内容：全量/Playtest 均含 CHANGELOG.md，README 为 271/271，vx 0.1.0 可运行。
 
 
 

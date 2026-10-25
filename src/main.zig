@@ -1084,7 +1084,10 @@ pub fn main(init: std.process.Init.Minimal) !void {
     const game = try vx.RunGame.create(gpa, options.width, options.height, class, options.seed);
     defer game.destroy();
 
-    game.setRecords(vx.records.load(io, gpa, vx.records.default_path) catch .{});
+    game.setRecords(vx.records.load(io, gpa, vx.records.default_path) catch |err| blk: {
+        std.log.warn("records: load failed: {s}", .{@errorName(err)});
+        break :blk .{};
+    });
     game.setDifficulty(options.difficulty);
     if (options.shrine_screen) game.debugShrine();
     if (options.shop_screen) game.debugShop();
