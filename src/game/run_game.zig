@@ -212,6 +212,8 @@ pub const RunGame = struct {
     shop_mouse_x: f32 = -1,
     shop_mouse_y: f32 = -1,
     shrine_index: u8 = 0,
+    shrine_mouse_x: f32 = -1,
+    shrine_mouse_y: f32 = -1,
     stat_index: u8 = 0,
     victory_hold: f32 = 0,
     skip_victory_banner: bool = false,
@@ -497,6 +499,20 @@ pub const RunGame = struct {
         return true;
     }
 
+    fn shrineRowAt(self: *const RunGame, sx: f32, sy: f32) ?u8 {
+        const w: f32 = @floatFromInt(self.renderer.width);
+        const h: f32 = @floatFromInt(self.renderer.height);
+        const px = (w - 300) / 2;
+        const py = (h - 176) / 2;
+        if (sx < px + 20 or sx > px + 280) return null;
+        var i: u8 = 0;
+        while (i < 4) : (i += 1) {
+            const y = py + 58 + @as(f32, @floatFromInt(i)) * 21;
+            if (sy >= y - 4 and sy <= y + 14) return i;
+        }
+        return null;
+    }
+
     fn shopRowAt(self: *const RunGame, sx: f32, sy: f32) ?u8 {
         const w: f32 = @floatFromInt(self.renderer.width);
         const h: f32 = @floatFromInt(self.renderer.height);
@@ -604,6 +620,8 @@ pub const RunGame = struct {
     pub fn debugShrine(self: *RunGame) void {
         self.started = true;
         self.shrine_open = true;
+        self.shrine_mouse_x = -1;
+        self.shrine_mouse_y = -1;
         self.sim.shrine_active = true;
         self.sim.shrine_used = false;
         self.fillHudState();
@@ -1326,6 +1344,13 @@ pub const RunGame = struct {
         }
 
         if (self.shrine_open) {
+            const shrine_mouse_moved = input.mouse_x != self.shrine_mouse_x or input.mouse_y != self.shrine_mouse_y;
+            self.shrine_mouse_x = input.mouse_x;
+            self.shrine_mouse_y = input.mouse_y;
+            if (self.shrineRowAt(input.mouse_x, input.mouse_y)) |row| {
+                if (shrine_mouse_moved) self.shrine_index = row;
+                if (input.click) self.chooseShrine(row);
+            }
             if (input.step_y < 0) self.shrine_index = (self.shrine_index + 3) % 4;
             if (input.step_y > 0) self.shrine_index = (self.shrine_index + 1) % 4;
             if (input.talent >= 0) {
@@ -3284,6 +3309,19 @@ test "run game: shop loot purchase adds an item and spends gold" {
     try std.testing.expect(g.sim.shop_used);
     // The drop may auto-equip, so total items can stay flat; gold and shop prove the purchase.
     _ = before;
+}
+
+test "run game: mouse click chooses a shrine blessing" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 640, 360, .mage, 12345);
+    defer g.destroy();
+    g.sim.shrine = g.sim.hero.pos;
+    g.debugShrine();
+    const magic = g.sim.hero.sheet.stats.magic.val;
+    g.update(.{ .mouse_x = 320, .mouse_y = 150, .click = true }, 1.0 / 60.0);
+    try std.testing.expectApproxEqAbs(magic + 2, g.sim.hero.sheet.stats.magic.val, 0.001);
+    try std.testing.expect(!g.shrine_open);
+    try std.testing.expect(g.sim.shrine_used);
 }
 
 test "run game: shrine panel consumes a choice once" {
