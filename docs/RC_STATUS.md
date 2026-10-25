@@ -1,6 +1,6 @@
 # RC Status / Human-Only Remaining Steps
 
-Snapshot: main 6e83ffe (2026-10-26). This page is the single list of what code can and cannot finish.
+Snapshot: main 505b397 (2026-10-26). This page is the single list of what code can and cannot finish.
 
 ## Verified in this repo
 
