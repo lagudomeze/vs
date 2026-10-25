@@ -203,7 +203,7 @@ const help_lines = [_][]const u8{
     "SHOP/SHRINE  1-6 select",
     "Esc 取消/暂停   Q 暂停菜单退出",
     "存档 F5  读档 F9 槽  自动档 F10",
-    "相机 Q/E/右键   滚轮 WHEEL ZOOM   M CHUNK MAP",
+    "相机 Q/E/右键   WHEEL ZOOM   M CHUNK MAP",
     "升级 C 面板 1-6 加点  R 重开",
     "目标  击杀第 3 层深渊守卫",
     "楼梯在 Boss 存活时被封印",
@@ -1032,7 +1032,7 @@ fn drawSettings(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     const lines_zh = [_][]const u8{
         "1 全屏          ON/OFF",
         "2 垂直同步      ON/OFF",
-        "3 窗口缩放      2x/3x/4x",
+        "3 缩放          2x/3x/4x",
         "4 音量          0/55/100%",
         "5 环境音        ON/OFF",
         "6 手柄 A/B      交换",
@@ -1214,6 +1214,8 @@ test "run hud: hint strings have embedded CJK glyphs" {
         "自动档备份",
     };
     for (fixed) |text| try expectGlyphs(text);
+    for (help_lines) |line| try expectGlyphs(line);
+    for (help_lines_en) |line| try expectGlyphs(line);
     const targeting = @import("run_target.zig");
     inline for (std.meta.tags(targeting.Verdict)) |verdict| {
         try expectGlyphs(targeting.verdictText(verdict));
