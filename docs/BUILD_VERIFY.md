@@ -1,7 +1,7 @@
 # 发版包复验
 
 日期：2026-10-25
-HEAD：7b4ed98
+HEAD：987ee0f
 
 ## 全量包
 
@@ -9,9 +9,9 @@ HEAD：7b4ed98
 
 - dist/vx-0.1.0-win64.zip
 - 2.6 MB
-- vx.exe 7,861,760 bytes
+- vx.exe 7,867,392 bytes
 - VERSION.txt = vx 0.1.0 / Windows x64
-- SHA256 = 438687E98D49CCEB859ED549DC915BEC9341B1D4D5FC0165C8196048B4FC8619
+- SHA256 = A48EC99BE9B92955D02C176DB99AF194ABF65D6C9C6EF0EE4C7C5AAAC669F731
 
 steam_check：
 
@@ -35,7 +35,7 @@ steam_package_check：
 
 - dist/demo/vx-demo-0.1.0.zip
 - 2.6 MB
-- SHA256 = 0EBF4477DDF6E300E26FF53CD3E93F4029A5298198412A4C086D63D597C4E508
+- SHA256 = 86FE8D9363309303859C15A46FE808701DEB66417CA3864704DE694C6657226A
 - 内容：vx.exe / PLAY_DEMO.cmd / DEMO_README.txt / README / CREDITS / OFL / VERSION
 
 解包冒烟：
@@ -48,9 +48,9 @@ HP 184 与战士平衡后的基础生命一致。
 
 ## 测试
 
-    zig build test      244/244
+    zig build test      245/245
     zig build test-qa   145/145
-    zig build test-qa3  231/231
+    zig build test-qa3  232/232
 
 ## 仍未验证
 
@@ -66,7 +66,7 @@ HP 184 与战士平衡后的基础生命一致。
     $env:VX_PYTHON = <python.exe>
     tools/preflight.ps1
 
-结果：PREFLIGHT PASS（fmt、244/244、145/145、231/231、打包、Steam/Demo、Deck 静态、i18n、截图）。
+结果：PREFLIGHT PASS -SkipPackage（fmt、245/245、145/145、232/232、Deck 静态、i18n、截图）；package/steam_check/steam_package_check/demo_pack 单独通过。
 
 ## 商店 capture
 
