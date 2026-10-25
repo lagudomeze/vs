@@ -60,4 +60,4 @@ If you cover the game, please label the trailer and screenshots as pre-release p
 ## 产物校验
 
 - dist/press-kit/vx-press-kit-0.1.0.zip
-- SHA256: 52474D2D85F551DA6B7F23E1705A5FA0592FC337EFC364882C1BB59D5F5FFD62
+- SHA256: 541999FB017B63865D6C5EB3019065BBA596FE285ABAE0A75AF722EE30E01BE0

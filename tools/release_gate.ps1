@@ -1,6 +1,7 @@
 # One release gate: preflight, packages, Steam checks, artifact hashes.
 param(
     [switch]$SkipPreflight,
+    [switch]$SkipPackage,
     [switch]$DryRun
 )
 $ErrorActionPreference = "Stop"
@@ -22,6 +23,10 @@ function Run-Step([string]$Name, [scriptblock]$Body) {
 
 if (-not $SkipPreflight) {
     Run-Step "preflight" { & (Join-Path $PSScriptRoot "preflight.ps1") }
+}
+if (-not $SkipPackage) {
+    Run-Step "package" { & (Join-Path $PSScriptRoot "package.ps1") }
+    Run-Step "demo_pack" { & (Join-Path $PSScriptRoot "demo_pack.ps1") }
 }
 Run-Step "playtest_pack" { & (Join-Path $PSScriptRoot "playtest_pack.ps1") }
 Run-Step "press_kit" { & (Join-Path $PSScriptRoot "press_kit.ps1") }
