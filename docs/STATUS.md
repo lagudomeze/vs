@@ -22,7 +22,7 @@ RC /人工剩余步骤见 [RC_STATUS.md](RC_STATUS.md)。
 
 | Issue | 标签 | 负责人帽子 | 状态 | 下一步 | 阻塞 |
 | --- | --- | --- | --- | --- | --- |
-| #123 | area:input / priority:p2 | UI/Input | 默认手柄、A/B swap、全屏、设置、首次引导、鼠标职业/暂停/商店/祭坛/角色/背包已可用 | Steam Input 官方映射、手柄重绑定、Deck 实机 | 无硬阻塞；Deck 实机未测 |
+| #418 | area:input / priority:p2 | UI/Input | 设置/手柄导航/首次引导/持久化已完成（#123 关闭） | Steam Input 官方映射、Deck 实机 | 无硬阻塞；Deck 未测 |
 | #120 | area:engine / priority:p2 | Engine | ECS 仅渲染 scene graph；反射受阻于 zflecs 命名/脚本 | 等上游或写 C shim | 技术阻塞，非产品阻塞 |
 | #115 | area:gameplay / priority:p2 | Gameplay | 时空法师反馈/状态时长已加；架构重构未做 | 先收集实际试玩反馈再定 | 反馈不足 |
 
@@ -30,7 +30,7 @@ RC /人工剩余步骤见 [RC_STATUS.md](RC_STATUS.md)。
 
 1. 发出 3 份 Playtest 包，收回 3 份结构化记录（#122）。
 2. 创建 Steamworks 账号并确认税务/银行（#121）。
-3. 用 DECK_CHECK 的 15 分钟脚本跑一次真机/Proton（#123）。
+3. 用 DECK_CHECK 的 15 分钟脚本跑一次真机/Proton（#418）。
 
 ## 不做
 

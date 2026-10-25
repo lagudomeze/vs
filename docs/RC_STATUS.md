@@ -17,9 +17,9 @@ Snapshot: main 505b397 (2026-10-26). This page is the single list of what code c
 | --- | --- | --- | --- |
 | Steam account | No Steamworks partner account / AppID / DepotID | Register, pay 100 USD, create app + depot, replace YOUR_APP_ID/YOUR_DEPOT_ID, upload with steamcmd | #121 |
 | Playtest | 0 real testers / 0 feedback records | Recruit 5-10, send playtest zip + CONSENT, collect FEEDBACK.md, triage top 3 | #122 |
-| Deck/Proton | No Deck hardware | Install build on Deck, test controls/fullscreen/performance, record Proton version | #123 |
+| Deck/Proton | No Deck hardware | Install build on Deck, test controls/fullscreen/performance, record Proton version | #418 |
 | Marketing art/audio | Prototype key art / auto-bot capture | Commission key art + licensed music, record human gameplay | #122 |
-| Steam Input | No official mapping | Add Steam Input template or document keyboard/gamepad fallback | #123 |
+| Steam Input | No official mapping | Add Steam Input template or document keyboard/gamepad fallback | #418 |
 | ECS reflection | Upstream zflecs naming/script API | Revisit only if upstream exposes reflection; not a release blocker | #120 |
 | Paradox Mage | Design/refactor not scheduled | Keep current Chronomancer; no rename without gameplay | #115 |
 
