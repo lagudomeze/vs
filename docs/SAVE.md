@@ -91,6 +91,7 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 - 字段：wins、deaths、best_floor、best_turn、best_kills、best_gold、wins_warrior/mage/chronomancer、chunk_clears、flawless_wins、daily_day、daily_best_floor、daily_best_kills、daily_streak、daily_last_win_day。
 - 旧 records.json 缺 daily_* 时默认 -1/0；未知字段忽略。
 - daily 状态不写入 run save；读档时若 seed 与当天 daily seed 不符，会清除 daily，避免把普通档/旧 daily 档算进今天。
+- daily 死亡/胜利后的 R/Start 使用 restartDaily(now)：同一天沿用当天 seed，跨天自动新 daily。
 
 ## F5/F9（已接入）
 

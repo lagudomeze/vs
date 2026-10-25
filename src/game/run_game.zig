@@ -424,12 +424,19 @@ pub const RunGame = struct {
     }
 
     pub fn restart(self: *RunGame) void {
-        if (self.started and self.daily) {
-            self.daily = false;
-            self.daily_day = 0;
-            self.seed_locked = false;
-        }
         if (!self.seed_locked) self.seed = freshSeed();
+        self.started = true;
+        self.resetRun();
+    }
+
+    /// Retry the daily after death/victory. Same UTC day keeps the seed; a new
+    /// day rolls a fresh daily seed so credit is never attributed to yesterday.
+    pub fn restartDaily(self: *RunGame, unix_seconds: i64) void {
+        const day: u64 = @intCast(@divFloor(unix_seconds, 86400));
+        self.daily = true;
+        self.daily_day = @intCast(day);
+        self.seed = sim_mod.nextSeed(day ^ 0xda11c0de);
+        self.seed_locked = true;
         self.started = true;
         self.resetRun();
     }
@@ -3027,17 +3034,22 @@ test "run game: loading a non-daily save clears daily credit" {
     try std.testing.expectEqual(@as(i64, 0), g.daily_day);
 }
 
-test "run game: restart clears stale daily session" {
+test "run game: daily restart refreshes the day and keeps daily" {
     const gpa = std.testing.allocator;
     const g = try RunGame.create(gpa, 320, 180, .warrior, 0);
     defer g.destroy();
     g.openMenu();
     g.startDaily(1_700_000_000);
+    const first_seed = g.seed;
     g.selectClass(.warrior);
+    g.sim.state = .dead;
+    g.restartDaily(1_700_000_000);
     try std.testing.expect(g.daily);
-    g.restart();
-    try std.testing.expect(!g.daily);
-    try std.testing.expectEqual(@as(i64, 0), g.daily_day);
+    try std.testing.expectEqual(first_seed, g.seed);
+    g.sim.state = .dead;
+    g.restartDaily(1_700_000_000 + 86400);
+    try std.testing.expect(g.daily);
+    try std.testing.expect(g.seed != first_seed);
 }
 
 test "run game: starting a daily decays a broken streak" {

@@ -77,7 +77,7 @@
 7. 祭坛：方向键选 4 项，A 生效。
 8. 背包：X 开，A 喝药；肩键换装；B/ESC 关。
 9. 角色：Y/C 开，方向键选属性，A 加点；高亮跟随。
-10. 结算：死亡后 Start 重开；胜利 banner 的 Start/R 立即重开。
+10. 结算：死亡后 Start/R 立即重开；daily 死亡后重开仍是 daily，同一天沿用当天 seed，跨天自动新 daily。
 11. 每日：菜单 Y 进 daily，HUD 显示 S{n}；连续 3 天胜利后 Badges 出现 STREAK 3。
 12. 时空法师：时间停滞成功后敌人头顶应出现 STUN2/SLOW2。
 
