@@ -238,7 +238,7 @@ const aim_hint = "空格/同键/左键确认  Esc取消  Tab换目标";
 fn drawBadges(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     r.fillRect(0, 0, w, h, palette.deep);
     const pw: i32 = 360;
-    const ph: i32 = 270;
+    const ph: i32 = 300;
     const px = @divTrunc(w - pw, 2);
     const py = @divTrunc(h - ph, 2);
     backPanel(r, px, py, pw, ph);
@@ -252,6 +252,7 @@ fn drawBadges(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         .{ .ok = state.record_flawless > 0, .name = "FLAWLESS", .desc = "Win at full HP" },
         .{ .ok = state.record_chunk_clears >= 9, .name = "CHUNK HUNTER", .desc = "Clear 9 chunks" },
         .{ .ok = state.daily_best_floor >= 3, .name = "DAILY DELVER", .desc = "Reach floor 3 in a daily" },
+        .{ .ok = state.daily_streak >= 3, .name = "STREAK 3", .desc = "Win 3 daily challenges in a row" },
     };
     for (rows, 0..) |row, i| {
         const y = py + 58 + @as(i32, @intCast(i)) * 34;
