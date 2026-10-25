@@ -1,6 +1,6 @@
 # Roadmap / 发行顺序
 
-Snapshot: main 083140d (2026-10-26). No dates; order matters more than speed.
+Snapshot: main 0eab8d1 (2026-10-26). No dates; order matters more than speed.
 
 ## Now: external playtest
 
