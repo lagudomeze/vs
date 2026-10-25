@@ -66,7 +66,7 @@ Roguelike, Turn-Based, Grid-Based Movement, Pixel Graphics, Low-Poly, Dungeon Cr
 ## 待办
 
 - [ ] 真实 Steam Demo App/Depot
-- [ ] 英文 UI（当前没有）
+- [x] English beta UI（核心菜单/HUD/商店/物品/常见日志；非完整本地化）
 - [ ] Deck/Proton 实测
 - [ ] 真实试玩反馈
 - [ ] 预告片

@@ -9,7 +9,7 @@
 - 模式：Single-player
 - 价格建议：USD 9.99（首发 -10%，国区 ¥42）
 - 平台：Windows 10/11 x64
-- 语言：界面中文；商店页英文/中文双语
+- 语言：默认简体中文；English beta 可在 F2 -> L 或 --lang en 开启（核心界面已英文化，少量回退中文，不宣称完整本地化）；商店页中英双语
 
 ## Short Description（≤300 字符）
 
@@ -62,7 +62,7 @@ Loot is automatic and build-defining: weapons, armor, trinkets and consumables f
 - Elite affixes that change target priority: SWIFT / ARMORED / VAMPIRIC / VOLATILE / FROST / SPLIT.
 - Rotatable top-down camera, pixel-art software renderer, integer scaling.
 - Controller support (including A/B swap), keyboard and mouse.
-- Chinese UI; English store page. (Full localization is planned.)
+- Simplified Chinese is the default UI. English beta is available (core menus/HUD/logs; some fallbacks remain). Full localization is planned.
 
 ## Classes
 
@@ -111,8 +111,10 @@ Roguelike, Turn-Based, Dungeon Crawler, Pixel Art, Singleplayer, Procedural Gene
 ## Launch Checklist
 
 - [ ] 正式 key art / logo 替换占位（像素 VX 方向稿已用于 capsule）
-- [ ] 5 张商店截图最终版
-- [ ] 30–60 秒预告片
+- [x] 7 张 1920×1080 截图（见 [SCREENSHOTS.md](SCREENSHOTS.md)）
+- [ ] 最终构图/更多场景截图
+- [x] 30 秒占位 MP4（截图版，见 [TRAILER_MP4.md](TRAILER_MP4.md)）
+- [ ] 30–60 秒实机 capture + 正式配乐
 - [ ] Steam AppID / DepotID
 - [ ] 商店页审核（Short Description ≤300 字符）
 - [ ] Demo 分支与存档隔离
