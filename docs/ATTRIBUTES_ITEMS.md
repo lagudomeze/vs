@@ -25,7 +25,7 @@
 | src/game/attributes.zig | StatKind / StatRef / Stats / Modifier / recompute / caps / Progression(XP/等级) |
 | src/game/items.zig | ItemDef / Slot / Quality / Inventory / EquipmentSlots / ModifierSet / CharacterPanel |
 | src/game/content.zig | 内嵌 JSON 解析、校验、内置回退、掉落抽取、职业天赋表 |
-| assets/data/{items,enemies,skills}.json | 15 物品 / 7 敌人 / 10 技能 |
+| assets/data/{items,enemies,skills}.json | 17 物品 / 7 敌人 / 10 技能 |
 | assets/data/data.zig | @embedFile 原始 JSON（Zig 不允许 embed 包外文件，故单独成模块） |
 
 build.zig 给 vx 模块加了匿名导入 data；src/root.zig 导出 attributes / items / content。
@@ -88,3 +88,12 @@ content.zig
 - enemies.json 收录 7 种敌人（3 基础 + 2 精英 + 1 Boss + 深渊幽魂），并带 min_layer/max_layer 供关卡生成筛选。
 - 敌人 kind：0 骷髅 / 1 幽魂 / 2 石魔像 / 3 深渊守卫 / 4 精英骷髅 / 5 精英幽魂。
 - Zig 0.17 不允许 @embedFile 引用包外文件，所以 JSON 由 assets/data/data.zig 内嵌、build.zig 注册为 data 模块。
+
+## 近期新增物品（2026-10-25）
+
+| id | 名称 | 槽位 | 品质 | 词条 | 定位 |
+| --- | --- | --- | --- | --- | --- |
+| aether_lens | 以太透镜 | trinket | rare | +2 PER / +2 MAG / +5% CRIT | 法术/暴击 |
+| ironwood_heart | 铁木之心 | trinket | rare | +18 HP / +2 ARMOR / +1 WILL | 防御/续航 |
+
+两件都走 items.json + builtin_items 镜像，掉落权重 0.45/0.55；QA2 复测见 QA_RUN2.md。
