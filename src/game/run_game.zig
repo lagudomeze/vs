@@ -424,6 +424,11 @@ pub const RunGame = struct {
     }
 
     pub fn restart(self: *RunGame) void {
+        if (self.started and self.daily) {
+            self.daily = false;
+            self.daily_day = 0;
+            self.seed_locked = false;
+        }
         if (!self.seed_locked) self.seed = freshSeed();
         self.started = true;
         self.resetRun();
@@ -447,7 +452,8 @@ pub const RunGame = struct {
         self.daily_day = @intCast(day);
         self.menu_selection = 0;
         self.seed = sim_mod.nextSeed(day ^ 0xda11c0de);
-        self.seed_locked = false;
+        self.seed_locked = true;
+        if (self.records.daily_last_win_day < self.daily_day - 1) self.records.daily_streak = 0;
         self.openMenu();
     }
 
@@ -879,6 +885,14 @@ pub const RunGame = struct {
             self.sim.pushLog("读档失败：背包损坏", .{});
             return;
         };
+        if (self.daily and self.daily_day > 0) {
+            const expected = sim_mod.nextSeed(@as(u64, @intCast(self.daily_day)) ^ 0xda11c0de);
+            if (loaded.seed != expected) {
+                self.daily = false;
+                self.daily_day = 0;
+                self.seed_locked = false;
+            }
+        }
         self.sim = loaded;
         self.sim.setEnemyDefs(self.content.enemies);
         self.seed = loaded.seed;
@@ -2987,6 +3001,54 @@ test "run game: daily run records best floor and kills" {
     try std.testing.expectEqual(@as(u8, 2), g.records.daily_best_floor);
     try std.testing.expectEqual(@as(u32, 5), g.records.daily_best_kills);
     try std.testing.expect(g.records_dirty);
+}
+
+test "run game: daily seed survives class selection" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 0);
+    defer g.destroy();
+    g.openMenu();
+    g.startDaily(1_700_000_000);
+    const daily_seed = g.seed;
+    g.selectClass(.mage);
+    try std.testing.expectEqual(daily_seed, g.seed);
+    try std.testing.expect(g.daily);
+}
+
+test "run game: loading a non-daily save clears daily credit" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 0);
+    defer g.destroy();
+    g.openMenu();
+    g.startDaily(1_700_000_000);
+    const other = sim_mod.Sim.init(999, .warrior);
+    g.applyLoaded(other, .{});
+    try std.testing.expect(!g.daily);
+    try std.testing.expectEqual(@as(i64, 0), g.daily_day);
+}
+
+test "run game: restart clears stale daily session" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 0);
+    defer g.destroy();
+    g.openMenu();
+    g.startDaily(1_700_000_000);
+    g.selectClass(.warrior);
+    try std.testing.expect(g.daily);
+    g.restart();
+    try std.testing.expect(!g.daily);
+    try std.testing.expectEqual(@as(i64, 0), g.daily_day);
+}
+
+test "run game: starting a daily decays a broken streak" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 0);
+    defer g.destroy();
+    g.openMenu();
+    g.records.daily_last_win_day = 19_000;
+    g.records.daily_streak = 5;
+    g.startDaily(1_700_000_000);
+    try std.testing.expectEqual(@as(u32, 0), g.records.daily_streak);
 }
 
 test "run game: daily victory streak increments once per day" {
