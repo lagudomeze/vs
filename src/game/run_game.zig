@@ -2228,7 +2228,7 @@ pub const RunGame = struct {
             .pause_confirm_quit = self.pause_confirm_quit,
             .badges_open = self.badges_open,
             .daily = self.daily,
-            .daily_best_floor = self.records.daily_best_floor,
+            .daily_best_floor = if (self.records.daily_day == self.daily_day) self.records.daily_best_floor else 0,
             .victory_hold = self.victory_hold > 0,
             .boss_active = boss_active,
             .boss_hp = boss_hp,
@@ -2783,6 +2783,25 @@ test "run game: daily run records best floor and kills" {
     try std.testing.expectEqual(@as(u8, 2), g.records.daily_best_floor);
     try std.testing.expectEqual(@as(u32, 5), g.records.daily_best_kills);
     try std.testing.expect(g.records_dirty);
+}
+
+test "run game: daily best hides yesterday record" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.openMenu();
+    g.startDaily(1_700_000_000);
+    g.started = true;
+    g.sim.floor = 2;
+    g.sim.kills = 5;
+    g.last_state = .playing;
+    g.sim.state = .dead;
+    g.trackRunEnd();
+    g.openMenu();
+    g.startDaily(1_700_100_000);
+    g.fillHudState();
+    try std.testing.expectEqual(@as(u8, 0), g.hud_state.daily_best_floor);
+    try std.testing.expect(g.records.daily_day != g.daily_day);
 }
 
 test "run game: shop panel buys a heal once" {
