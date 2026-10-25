@@ -155,6 +155,14 @@ pub const ResourceKind = enum(u8) {
             .paradox => "悖论",
         };
     }
+
+    pub fn labelEn(self: ResourceKind) []const u8 {
+        return switch (self) {
+            .stamina => "ENERGY",
+            .mana => "MANA",
+            .paradox => "PARADOX",
+        };
+    }
 };
 
 pub const ClassProfile = struct {
@@ -170,7 +178,9 @@ pub const ClassProfile = struct {
 /// the profile/base-stat views are derived from the same source.
 pub const ClassDef = struct {
     name: []const u8,
+    name_en: []const u8,
     role: []const u8,
+    role_en: []const u8,
     base_attack: f32,
     main_stat: StatKind,
     resource: ResourceKind,
@@ -178,9 +188,9 @@ pub const ClassDef = struct {
 };
 
 pub const class_defs = [class_count]ClassDef{
-    .{ .name = "狂战士", .role = "近战 防御", .base_attack = 18, .main_stat = .strength, .resource = .stamina, .base_stats = .{ 14, 10, 16, 8, 4, 10 } },
-    .{ .name = "元素法师", .role = "远程 伤害", .base_attack = 11, .main_stat = .magic, .resource = .mana, .base_stats = .{ 6, 8, 8, 12, 18, 12 } },
-    .{ .name = "时空法师", .role = "远程 减速", .base_attack = 14, .main_stat = .magic, .resource = .paradox, .base_stats = .{ 7, 10, 9, 14, 14, 13 } },
+    .{ .name = "狂战士", .name_en = "WARRIOR", .role = "近战 防御", .role_en = "MELEE TANK", .base_attack = 18, .main_stat = .strength, .resource = .stamina, .base_stats = .{ 14, 10, 16, 8, 4, 10 } },
+    .{ .name = "元素法师", .name_en = "MAGE", .role = "远程 伤害", .role_en = "RANGED DPS", .base_attack = 11, .main_stat = .magic, .resource = .mana, .base_stats = .{ 6, 8, 8, 12, 18, 12 } },
+    .{ .name = "时空法师", .name_en = "CHRONOMANCER", .role = "远程 减速", .role_en = "RANGED SLOW", .base_attack = 14, .main_stat = .magic, .resource = .paradox, .base_stats = .{ 7, 10, 9, 14, 14, 13 } },
 };
 
 pub fn profile(class: Class) ClassProfile {
@@ -203,11 +213,19 @@ fn classField(comptime field: []const u8) [class_count][]const u8 {
 }
 
 pub const class_names = classField("name");
+pub const class_names_en = classField("name_en");
 pub const class_roles = classField("role");
+pub const class_roles_en = classField("role_en");
 
 pub const resource_names = blk: {
     var out: [class_count][]const u8 = undefined;
     for (&out, class_defs) |*slot, def| slot.* = def.resource.label();
+    break :blk out;
+};
+
+pub const resource_names_en = blk: {
+    var out: [class_count][]const u8 = undefined;
+    for (&out, class_defs) |*slot, def| slot.* = def.resource.labelEn();
     break :blk out;
 };
 

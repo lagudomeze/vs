@@ -104,9 +104,12 @@ pub const class_count = attributes.class_count;
 pub const classFromIndex = attributes.classFromIndex;
 
 pub const class_names = attributes.class_names;
+pub const class_names_en = attributes.class_names_en;
 pub const resource_names = attributes.resource_names;
+pub const resource_names_en = attributes.resource_names_en;
 /// One-line positioning hints for the class-selection cards.
 pub const class_roles = attributes.class_roles;
+pub const class_roles_en = attributes.class_roles_en;
 
 /// One-line Chinese effect text for every class talent (hotbar hint strip,
 /// class cards and the character panel). Keep each line short enough for the
@@ -115,6 +118,12 @@ pub const class_talent_descs = [class_count][3][]const u8{
     .{ "近战2.2倍伤害", "4格内1.5倍", "3回合攻击+30%" },
     .{ "5格2.5倍+范围", "1.8倍+减速", "传送3-5格" },
     .{ "2.0倍+减速", "1.2倍+停2减速", "REWIND 3" },
+};
+
+pub const class_talent_descs_en = [class_count][3][]const u8{
+    .{ "2.2x MELEE", "1.5x WITHIN 4", "+30% ATK 3T" },
+    .{ "2.5x RANGE 5", "1.8x + SLOW", "TELEPORT 3-5" },
+    .{ "2.0x + SLOW", "1.2x + STOP 2", "REWIND 3" },
 };
 
 /// Deterministic reseed used after the player picks a class: the menu preview
@@ -150,6 +159,26 @@ pub fn talentNameFor(class: Class, i: usize) []const u8 {
             0 => "时光箭",
             1 => "时间停滞",
             else => "回溯",
+        },
+    };
+}
+
+pub fn talentNameEnFor(class: Class, i: usize) []const u8 {
+    return switch (class) {
+        .warrior => switch (i) {
+            0 => "HEAVY STRIKE",
+            1 => "CHARGE",
+            else => "WAR CRY",
+        },
+        .mage => switch (i) {
+            0 => "FIREBALL",
+            1 => "ICE LANCE",
+            else => "BLINK",
+        },
+        .chronomancer => switch (i) {
+            0 => "TIME BOLT",
+            1 => "TIME STOP",
+            else => "REWIND",
         },
     };
 }
