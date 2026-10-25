@@ -380,6 +380,7 @@ pub const RunGame = struct {
         var off: usize = 0;
         detailAppend(out[0 .. out.len - 1], &off, "vx 0.1.0\n", .{});
         detailAppend(out[0 .. out.len - 1], &off, "seed={d} class={s} difficulty={s}\n", .{ self.seed, @tagName(self.class), @tagName(self.sim.difficulty) });
+        detailAppend(out[0 .. out.len - 1], &off, "daily={s} day={d} best_floor={d}\n", .{ if (self.daily) "on" else "off", self.daily_day, self.records.daily_best_floor });
         detailAppend(out[0 .. out.len - 1], &off, "floor={d} turn={d} state={s} hp={d:.0}/{d:.0}\n", .{ self.sim.floor, self.sim.turn, @tagName(self.sim.state), self.sim.hero.vitals.val, self.sim.hero.vitals.full });
         detailAppend(out[0 .. out.len - 1], &off, "gold={d} bombs={d} chunks={s} chunk={d}\n", .{ self.sim.gold, self.sim.hero.bombs, if (self.sim.chunks_enabled) "on" else "off", self.sim.chunk });
         detailAppend(out[0 .. out.len - 1], &off, "window={s} scale={d} vsync={s} esdf={s}\n", .{ if (self.settings_fullscreen) "full" else "window", self.settings_scale, if (self.settings_vsync) "on" else "off", if (self.settings_esdf) "on" else "off" });
@@ -2529,6 +2530,11 @@ test "run game: diagnostics include seed and state" {
     const text = g.diagnostics(&buf);
     try std.testing.expect(std.mem.indexOf(u8, text, "seed=4242") != null);
     try std.testing.expect(std.mem.indexOf(u8, text, "class=warrior") != null);
+    g.openMenu();
+    g.startDaily(1_700_000_000);
+    const daily = g.diagnostics(&buf);
+    try std.testing.expect(std.mem.indexOf(u8, daily, "daily=on") != null);
+    try std.testing.expect(std.mem.indexOf(u8, daily, "day=19675") != null);
 }
 
 test "run game: victory updates class and chunk records" {
