@@ -25,7 +25,7 @@
 | src/game/attributes.zig | StatKind / StatRef / Stats / Modifier / recompute / caps / Progression(XP/等级) |
 | src/game/items.zig | ItemDef / Slot / Quality / Inventory / EquipmentSlots / ModifierSet / CharacterPanel |
 | src/game/content.zig | 内嵌 JSON 解析、校验、内置回退、掉落抽取、职业天赋表 |
-| assets/data/{items,enemies,skills}.json | 8 物品 / 6 敌人 / 9 玩家天赋 + 1 Boss 技能 |
+| assets/data/{items,enemies,skills}.json | 15 物品 / 7 敌人 / 10 技能 |
 | assets/data/data.zig | @embedFile 原始 JSON（Zig 不允许 embed 包外文件，故单独成模块） |
 
 build.zig 给 vx 模块加了匿名导入 data；src/root.zig 导出 attributes / items / content。

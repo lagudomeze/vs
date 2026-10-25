@@ -493,6 +493,21 @@ pub const builtin_items = [_]items.ItemDef{
         .kind = .{ .consumable = .{ .use = .{ .resource = 30 } } },
         .description = "恢复 30 资源；背包面板按 P 使用。",
     },
+    .{
+        .id = "bloodmoon_charm",
+        .name = "BLOODMOON CHARM",
+        .quality = .epic,
+        .drop = .{ .weight = 0.55 },
+        .kind = .{ .equipment = .{
+            .slot = .trinket,
+            .mods = &.{
+                .{ .stat = .attack, .flat = 7 },
+                .{ .stat = .crit, .flat = 0.04 },
+                .{ .stat = .armor, .flat = -3 },
+            },
+        } },
+        .description = "+7 ATK, +4% CRIT, -3 ARMOR. Risk for reward.",
+    },
 };
 
 /// assets/data/enemies.json 的镜像。
@@ -1203,7 +1218,7 @@ test "embedded tables match the RUN v1 content plan" {
     var content = try load(std.testing.allocator);
     defer content.deinit();
 
-    try std.testing.expectEqual(@as(usize, 14), content.items.len);
+    try std.testing.expectEqual(@as(usize, 15), content.items.len);
     try std.testing.expectEqual(@as(usize, 7), content.enemies.len);
     try std.testing.expectEqual(@as(usize, 10), content.skills.len);
 
@@ -1212,6 +1227,13 @@ test "embedded tables match the RUN v1 content plan" {
     try std.testing.expectEqual(items.Quality.common, sword.quality);
     try std.testing.expectEqual(attributes.StatRef.attack, sword.mods()[0].stat);
     try std.testing.expectEqual(@as(f32, 6), sword.mods()[0].flat);
+
+    const charm = content.item("bloodmoon_charm") orelse return error.MissingItem;
+    try std.testing.expectEqual(items.Slot.trinket, charm.slot().?);
+    try std.testing.expectEqual(items.Quality.epic, charm.quality);
+    try std.testing.expectEqual(@as(usize, 3), charm.mods().len);
+    try std.testing.expectEqual(attributes.StatRef.armor, charm.mods()[2].stat);
+    try std.testing.expectEqual(@as(f32, -3), charm.mods()[2].flat);
 
     const potion = content.item("healing_potion") orelse return error.MissingItem;
     try std.testing.expect(!potion.isEquippable());
