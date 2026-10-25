@@ -1,7 +1,7 @@
 # 发版包复验
 
 日期：2026-10-25
-HEAD：24b8a4b
+HEAD：7b4ed98
 
 ## 全量包
 
@@ -9,9 +9,9 @@ HEAD：24b8a4b
 
 - dist/vx-0.1.0-win64.zip
 - 2.6 MB
-- vx.exe 7,860,224 bytes
+- vx.exe 7,861,760 bytes
 - VERSION.txt = vx 0.1.0 / Windows x64
-- SHA256 = 377BE114E6C5F334566222716B482999C36FF7735BFEC8CECD34202831E16440
+- SHA256 = 438687E98D49CCEB859ED549DC915BEC9341B1D4D5FC0165C8196048B4FC8619
 
 steam_check：
 
@@ -35,7 +35,7 @@ steam_package_check：
 
 - dist/demo/vx-demo-0.1.0.zip
 - 2.6 MB
-- SHA256 = 296523CA8F92DE6B65D1532F5A3071C9EC6261ED398D6E0DA656A5D208353D43
+- SHA256 = 0EBF4477DDF6E300E26FF53CD3E93F4029A5298198412A4C086D63D597C4E508
 - 内容：vx.exe / PLAY_DEMO.cmd / DEMO_README.txt / README / CREDITS / OFL / VERSION
 
 解包冒烟：
@@ -71,4 +71,5 @@ HP 184 与战士平衡后的基础生命一致。
 ## 商店 capture
 
 - docs/store/gameplay_capture_30s.mp4（29.5s / 1920x1080 / 30fps / 约12MB，auto bot 引擎内录屏）
-- press kit zip 约15.1MB
+- docs/store/trailer_capture_30s.mp4（30s / 1080p30 / 约10.3MB，标题+字幕+结束卡）
+- press kit zip 约25.3MB
