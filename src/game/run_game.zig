@@ -202,6 +202,7 @@ pub const RunGame = struct {
     badges_open: bool = false,
     daily: bool = false,
     daily_day: i64 = 0,
+    menu_selection: u8 = 0,
     victory_hold: f32 = 0,
     skip_victory_banner: bool = false,
     toast_text: []const u8 = "",
@@ -427,6 +428,7 @@ pub const RunGame = struct {
     pub fn rerollSeed(self: *RunGame) void {
         if (self.started) return;
         self.daily = false;
+        self.menu_selection = 0;
         self.seed = freshSeed();
         self.seed_locked = false;
         self.openMenu();
@@ -437,6 +439,7 @@ pub const RunGame = struct {
         const day: u64 = @intCast(@divFloor(unix_seconds, 86400));
         self.daily = true;
         self.daily_day = @intCast(day);
+        self.menu_selection = 0;
         self.seed = sim_mod.nextSeed(day ^ 0xda11c0de);
         self.seed_locked = false;
         self.openMenu();
@@ -1156,7 +1159,17 @@ pub const RunGame = struct {
 
         if (!self.started) {
             if (input.difficulty) self.toggleDifficulty();
-            if (input.talent >= 0) self.selectClass(sim_mod.classFromIndex(@intCast(input.talent)));
+            if (input.step_x < 0) {
+                self.menu_selection = (self.menu_selection + 2) % 3;
+            } else if (input.step_x > 0) {
+                self.menu_selection = (self.menu_selection + 1) % 3;
+            }
+            if (input.talent >= 0) {
+                self.menu_selection = @intCast(input.talent);
+                self.selectClass(sim_mod.classFromIndex(@intCast(input.talent)));
+            } else if (input.confirm) {
+                self.selectClass(sim_mod.classFromIndex(self.menu_selection));
+            }
             self.syncVisuals(false);
             self.updateVisuals(dt);
             self.followCamera();
@@ -2233,6 +2246,7 @@ pub const RunGame = struct {
             .badges_open = self.badges_open,
             .daily = self.daily,
             .daily_best_floor = if (self.records.daily_day == self.daily_day) self.records.daily_best_floor else 0,
+            .menu_selection = self.menu_selection,
             .victory_hold = self.victory_hold > 0,
             .boss_active = boss_active,
             .boss_hp = boss_hp,
@@ -2587,6 +2601,19 @@ test "run game: daily seed is stable per UTC day" {
     try std.testing.expect(a.seed != first);
     a.rerollSeed();
     try std.testing.expect(!a.daily);
+}
+
+test "run game: gamepad menu cycles and confirms a class" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.openMenu();
+    g.update(.{ .step_x = 1 }, 1.0 / 60.0);
+    try std.testing.expectEqual(@as(u8, 1), g.menu_selection);
+    try std.testing.expect(!g.started);
+    g.update(.{ .confirm = true }, 1.0 / 60.0);
+    try std.testing.expect(g.started);
+    try std.testing.expectEqual(sim_mod.Class.mage, g.class);
 }
 
 test "run game: demo locks non-warrior classes" {
