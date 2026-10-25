@@ -189,7 +189,7 @@ pub const ClassDef = struct {
 
 pub const class_defs = [class_count]ClassDef{
     .{ .name = "狂战士", .name_en = "WARRIOR", .role = "近战 防御", .role_en = "MELEE TANK", .base_attack = 18, .main_stat = .strength, .resource = .stamina, .base_stats = .{ 16, 10, 18, 8, 4, 10 } },
-    .{ .name = "元素法师", .name_en = "MAGE", .role = "远程 伤害", .role_en = "RANGED DPS", .base_attack = 11, .main_stat = .magic, .resource = .mana, .base_stats = .{ 6, 8, 8, 12, 18, 12 } },
+    .{ .name = "元素法师", .name_en = "MAGE", .role = "远程 伤害", .role_en = "RANGED DPS", .base_attack = 11, .main_stat = .magic, .resource = .mana, .base_stats = .{ 6, 8, 7, 12, 18, 12 } },
     .{ .name = "时空法师", .name_en = "CHRONOMANCER", .role = "远程 减速", .role_en = "RANGED SLOW", .base_attack = 14, .main_stat = .magic, .resource = .paradox, .base_stats = .{ 7, 10, 9, 14, 14, 13 } },
 };
 
@@ -481,7 +481,7 @@ test "class base stats and derived formulas match the v1 table" {
     try expectApprox(@as(f32, 11.5), warrior.derived.resource_per_turn, 0.001); // 8 + 10*0.35
 
     const mage = recompute(baseStats(.mage), &.{}, .mage);
-    try expectApprox(@as(f32, 104), mage.derived.hp_max, 0.001);
+    try expectApprox(@as(f32, 96), mage.derived.hp_max, 0.001);
     try expectApprox(@as(f32, 108), mage.derived.resource_max, 0.001);
     try expectApprox(@as(f32, 32.6), mage.derived.attack, 0.001); // 11 + 18*1.2
     try expectApprox(@as(f32, 0.098), mage.derived.crit, 0.0001);
