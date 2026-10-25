@@ -6,8 +6,8 @@
 
 - 文件：18
 - 字符串出现次数：725
-- 去重字符串：444
-- CJK 字符数：3796
+- 去重字符串：445
+- CJK 字符数：3795
 
 ## 按文件
 
@@ -24,7 +24,7 @@
 | src/game/intent.zig | 0 | 0 | 11 |
 | src/game/items.zig | 18 | 16 | 130 |
 | src/game/run_game.zig | 103 | 71 | 402 |
-| src/game/run_hud.zig | 131 | 109 | 454 |
+| src/game/run_hud.zig | 131 | 110 | 453 |
 | src/game/run_sim.zig | 102 | 66 | 379 |
 | src/game/run_target.zig | 10 | 9 | 88 |
 | src/game/save.zig | 8 | 8 | 28 |
