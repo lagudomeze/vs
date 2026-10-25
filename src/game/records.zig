@@ -47,6 +47,23 @@ pub fn save(io: std.Io, alloc: std.mem.Allocator, path: []const u8, records: Rec
     try atomic.replace(io);
 }
 
+test "records: old json without daily fields still loads" {
+    const alloc = std.testing.allocator;
+    const io = std.testing.io;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const path = try std.fs.path.join(alloc, &.{ ".zig-cache", "tmp", tmp.sub_path[0..], "records-old.json" });
+    defer alloc.free(path);
+    const file = try std.Io.Dir.cwd().createFile(io, path, .{});
+    defer file.close(io);
+    try file.writeStreamingAll(io, "{\"wins\":2,\"deaths\":3}");
+
+    const got = try load(io, alloc, path);
+    try std.testing.expectEqual(@as(u32, 2), got.wins);
+    try std.testing.expectEqual(@as(u32, 0), got.daily_streak);
+    try std.testing.expectEqual(@as(i64, -1), got.daily_last_win_day);
+}
+
 test "records round-trip and missing file is empty" {
     const alloc = std.testing.allocator;
     const io = std.testing.io;
