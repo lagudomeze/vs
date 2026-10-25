@@ -122,3 +122,7 @@ var from_disk = try save.loadFile(io, alloc, "saves/run.json");
 ## 本地备份
 
 每次写槽位前轮转三代备份：path.bak / path.bak2 / path.bak3；主档缺失/解析失败时依次回退。Auto-Cloud 只匹配 *.save，所以备份留在本机，不参与云同步。
+
+## 损坏输入
+
+测试覆盖 300 组随机字节与 1024 层嵌套 JSON：解析失败返回错误，不 panic；1 MiB 上限先于解析生效。
