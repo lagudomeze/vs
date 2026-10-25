@@ -501,7 +501,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             game.hud_state.badges_open = game.badges_open;
         }
         if (!game.started and pin.key_code == vx.platform.scancode_f8) game.rerollSeed();
-        if (!game.started and pin.key_code == vx.platform.scancode_f6) {
+        if (!game.started and (pin.key_code == vx.platform.scancode_f6 or pin.character)) {
             const now_secs = std.Io.Clock.real.now(io).toSeconds();
             game.startDaily(now_secs);
         }
