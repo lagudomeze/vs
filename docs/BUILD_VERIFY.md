@@ -71,5 +71,5 @@ HP 184 与战士平衡后的基础生命一致。
 ## 商店 capture
 
 - docs/store/gameplay_capture_30s.mp4（29.5s / 1920x1080 / 30fps / 约12MB，auto bot 引擎内录屏）
-- docs/store/trailer_capture_30s.mp4（30s / 1080p30 / 约10.3MB，标题+字幕+结束卡）
+- docs/store/trailer_capture_30s.mp4（30s / 1080p30 / 约10.2MB，标题+字幕+结束卡）
 - press kit zip 约25.3MB

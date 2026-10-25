@@ -9,7 +9,7 @@
 - 30 fps
 - H.264 High / yuv420p
 - AAC-LC 44.1kHz stereo
-- 约 10.3 MB
+- 约 10.2 MB
 
 ## 时间线
 
@@ -37,6 +37,6 @@
 
 - **auto bot 自动游玩**，不是人手实机
 - 音轨是合成占位，不是正式配乐
-- 字幕条在顶部，会压暗部分 HUD
+- 字幕条在场景中上部（y150–260），避开左上/右上 HUD
 - Demo 尚未在 Steam 上线；“DEMO COMING SOON”是保守表述
 - 最终上架版仍需人手 capture、正式音频、人工剪辑
