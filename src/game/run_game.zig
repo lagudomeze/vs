@@ -1974,29 +1974,32 @@ pub const RunGame = struct {
                 if (self.sim.enemies[i].status.burn_turns > 0) {
                     var burn_buf: [24]u8 = undefined;
                     const burn_label = if (self.sim.enemies[i].status.burn_stacks > 1)
-                        std.fmt.bufPrint(&burn_buf, "灼x{d}", .{self.sim.enemies[i].status.burn_stacks}) catch "灼"
+                        std.fmt.bufPrint(&burn_buf, "BURN{d}x{d}", .{ self.sim.enemies[i].status.burn_turns, self.sim.enemies[i].status.burn_stacks }) catch "BURN"
                     else
-                        "灼";
+                        std.fmt.bufPrint(&burn_buf, "BURN{d}", .{self.sim.enemies[i].status.burn_turns}) catch "BURN";
                     const bx = std.math.clamp(x - renderer.Renderer.textWidth(burn_label, 1), 2, w - 2);
                     self.renderer.drawText(bx, y + 24, burn_label, palette.red, 1, true);
                 }
+                var cc_buf: [16]u8 = undefined;
                 const cc_label: []const u8 = if (self.sim.enemies[i].status.stun_turns > 0)
-                    status_def.tag(.stun)
+                    std.fmt.bufPrint(&cc_buf, "STUN{d}", .{self.sim.enemies[i].status.stun_turns}) catch "STUN"
                 else if (self.sim.enemies[i].status.slow_turns > 0)
-                    status_def.tag(.slow)
+                    std.fmt.bufPrint(&cc_buf, "SLOW{d}", .{self.sim.enemies[i].status.slow_turns}) catch "SLOW"
                 else
                     "";
                 if (cc_label.len > 0) {
                     const cx = std.math.clamp(x - renderer.Renderer.textWidth(cc_label, 1), 2, w - 2);
-                    self.renderer.drawText(cx, y + 33, cc_label, if (std.mem.eql(u8, cc_label, status_def.tag(.stun))) status_def.get(.stun).color else status_def.get(.slow).color, 1, true);
+                    self.renderer.drawText(cx, y + 33, cc_label, if (std.mem.startsWith(u8, cc_label, "STUN")) status_def.get(.stun).color else status_def.get(.slow).color, 1, true);
                 }
                 if (self.sim.enemies[i].status.vulnerable_turns > 0) {
-                    const vtag = status_def.tag(.vulnerable);
+                    var vbuf: [16]u8 = undefined;
+                    const vtag = std.fmt.bufPrint(&vbuf, "VULN{d}", .{self.sim.enemies[i].status.vulnerable_turns}) catch "VULN";
                     const vx = std.math.clamp(x - renderer.Renderer.textWidth(vtag, 1), 2, w - 2);
                     self.renderer.drawText(vx, y + 42, vtag, status_def.get(.vulnerable).color, 1, true);
                 }
                 if (self.sim.enemies[i].status.guard_turns > 0) {
-                    const gtag = status_def.tag(.guard);
+                    var gbuf: [16]u8 = undefined;
+                    const gtag = std.fmt.bufPrint(&gbuf, "GUARD{d}", .{self.sim.enemies[i].status.guard_turns}) catch "GUARD";
                     const gx = std.math.clamp(x - renderer.Renderer.textWidth(gtag, 1), 2, w - 2);
                     self.renderer.drawText(gx, y + 51, gtag, status_def.get(.guard).color, 1, true);
                 }
