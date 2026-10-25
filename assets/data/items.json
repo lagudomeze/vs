@@ -310,6 +310,19 @@
         }
       ],
       "description": "+2 PER, +2 MAG, +5% CRIT. See the weave."
+    },
+    {
+      "id": "ironwood_heart",
+      "name": "铁木之心",
+      "slot": "trinket",
+      "quality": "rare",
+      "weight": 0.55,
+      "mods": [
+        { "stat": "hp_max", "flat": 18 },
+        { "stat": "armor", "flat": 2 },
+        { "stat": "will", "flat": 1 }
+      ],
+      "description": "+18 HP, +2 ARMOR, +1 WILL. Slow, stubborn, alive."
     }
   ]
 }

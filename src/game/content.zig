@@ -523,6 +523,21 @@ pub const builtin_items = [_]items.ItemDef{
         } },
         .description = "+2 PER, +2 MAG, +5% CRIT. See the weave.",
     },
+    .{
+        .id = "ironwood_heart",
+        .name = "铁木之心",
+        .quality = .rare,
+        .drop = .{ .weight = 0.55 },
+        .kind = .{ .equipment = .{
+            .slot = .trinket,
+            .mods = &.{
+                .{ .stat = .hp_max, .flat = 18 },
+                .{ .stat = .armor, .flat = 2 },
+                .{ .stat = .will, .flat = 1 },
+            },
+        } },
+        .description = "+18 HP, +2 ARMOR, +1 WILL. Slow, stubborn, alive.",
+    },
 };
 
 /// assets/data/enemies.json 的镜像。
@@ -1233,7 +1248,7 @@ test "embedded tables match the RUN v1 content plan" {
     var content = try load(std.testing.allocator);
     defer content.deinit();
 
-    try std.testing.expectEqual(@as(usize, 16), content.items.len);
+    try std.testing.expectEqual(@as(usize, 17), content.items.len);
     try std.testing.expectEqual(@as(usize, 7), content.enemies.len);
     try std.testing.expectEqual(@as(usize, 10), content.skills.len);
 
