@@ -209,6 +209,8 @@ pub const RunGame = struct {
     menu_mouse_x: f32 = -1,
     menu_mouse_y: f32 = -1,
     shop_index: u8 = 0,
+    shop_mouse_x: f32 = -1,
+    shop_mouse_y: f32 = -1,
     shrine_index: u8 = 0,
     stat_index: u8 = 0,
     victory_hold: f32 = 0,
@@ -495,6 +497,20 @@ pub const RunGame = struct {
         return true;
     }
 
+    fn shopRowAt(self: *const RunGame, sx: f32, sy: f32) ?u8 {
+        const w: f32 = @floatFromInt(self.renderer.width);
+        const h: f32 = @floatFromInt(self.renderer.height);
+        const px = (w - 300) / 2;
+        const py = (h - 224) / 2;
+        if (sx < px + 20 or sx > px + 280) return null;
+        var i: u8 = 0;
+        while (i < 6) : (i += 1) {
+            const y = py + 58 + @as(f32, @floatFromInt(i)) * 20;
+            if (sy >= y - 4 and sy <= y + 14) return i;
+        }
+        return null;
+    }
+
     fn menuColumnAt(self: *RunGame, sx: f32, sy: f32) ?u8 {
         const w: f32 = @floatFromInt(self.renderer.width);
         const h: f32 = @floatFromInt(self.renderer.height);
@@ -577,6 +593,8 @@ pub const RunGame = struct {
     pub fn debugShop(self: *RunGame) void {
         self.started = true;
         self.shop_open = true;
+        self.shop_mouse_x = -1;
+        self.shop_mouse_y = -1;
         self.sim.shop_active = true;
         self.sim.shop_used = false;
         self.sim.gold = 120;
@@ -1325,6 +1343,13 @@ pub const RunGame = struct {
         }
 
         if (self.shop_open) {
+            const shop_mouse_moved = input.mouse_x != self.shop_mouse_x or input.mouse_y != self.shop_mouse_y;
+            self.shop_mouse_x = input.mouse_x;
+            self.shop_mouse_y = input.mouse_y;
+            if (self.shopRowAt(input.mouse_x, input.mouse_y)) |row| {
+                if (shop_mouse_moved) self.shop_index = row;
+                if (input.click) self.buyShopIndex(row);
+            }
             if (input.step_y < 0) self.shop_index = (self.shop_index + 5) % 6;
             if (input.step_y > 0) self.shop_index = (self.shop_index + 1) % 6;
             if (input.talent >= 0) {
@@ -3210,6 +3235,20 @@ test "run game: gamepad shop index buys heal" {
     try std.testing.expect(!g.shop_open);
     try std.testing.expect(g.sim.hero.vitals.val > hp);
     try std.testing.expectEqual(@as(u32, 50), g.sim.gold);
+}
+
+test "run game: mouse click buys a shop heal" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 640, 360, .warrior, 12345);
+    defer g.destroy();
+    g.debugShop();
+    g.sim.shop = g.sim.hero.pos;
+    g.sim.hero.vitals.val = 50;
+    const hp = g.sim.hero.vitals.val;
+    g.update(.{ .mouse_x = 320, .mouse_y = 126, .click = true }, 1.0 / 60.0);
+    try std.testing.expect(!g.shop_open);
+    try std.testing.expect(g.sim.hero.vitals.val > hp);
+    try std.testing.expectEqual(@as(u32, 95), g.sim.gold);
 }
 
 test "run game: shop panel buys a heal once" {
