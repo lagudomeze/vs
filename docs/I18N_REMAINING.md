@@ -15,14 +15,14 @@
 | src/core/font.zig | 2 | 2 |
 | src/core/mech.zig | 11 | 11 |
 | src/game/attributes.zig | 25 | 12 |
-| src/game/content.zig | 108 | 85 |
+| src/game/content.zig | 109 | 85 |
 | src/game/game.zig | 17 | 11 |
 | src/game/gear_save.zig | 3 | 3 |
 | src/game/hud.zig | 42 | 30 |
 | src/game/items.zig | 18 | 10 |
-| src/game/run_game.zig | 103 | 46 |
+| src/game/run_game.zig | 101 | 45 |
 | src/game/run_hud.zig | 131 | 61 |
-| src/game/run_sim.zig | 102 | 40 |
+| src/game/run_sim.zig | 103 | 41 |
 | src/game/run_target.zig | 10 | 4 |
 | src/game/save.zig | 8 | 1 |
 | src/game/status_def.zig | 6 | 6 |
@@ -55,7 +55,6 @@
 | 全灭 | 2 |
 | 敌人行动 | 2 |
 | 存档失败 {s} | 2 |
-| 灼 | 2 |
 | 以 | 1 |
 | 以太堡 | 1 |
 | recompute: list 元素必须是  | 1 |
@@ -112,6 +111,7 @@
 | 消耗品效果超出范围 | 1 |
 | 敌人缺少 id | 1 |
 | 敌人缺少名称 | 1 |
+| 敌人缺少模型 | 1 |
 
 ## 处理原则
 
