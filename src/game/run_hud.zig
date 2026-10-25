@@ -589,6 +589,33 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     else
         fmt(&init_buf, "{s} {s}", .{ init_label, state.initiative[0] });
     r.drawText(w - 154, 51, order, palette.muted, 1, false);
+    if (state.floor_mod_label.len > 0) {
+        const mod_color: u32 = if (std.mem.eql(u8, state.floor_mod_label, "EMBER"))
+            palette.red
+        else if (std.mem.eql(u8, state.floor_mod_label, "FROST"))
+            palette.cyan_light
+        else if (std.mem.eql(u8, state.floor_mod_label, "MIASMA"))
+            color.pack(185, 128, 230)
+        else if (std.mem.eql(u8, state.floor_mod_label, "GILDED"))
+            palette.gold
+        else
+            color.pack(220, 80, 80);
+        const mod_desc: []const u8 = if (std.mem.eql(u8, state.floor_mod_label, "EMBER"))
+            "BURN +50%"
+        else if (std.mem.eql(u8, state.floor_mod_label, "FROST"))
+            "ENEMY SPD -10%"
+        else if (std.mem.eql(u8, state.floor_mod_label, "MIASMA"))
+            "RES REGEN -50%"
+        else if (std.mem.eql(u8, state.floor_mod_label, "GILDED"))
+            "GOLD +50%"
+        else
+            "XP +50%";
+        var mod_buf: [48]u8 = undefined;
+        const mod = fmt(&mod_buf, "MOD {s} {s}", .{ state.floor_mod_label, mod_desc });
+        const mw = renderer.Renderer.textWidth(mod, 1);
+        backPanel(r, w - 168, 64, mw + 10, 13);
+        r.drawText(w - 163, 67, mod, mod_color, 1, false);
+    }
     if (state.has_minimap) {
         const mx0 = w - 40;
         const my0 = 8;
