@@ -60,3 +60,10 @@ HP 184 与战士平衡后的基础生命一致。
 - 没有代码签名
 - 没有真实 playtest 反馈
 - 包内暂无正式 key art/实机 trailer
+
+## 一键 preflight
+
+    $env:VX_PYTHON = <python.exe>
+    tools/preflight.ps1
+
+结果：PREFLIGHT PASS（fmt、244/244、145/145、231/231、打包、Steam/Demo、Deck 静态、i18n、截图）。
