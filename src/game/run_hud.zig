@@ -90,6 +90,7 @@ pub const State = struct {
     boss_active: bool = false,
     boss_hp: f32 = 0,
     boss_hp_max: f32 = 1,
+    boss_enraged: bool = false,
     toast: []const u8 = "",
     seed: u64 = 0,
     buff_turns: u16 = 0,
@@ -710,10 +711,10 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         const bx = @divTrunc(w - bw, 2);
         const by: i32 = 70;
         backPanel(r, bx - 4, by - 4, bw + 8, 27);
-        const label = "ABYSS WARDEN";
+        const label = if (state.boss_enraged) "ABYSS WARDEN [ENRAGED]" else "ABYSS WARDEN";
         const lw = renderer.Renderer.textWidth(label, 1);
-        r.drawText(@divTrunc(w, 2) - @divTrunc(lw, 2), by, label, palette.red, 1, false);
-        bar(r, bx, by + 11, bw, 7, if (state.boss_hp_max > 0) state.boss_hp / state.boss_hp_max else 0, palette.health);
+        r.drawText(@divTrunc(w, 2) - @divTrunc(lw, 2), by, label, if (state.boss_enraged) palette.gold_light else palette.red, 1, false);
+        bar(r, bx, by + 11, bw, 7, if (state.boss_hp_max > 0) state.boss_hp / state.boss_hp_max else 0, if (state.boss_enraged) palette.red else palette.health);
     }
 
     if (state.toast.len > 0) {

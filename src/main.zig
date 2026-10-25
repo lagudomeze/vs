@@ -50,6 +50,7 @@ const Options = struct {
     demo: bool = false,
     demo_end_screen: bool = false,
     boss_screen: bool = false,
+    boss_enraged_screen: bool = false,
     pause_screen: bool = false,
     quit_confirm_screen: bool = false,
     boss_defeat_screen: bool = false,
@@ -102,6 +103,7 @@ fn usage() void {
         \\  --demo            demo mode: first floor only
         \\  --demo-end        show the demo end screen (screenshot/QA)
         \\  --boss            jump to the floor-3 boss (screenshot/QA)
+        \\  --boss-enraged    show the enraged boss bar (screenshot/QA)
         \\  --pause           show the pause menu (screenshot/QA)
         \\  --quit-confirm    show the quit confirmation (screenshot/QA)
         \\  --boss-defeat     show the boss defeat banner (screenshot/QA)
@@ -213,6 +215,8 @@ fn parseOptions(argv: []const [:0]const u8) !Options {
             o.demo_end_screen = true;
         } else if (std.mem.eql(u8, a, "--boss")) {
             o.boss_screen = true;
+        } else if (std.mem.eql(u8, a, "--boss-enraged")) {
+            o.boss_enraged_screen = true;
         } else if (std.mem.eql(u8, a, "--pause")) {
             o.pause_screen = true;
         } else if (std.mem.eql(u8, a, "--quit-confirm")) {
@@ -949,11 +953,22 @@ pub fn main(init: std.process.Init.Minimal) !void {
         game.hud_state.dead = false;
         game.hud_state.victory_hold = true;
     }
-    if (options.boss_screen) {
+    if (options.boss_screen or options.boss_enraged_screen) {
         game.started = true;
         game.sim.floor = 1;
         game.sim.nextFloor();
         game.sim.nextFloor();
+    }
+    if (options.boss_enraged_screen) {
+        game.sim.boss_enraged = true;
+        var bi: usize = 0;
+        while (bi < game.sim.enemy_count) : (bi += 1) {
+            const e = &game.sim.enemies[bi];
+            if (e.life.alive and e.identity.kind == 5) {
+                e.vitals.val = e.vitals.full * 0.3;
+                break;
+            }
+        }
     }
     game.debug = options.debug;
     game.show_hud = !options.hide_hud;
