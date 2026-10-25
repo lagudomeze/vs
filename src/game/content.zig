@@ -1284,6 +1284,17 @@ test "embedded tables match the RUN v1 content plan" {
     try std.testing.expect(!potion.isEquippable());
     try std.testing.expectEqual(@as(f32, 40), potion.use().?.heal);
 
+    const pearl = content.item("void_pearl") orelse return error.MissingItem;
+    try std.testing.expectEqual(items.Slot.trinket, pearl.slot().?);
+    try std.testing.expectEqual(items.Quality.rare, pearl.quality);
+    try std.testing.expectEqual(@as(usize, 3), pearl.mods().len);
+    try std.testing.expectEqual(attributes.StatRef.will, pearl.mods()[0].stat);
+    try std.testing.expectEqual(@as(f32, 3), pearl.mods()[0].flat);
+    try std.testing.expectEqual(attributes.StatRef.crit, pearl.mods()[1].stat);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.04), pearl.mods()[1].flat, 0.0001);
+    try std.testing.expectEqual(attributes.StatRef.hp_max, pearl.mods()[2].stat);
+    try std.testing.expectEqual(@as(f32, -8), pearl.mods()[2].flat);
+
     const sigil = content.item("gear_sigil") orelse return error.MissingItem;
     try std.testing.expectEqual(items.Quality.epic, sigil.quality);
     try std.testing.expect(sigil.allowsClass(.chronomancer));
