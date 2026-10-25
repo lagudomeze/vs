@@ -27,6 +27,6 @@ Copy-Item "docs/store/screenshots_1920/*.png" (Join-Path $stage "screenshots")
 
 $zip = Join-Path $outDir "$name.zip"
 if (Test-Path $zip) { Remove-Item -Force $zip }
-Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zip -CompressionLevel Optimal
+& (Join-Path $PSScriptRoot "zip_dir.ps1") -Source $stage -Destination $zip
 Write-Host ("press kit: {0} ({1:N1} MB)" -f $zip, ((Get-Item $zip).Length / 1MB))
 Get-ChildItem $stage | Select-Object Name,Length | Format-Table -AutoSize
