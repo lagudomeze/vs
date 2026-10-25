@@ -5,7 +5,7 @@
 规则：扫描 src 中所有含 CJK 的双引号字符串，减去 i18n.zig 里出现过的字符串。
 这不是 AST 分析；被映射的字符串可能仍有别的显示路径，未映射的也可能不显示。
 
-- 未在 i18n 表中出现的去重字符串：307
+- 未在 i18n 表中出现的去重字符串：301
 - 涉及文件：15
 
 ## 按文件
@@ -20,7 +20,7 @@
 | src/game/gear_save.zig | 3 | 3 |
 | src/game/hud.zig | 42 | 30 |
 | src/game/items.zig | 18 | 10 |
-| src/game/run_game.zig | 103 | 52 |
+| src/game/run_game.zig | 103 | 46 |
 | src/game/run_hud.zig | 131 | 61 |
 | src/game/run_sim.zig | 102 | 40 |
 | src/game/run_target.zig | 10 | 4 |
