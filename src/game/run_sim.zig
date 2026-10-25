@@ -35,6 +35,7 @@ pub const FloorMod = enum(u8) {
     frost,
     miasma,
     gilded,
+    bloodmoon,
 
     pub fn label(self: FloorMod) []const u8 {
         return switch (self) {
@@ -43,6 +44,7 @@ pub const FloorMod = enum(u8) {
             .frost => "FROST",
             .miasma => "MIASMA",
             .gilded => "GILDED",
+            .bloodmoon => "BLOODMOON",
         };
     }
 
@@ -60,6 +62,10 @@ pub const FloorMod = enum(u8) {
 
     pub fn goldScale(self: FloorMod) f32 {
         return if (self == .gilded) 1.5 else 1.0;
+    }
+
+    pub fn xpScale(self: FloorMod) f32 {
+        return if (self == .bloodmoon) 1.5 else 1.0;
     }
 };
 
@@ -699,10 +705,11 @@ pub const Sim = struct {
         const h = seed ^ (@as(u64, floor) *% 0x94d049bb133111eb) ^ 0x9e3779b97f4a7c15;
         var rng = std.Random.DefaultPrng.init(h);
         const roll = rng.random().float(f32);
-        if (roll < 0.25) return .ember;
-        if (roll < 0.50) return .frost;
-        if (roll < 0.75) return .miasma;
-        return .gilded;
+        if (roll < 0.20) return .ember;
+        if (roll < 0.40) return .frost;
+        if (roll < 0.60) return .miasma;
+        if (roll < 0.80) return .gilded;
+        return .bloodmoon;
     }
 
     fn chooseShrine(self: *Sim) void {
@@ -1767,9 +1774,10 @@ pub const Sim = struct {
             self.notice = "ELITE DROP: BOMB +1";
             self.pushLog("BOMB +1", .{});
         }
-        self.pushLog("击杀 {s} +{d}XP", .{ e.identity.name, e.reward.xp });
+        const xp: u32 = @intFromFloat(@as(f32, @floatFromInt(e.reward.xp)) * self.floor_mod.xpScale());
+        self.pushLog("击杀 {s} +{d}XP", .{ e.identity.name, xp });
         self.checkChunkClear();
-        self.hero.progression.xp += e.reward.xp;
+        self.hero.progression.xp += xp;
         while (self.hero.progression.xp >= 100 * self.hero.progression.level and self.hero.progression.level < 50) {
             self.hero.progression.xp -= 100 * self.hero.progression.level;
             self.hero.progression.level += 1;
@@ -2148,6 +2156,7 @@ test "run sim: floor modifiers are deterministic and scale the right knobs" {
     try std.testing.expectApproxEqAbs(@as(f32, 0.90), FloorMod.frost.enemySpeedScale(), 0.001);
     try std.testing.expectApproxEqAbs(@as(f32, 0.5), FloorMod.miasma.resourceScale(), 0.001);
     try std.testing.expectApproxEqAbs(@as(f32, 1.5), FloorMod.gilded.goldScale(), 0.001);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.5), FloorMod.bloodmoon.xpScale(), 0.001);
 }
 
 test "run sim: abyss wraith ranged hit applies burn" {
@@ -2495,6 +2504,16 @@ test "run sim: gilded floor pays 1.5x kill gold" {
     const gold = s.gold;
     s.killEnemy(0);
     try std.testing.expectEqual(gold + 12, s.gold);
+}
+
+test "run sim: bloodmoon grants bonus xp" {
+    var s = Sim.init(96, .warrior);
+    s.floor_mod = .bloodmoon;
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{ .kind = 0, .name = "骷髅兵", .pos = .{ .x = 10, .y = 10 }, .hp = 1, .hp_max = 1, .attack = 1, .armor = 0, .speed = 100, .range = 1, .xp = 10 });
+    const before = s.hero.progression.xp;
+    s.killEnemy(0);
+    try std.testing.expectEqual(before + 15, s.hero.progression.xp);
 }
 
 test "run sim: cursed chest damages and pays more gold" {
