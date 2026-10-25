@@ -2116,6 +2116,7 @@ pub const RunGame = struct {
 
     fn fillHudState(self: *RunGame) void {
         self.trackRunEnd();
+        const en = i18n.current == .en;
         if (self.sim.notice.len > 0) {
             self.toast_text = self.sim.notice;
             self.toast_time = 2.0;
@@ -2202,7 +2203,7 @@ pub const RunGame = struct {
             .burn_damage = self.sim.hero.status.burn_damage,
             .burn_stacks = self.sim.hero.status.burn_stacks,
             .vulnerable_turns = self.sim.hero.status.vulnerable_turns,
-            .class_name = sim_mod.class_names[@backingInt(self.class)],
+            .class_name = if (en) sim_mod.class_names_en[@backingInt(self.class)] else sim_mod.class_names[@backingInt(self.class)],
             .level = self.sim.hero.progression.level,
             .xp = self.sim.hero.progression.xp,
             .xp_next = 100 * self.sim.hero.progression.level,
@@ -2210,7 +2211,7 @@ pub const RunGame = struct {
             .hp_max = self.sim.hero.vitals.full,
             .resource = self.sim.hero.resource.val,
             .resource_max = self.sim.hero.resource.full,
-            .resource_label = sim_mod.resource_names[@backingInt(self.class)],
+            .resource_label = if (en) sim_mod.resource_names_en[@backingInt(self.class)] else sim_mod.resource_names[@backingInt(self.class)],
             .turn = self.sim.turn,
             .floor = self.sim.floor,
             .chunks_enabled = self.sim.chunks_enabled,
@@ -2240,17 +2241,21 @@ pub const RunGame = struct {
         while (card_i < sim_mod.class_count) : (card_i += 1) {
             const class: sim_mod.Class = @fromBackingInt(@intCast(card_i));
             self.hud_state.menu_cards[card_i] = .{
-                .name = sim_mod.class_names[card_i],
-                .resource = sim_mod.resource_names[card_i],
+                .name = if (en) sim_mod.class_names_en[card_i] else sim_mod.class_names[card_i],
+                .resource = if (en) sim_mod.resource_names_en[card_i] else sim_mod.resource_names[card_i],
                 .resource_max = sim_mod.classResourceMax(class),
                 .hp_max = sim_mod.classHpMax(class),
-                .role = sim_mod.class_roles[card_i],
-                .talents = .{
+                .role = if (en) sim_mod.class_roles_en[card_i] else sim_mod.class_roles[card_i],
+                .talents = if (en) .{
+                    sim_mod.talentNameEnFor(class, 0),
+                    sim_mod.talentNameEnFor(class, 1),
+                    sim_mod.talentNameEnFor(class, 2),
+                } else .{
                     sim_mod.talentNameFor(class, 0),
                     sim_mod.talentNameFor(class, 1),
                     sim_mod.talentNameFor(class, 2),
                 },
-                .descs = sim_mod.class_talent_descs[card_i],
+                .descs = if (en) sim_mod.class_talent_descs_en[card_i] else sim_mod.class_talent_descs[card_i],
             };
         }
         var i: usize = 0;
@@ -2258,14 +2263,14 @@ pub const RunGame = struct {
             const cost = self.sim.talentCost(i);
             const affordable = self.sim.hero.resource.val >= @as(f32, @floatFromInt(cost));
             self.hud_state.hotbar[i] = .{
-                .name = self.sim.talentName(i),
+                .name = if (en) sim_mod.talentNameEnFor(self.class, i) else self.sim.talentName(i),
                 .cost = cost,
                 .cooldown = self.sim.hero.talents.cooldowns[i],
                 .cooldown_max = self.sim.talentCooldown(i),
                 .ready = self.sim.state == .playing and self.sim.hero.talents.cooldowns[i] == 0 and affordable,
                 .affordable = affordable,
             };
-            self.hud_state.talent_descs[i] = self.sim.talentDesc(i);
+            self.hud_state.talent_descs[i] = if (en) sim_mod.class_talent_descs_en[@backingInt(self.class)][i] else self.sim.talentDesc(i);
         }
         const target = self.currentTarget();
         self.hud_state.target_name = "";

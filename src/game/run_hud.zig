@@ -356,17 +356,17 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         r.drawText(x + 32, y0 + 8, card.name, palette.gold, 2, true);
 
         var res_buf: [48]u8 = undefined;
-        const res = fmt(&res_buf, "资源 {s} {d}", .{ card.resource, card.resource_max });
+        const res = fmt(&res_buf, "{s} {s} {d}", .{ i18n.t("资源", "RES"), card.resource, card.resource_max });
         r.drawText(x + 8, y0 + 38, res, palette.cream, 1, false);
         var hp_buf: [24]u8 = undefined;
-        const hp = fmt(&hp_buf, "生命 {d}", .{card.hp_max});
+        const hp = fmt(&hp_buf, "{s} {d}", .{ i18n.t("生命", "HP"), card.hp_max });
         r.drawText(x + 8, y0 + 52, hp, palette.muted, 1, false);
         var role_buf: [48]u8 = undefined;
-        const role = fmt(&role_buf, "定位 {s}", .{card.role});
+        const role = fmt(&role_buf, "{s} {s}", .{ i18n.t("定位", "ROLE"), card.role });
         r.drawText(x + 8, y0 + 66, role, palette.cyan_light, 1, false);
 
         r.fillRect(x + 8, y0 + 82, card_w - 16, 1, palette.border);
-        r.drawText(x + 8, y0 + 88, talent_label, palette.gold, 1, false);
+        r.drawText(x + 8, y0 + 88, i18n.t(talent_label, "TALENTS"), palette.gold, 1, false);
         var talent_buf: [32]u8 = undefined;
         for (card.talents, 0..) |name, t| {
             const ty = y0 + 104 + @as(i32, @intCast(t)) * 28;
@@ -464,7 +464,10 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     r.drawText(26, 8, state.class_name, palette.gold, 1, false);
     if (state.difficulty == 1) r.drawText(130, 8, "HARD", palette.red, 1, false);
     if (state.difficulty == 2) r.drawText(136, 8, "EASY", palette.cyan_light, 1, false);
-    const lv = fmt(&buf, "{d}级  XP {d}/{d}", .{ state.level, state.xp, state.xp_next });
+    const lv = if (i18n.current == .en)
+        fmt(&buf, "LV {d}  XP {d}/{d}", .{ state.level, state.xp, state.xp_next })
+    else
+        fmt(&buf, "{d}级  XP {d}/{d}", .{ state.level, state.xp, state.xp_next });
     r.drawText(10, 21, lv, palette.muted, 1, false);
     bar(r, 10, 32, 150, 7, if (state.hp_max > 0) state.hp / state.hp_max else 0, palette.health_light);
     const hp = fmt(&buf, "{d:.0}/{d:.0}", .{ state.hp, state.hp_max });
@@ -476,14 +479,20 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     if (state.buff_turns > 0 and !state.dead and !state.victory) {
         backPanel(r, 6, 66, 160, 14);
         var bbuf: [48]u8 = undefined;
-        const buff = fmt(&bbuf, "战吼 +{d:.0}%攻  {d}回合", .{ state.buff_pct * 100.0, state.buff_turns });
+        const buff = if (i18n.current == .en)
+            fmt(&bbuf, "WAR CRY +{d:.0}% ATK  {d}T", .{ state.buff_pct * 100.0, state.buff_turns })
+        else
+            fmt(&bbuf, "战吼 +{d:.0}%攻  {d}回合", .{ state.buff_pct * 100.0, state.buff_turns });
         r.drawText(10, 69, buff, palette.gold_light, 1, false);
     }
 
     if (state.burn_turns > 0 and !state.dead and !state.victory) {
         backPanel(r, 6, 82, 160, 14);
         var fbuf: [48]u8 = undefined;
-        const burn = fmt(&fbuf, "灼烧 {d:.0}x{d}/回合  {d}回合", .{ state.burn_damage, state.burn_stacks, state.burn_turns });
+        const burn = if (i18n.current == .en)
+            fmt(&fbuf, "BURN {d:.0}x{d}/T  {d}T", .{ state.burn_damage, state.burn_stacks, state.burn_turns })
+        else
+            fmt(&fbuf, "灼烧 {d:.0}x{d}/回合  {d}回合", .{ state.burn_damage, state.burn_stacks, state.burn_turns });
         r.drawText(10, 85, burn, palette.red, 1, false);
     }
 
@@ -498,27 +507,40 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     backPanel(r, w - 154, 5, 154, 60);
     var floor_buf: [96]u8 = undefined;
     const dir = if (state.stairs_hint.len >= 3) state.stairs_hint[state.stairs_hint.len - 3 ..] else "";
-    const floor = if (state.stairs_hint.len > 0)
+    const floor = if (i18n.current == .en)
+        if (state.stairs_hint.len > 0)
+            fmt(&floor_buf, "F{d}/{d} {s}{d}", .{ state.floor, state.floors, dir, state.stairs_dist })
+        else
+            fmt(&floor_buf, "F{d}/{d}", .{ state.floor, state.floors })
+    else if (state.stairs_hint.len > 0)
         fmt(&floor_buf, "第{d}/{d}层 {s}{d}", .{ state.floor, state.floors, dir, state.stairs_dist })
     else
         fmt(&floor_buf, "第 {d}/{d} 层", .{ state.floor, state.floors });
     r.drawIcon(.stairs, w - 168, 8, palette.gold_light, 1);
     r.drawText(w - 154, 9, floor, palette.gold_light, 1, false);
-    const enemies = if (state.floor_mod_label.len > 0)
+    const enemies = if (i18n.current == .en)
+        if (state.floor_mod_label.len > 0)
+            fmt(&buf, "ENEMIES {d}  {s}  G{d}", .{ state.enemies_left, state.floor_mod_label, state.gold })
+        else
+            fmt(&buf, "ENEMIES {d}  G{d}", .{ state.enemies_left, state.gold })
+    else if (state.floor_mod_label.len > 0)
         fmt(&buf, "敌人 {d}  {s}  G{d}", .{ state.enemies_left, state.floor_mod_label, state.gold })
     else
         fmt(&buf, "敌人 {d}  G{d}", .{ state.enemies_left, state.gold });
     r.drawIcon(.coin, w - 168, 22, palette.gold, 1);
     r.drawText(w - 154, 23, enemies, palette.cream, 1, false);
-    const turn = if (state.enemy_phase) "敌人行动" else fmt(&buf, "玩家回合 {d}", .{state.turn});
+    const turn = if (i18n.current == .en)
+        if (state.enemy_phase) "ENEMY TURN" else fmt(&buf, "PLAYER TURN {d}", .{state.turn})
+    else if (state.enemy_phase) "敌人行动" else fmt(&buf, "玩家回合 {d}", .{state.turn});
     r.drawText(w - 154, 37, turn, if (state.enemy_phase) palette.red else palette.gold_light, 1, false);
     var init_buf: [96]u8 = undefined;
+    const init_label = i18n.t("先攻", "INIT");
     const order = if (state.initiative_count >= 3)
-        fmt(&init_buf, "先攻 {s}>{s}>{s}", .{ state.initiative[0], state.initiative[1], state.initiative[2] })
+        fmt(&init_buf, "{s} {s}>{s}>{s}", .{ init_label, state.initiative[0], state.initiative[1], state.initiative[2] })
     else if (state.initiative_count >= 2)
-        fmt(&init_buf, "先攻 {s}>{s}", .{ state.initiative[0], state.initiative[1] })
+        fmt(&init_buf, "{s} {s}>{s}", .{ init_label, state.initiative[0], state.initiative[1] })
     else
-        fmt(&init_buf, "先攻 {s}", .{state.initiative[0]});
+        fmt(&init_buf, "{s} {s}", .{ init_label, state.initiative[0] });
     r.drawText(w - 154, 51, order, palette.muted, 1, false);
     if (state.has_minimap) {
         const mx0 = w - 40;
@@ -618,22 +640,28 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
         const key = fmt(&buf, "{d}", .{i + 1});
         r.drawText(sx + 4, sy + 3, key, palette.gold, 1, false);
         r.drawText(sx + 18, sy + 3, slot.name, if (slot.ready) palette.cream else palette.muted, 1, false);
-        const cost = fmt(&buf, "消耗{d} 冷却{d}", .{ slot.cost, slot.cooldown_max });
+        const cost = if (i18n.current == .en)
+            fmt(&buf, "COST {d} CD {d}", .{ slot.cost, slot.cooldown_max })
+        else
+            fmt(&buf, "消耗{d} 冷却{d}", .{ slot.cost, slot.cooldown_max });
         r.drawText(sx + 4, sy + 15, cost, palette.muted, 1, false);
         var status_buf: [24]u8 = undefined;
-        var status: []const u8 = "可用";
+        var status: []const u8 = i18n.t("可用", "READY");
         var status_color: u32 = palette.cyan_light;
         if (state.dead or state.victory) {
-            status = "不可用";
+            status = i18n.t("不可用", "LOCKED");
             status_color = palette.muted;
         } else if (aiming) {
-            status = "瞄准中";
+            status = i18n.t("瞄准中", "AIMING");
             status_color = palette.gold_light;
         } else if (slot.cooldown > 0) {
-            status = fmt(&status_buf, "冷却 {d}", .{slot.cooldown});
+            status = if (i18n.current == .en)
+                fmt(&status_buf, "CD {d}", .{slot.cooldown})
+            else
+                fmt(&status_buf, "冷却 {d}", .{slot.cooldown});
             status_color = palette.red;
         } else if (!slot.affordable) {
-            status = "缺资源";
+            status = i18n.t("缺资源", "NO RES");
             status_color = palette.red;
         }
         r.drawText(sx + 4, sy + 26, status, status_color, 1, false);
