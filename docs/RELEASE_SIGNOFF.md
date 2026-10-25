@@ -11,17 +11,17 @@
 
 ## 证据
 
-- commit：40e5963
-- playtest tag：v0.1.0-playtest（仅供构建定位，不是 Steam 正式发布）
-- GitHub pre-release：https://github.com/lagudomeze/vs/releases/tag/v0.1.0-playtest（2,728,116 bytes）；反馈 #441
+- commit：3065e6d
+- playtest tag：v0.1.1-playtest（仅供构建定位，不是 Steam 正式发布）
+- GitHub pre-release：https://github.com/lagudomeze/vs/releases/tag/v0.1.1-playtest（2,730,932 bytes）；反馈 #441
 - GitHub 附件 SHA256SUMS.txt 覆盖四包。
-- GitHub 资产复验：下载 SHA 3282DFE1… 匹配，vx.exe 输出 vx 0.1.0，exit 0；含 CONSENT/FEEDBACK/README_ZH。
+- GitHub 资产复验：下载 SHA 2DEDFBF1… 匹配，vx.exe 输出 vx 0.1.0，exit 0；含 CONSENT/FEEDBACK/README_ZH。
 
 
 - 全量包：dist/vx-0.1.0-win64.zip
-- 全量 SHA256：E567443719E8FB8D5323AE1072C5D86022CEA8DE57F68CD1819F79BD0726E31C
+- 全量 SHA256：9306ADF5B1FEBA4DA58CF762BF70BCF67AAE1457B0A04C194A7DEBB73A72B9B4
 - Demo 包：dist/demo/vx-demo-0.1.0.zip
-- Demo SHA256：4A470F4B0DDD10E6C5BC29ADC6389D648CDF05D6B613F772A6067B312C439528
+- Demo SHA256：4329215E53F0FF9B40C9500DB01658D961FCFBC4E77D432DEADA6CB8C8ECE4FD
 - release_gate：-SkipPreflight 实跑 exit 0（playtest/press/steam_check/package_check + 三个 SHA）
 - preflight：PASS（-SkipPackage；fmt/三层测试/Deck 静态/i18n/截图）
 - steam_check：exit 0，SteamPipe-ready（AppID/DepotID 待填）
