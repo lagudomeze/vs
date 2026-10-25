@@ -215,7 +215,7 @@ const help_lines = [_][]const u8{
 const help_lines_en = [_][]const u8{
     "MOVE  WASD / ARROWS / NUMPAD",
     "TALENTS  1/2/3 AIM, SPACE/SAME KEY CONFIRM",
-    "WAIT  5 / .      INVENTORY I      CHARACTER C",
+    "WAIT  5 / .      INVENTORY I      CHARACTER C      B BOMB",
     "P POTION  anytime, no cost at full",
     "SHOP/SHRINE  1-6 select",
     "ESC CANCEL/PAUSE   Q QUIT FROM PAUSE",

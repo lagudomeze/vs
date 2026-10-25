@@ -215,7 +215,10 @@ pub const Platform = struct {
             input.cast = true;
             input.wait = true;
         }
-        if (east) input.escape = true;
+        if (east) {
+            input.escape = true;
+            input.use_bomb = true;
+        }
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_WEST)) != 0) input.inventory = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_NORTH)) != 0) input.character = true;
         if (pressed & (@as(u32, 1) << @intCast(c.SDL_GAMEPAD_BUTTON_LEFT_SHOULDER)) != 0) input.talent_1 = true;
