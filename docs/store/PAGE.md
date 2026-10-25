@@ -11,6 +11,15 @@
 - 平台：Windows 10/11 x64
 - 语言：默认简体中文；English beta 可在 F2 -> L 或 --lang en 开启（核心界面已英文化，少量回退中文，不宣称完整本地化）；商店页中英双语
 
+## Languages
+
+| Language | Interface | Full Audio | Subtitles |
+| --- | --- | --- | --- |
+| Simplified Chinese | Yes (default) | No | No |
+| English | Beta (core menus/HUD/shop/panels/common logs) | No | No |
+
+English beta is not full localization; some dynamic text may fall back to Chinese.
+
 ## Short Description（≤300 字符）
 
 ### EN

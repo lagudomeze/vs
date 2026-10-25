@@ -14,6 +14,18 @@
 | character_en_1920.png | 角色面板 | 英 |
 | daily_menu_1920.png | 每日挑战菜单 | 中 |
 
+## Steam 上传顺序
+
+| 顺序 | 文件 | 说明 |
+| ---: | --- | --- |
+| 1 | gameplay_en_1920.png | 第一印象：战斗 HUD/意图 |
+| 2 | combat_bomb_hud_1920.png | 炸弹/中文 HUD |
+| 3 | shop_en_1920.png | 商店/构筑 |
+| 4 | boss_hud_1920.png | Boss 战 |
+| 5 | character_en_1920.png | 属性/装备 |
+| 6 | daily_menu_1920.png | 每日挑战 |
+| 7 | victory_badge_1920.png | 胜利/徽章 |
+
 ## 检查
 
 - 全部 1920×1080
