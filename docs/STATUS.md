@@ -17,7 +17,7 @@
 
 | Issue | 标签 | 负责人帽子 | 状态 | 下一步 | 阻塞 |
 | --- | --- | --- | --- | --- | --- |
-| #123 | area:input / priority:p2 | UI/Input | 默认手柄、A/B swap、全屏、设置已可用；帮助入口已修 | 手柄重绑定、Steam Input API、鼠标绑定 | 无硬阻塞；Deck 实机未测 |
+| #123 | area:input / priority:p2 | UI/Input | 默认手柄、A/B swap、全屏、设置、帮助入口、鼠标职业卡已可用 | 手柄重绑定、Steam Input API、鼠标商店/暂停 | 无硬阻塞；Deck 实机未测 |
 | #120 | area:engine / priority:p2 | Engine | ECS 仅渲染 scene graph；反射受阻于 zflecs 命名/脚本 | 等上游或写 C shim | 技术阻塞，非产品阻塞 |
 | #115 | area:gameplay / priority:p2 | Gameplay | 时空法师反馈/状态时长已加；架构重构未做 | 先收集实际试玩反馈再定 | 反馈不足 |
 
