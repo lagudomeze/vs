@@ -232,7 +232,7 @@ const aim_hint = "空格/同键/左键确认  Esc取消  Tab换目标";
 fn drawBadges(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     r.fillRect(0, 0, w, h, palette.deep);
     const pw: i32 = 360;
-    const ph: i32 = 250;
+    const ph: i32 = 270;
     const px = @divTrunc(w - pw, 2);
     const py = @divTrunc(h - ph, 2);
     backPanel(r, px, py, pw, ph);
@@ -245,9 +245,10 @@ fn drawBadges(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
         .{ .ok = all_classes, .name = "ALL CLASSES", .desc = "Win with all three classes" },
         .{ .ok = state.record_flawless > 0, .name = "FLAWLESS", .desc = "Win at full HP" },
         .{ .ok = state.record_chunk_clears >= 9, .name = "CHUNK HUNTER", .desc = "Clear 9 chunks" },
+        .{ .ok = state.daily_best_floor >= 3, .name = "DAILY DELVER", .desc = "Reach floor 3 in a daily" },
     };
     for (rows, 0..) |row, i| {
-        const y = py + 62 + @as(i32, @intCast(i)) * 40;
+        const y = py + 58 + @as(i32, @intCast(i)) * 34;
         r.drawText(px + 24, y, if (row.ok) "[X]" else "[ ]", if (row.ok) palette.gold else palette.muted, 1, false);
         r.drawText(px + 58, y, row.name, if (row.ok) palette.cream else palette.muted, 1, false);
         r.drawText(px + 58, y + 14, row.desc, palette.muted, 1, false);
