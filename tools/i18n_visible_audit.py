@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -13,7 +14,7 @@ OUT = ROOT / "docs" / "I18N_REMAINING.md"
 LIT = re.compile(r'"([^"\n]*[\u4e00-\u9fff][^"\n]*)"')
 
 
-def main() -> None:
+def main() -> int:
     known = set(LIT.findall(I18N.read_text(encoding="utf-8")))
     t_arg = re.compile(r'i18n\.t\(\s*"([^"\n]+)"')
     for path in SRC.rglob("*.zig"):
@@ -69,9 +70,18 @@ def main() -> None:
         "- 内容 description 若 UI 不展示，可后置。",
         "- 每次翻译后重跑本脚本，数字应下降。",
     ]
-    OUT.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
-    print(f"{OUT.relative_to(ROOT)}: {len(remaining)} unmapped, {len(per_file)} files")
+    content = "\n".join(lines) + "\n"
+    summary = f"{OUT.relative_to(ROOT)}: {len(remaining)} unmapped, {len(per_file)} files"
+    if "--check" in sys.argv:
+        if not OUT.exists() or OUT.read_text(encoding="utf-8") != content:
+            print(f"{OUT.relative_to(ROOT)}: STALE (run tools/i18n_visible_audit.py without --check)")
+            return 1
+        print(summary)
+        return 0
+    OUT.write_text(content, encoding="utf-8", newline="\n")
+    print(summary)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
