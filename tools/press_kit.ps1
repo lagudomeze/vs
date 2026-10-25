@@ -21,6 +21,7 @@ Copy-Item "docs/store/logo_920x430.png" $stage
 Copy-Item "docs/store/library_logo_1280x720.png" $stage
 Copy-Item "docs/store/header_capsule_920x430.png" $stage
 Copy-Item "docs/store/trailer_30s.mp4" $stage
+Copy-Item "docs/store/gameplay_capture_30s.mp4" $stage
 Copy-Item "docs/store/screenshots_1920/*.png" (Join-Path $stage "screenshots")
 
 $zip = Join-Path $outDir "$name.zip"

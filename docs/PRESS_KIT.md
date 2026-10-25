@@ -41,6 +41,7 @@ Every run is deterministic from its seed: share a seed, compare routes, or play 
 - header_capsule_920x430.png
 - screenshots_1920/*.png (7)
 - trailer_30s.mp4 (30s, screenshots placeholder; not gameplay capture)
+- gameplay_capture_30s.mp4 (29.5s, real engine auto-bot capture; not human gameplay)
 - README.md / CREDITS.md / OFL.txt
 
 ## Honest limits
