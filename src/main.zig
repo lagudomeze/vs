@@ -706,8 +706,6 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
             } else if (!game.cancelAim()) {
                 if (game.show_help) {
                     game.show_help = false;
-                } else if (game.panel != .none) {
-                    game.panel = .none;
                 } else if (game.badges_open) {
                     game.badges_open = false;
                 } else if (game.pause_open) {
@@ -720,7 +718,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
                     game.pause_confirm_quit = false;
                     game.hud_state.pause_open = true;
                     game.hud_state.pause_confirm_quit = false;
-                } else {
+                } else if (!pin.back) {
                     break;
                 }
             }
