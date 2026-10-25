@@ -86,6 +86,7 @@ pub const State = struct {
     demo: bool = false,
     pause_open: bool = false,
     pause_confirm_quit: bool = false,
+    badges_open: bool = false,
     victory_hold: bool = false,
     boss_active: bool = false,
     boss_hp: f32 = 0,
@@ -204,6 +205,32 @@ const aim_hint = "空格/同键/左键确认  Esc取消  Tab换目标";
 
 /// Pre-run class selection. A checkerboard dim keeps the 3D dungeon visible
 /// behind the cards while the title and card panels stay fully readable.
+fn drawBadges(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
+    r.fillRect(0, 0, w, h, palette.deep);
+    const pw: i32 = 360;
+    const ph: i32 = 250;
+    const px = @divTrunc(w - pw, 2);
+    const py = @divTrunc(h - ph, 2);
+    backPanel(r, px, py, pw, ph);
+    const title = "BADGES";
+    const tw = renderer.Renderer.textWidth(title, 2);
+    r.drawText(px + @divTrunc(pw - tw, 2), py + 18, title, palette.gold_light, 2, true);
+    const all_classes = state.record_wins_warrior > 0 and state.record_wins_mage > 0 and state.record_wins_chronomancer > 0;
+    const rows = [_]struct { ok: bool, name: []const u8, desc: []const u8 }{
+        .{ .ok = state.record_wins > 0, .name = "FIRST WIN", .desc = "Win any run" },
+        .{ .ok = all_classes, .name = "ALL CLASSES", .desc = "Win with all three classes" },
+        .{ .ok = state.record_flawless > 0, .name = "FLAWLESS", .desc = "Win at full HP" },
+        .{ .ok = state.record_chunk_clears >= 9, .name = "CHUNK HUNTER", .desc = "Clear 9 chunks" },
+    };
+    for (rows, 0..) |row, i| {
+        const y = py + 62 + @as(i32, @intCast(i)) * 40;
+        r.drawText(px + 24, y, if (row.ok) "[X]" else "[ ]", if (row.ok) palette.gold else palette.muted, 1, false);
+        r.drawText(px + 58, y, row.name, if (row.ok) palette.cream else palette.muted, 1, false);
+        r.drawText(px + 58, y + 14, row.desc, palette.muted, 1, false);
+    }
+    r.drawText(px + 24, py + ph - 22, "F7 / ESC CLOSE", palette.gold, 1, false);
+}
+
 fn drawPause(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     r.fillRect(0, 0, w, h, palette.deep);
     const pw: i32 = 260;
@@ -417,6 +444,10 @@ pub fn draw(r: *renderer.Renderer, state: State) void {
     }
     if (state.pause_open and !state.settings_open and !state.shop_open and !state.shrine_open) {
         drawPause(r, state, w, h);
+        return;
+    }
+    if (state.badges_open and !state.settings_open) {
+        drawBadges(r, state, w, h);
         return;
     }
 
