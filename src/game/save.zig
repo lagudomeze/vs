@@ -645,6 +645,7 @@ fn buildSim(root: *const SaveRoot) SaveError!Sim {
     if (root.version < 2 or root.version > save_version) return error.UnsupportedVersion;
     if (root.floors == 0) return error.InvalidValue;
     if (root.difficulty > @backingInt(sim_mod.Difficulty.easy)) return error.InvalidValue;
+    // Keep this upper bound in sync with FloorMod's last member (SURGE).
     if (root.map.floor_mod > @backingInt(sim_mod.FloorMod.surge)) return error.InvalidValue;
     if (root.floor == 0 or root.floor > root.floors) return error.InvalidValue;
     if (root.turn == 0) return error.InvalidValue;
