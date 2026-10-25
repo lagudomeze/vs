@@ -2528,6 +2528,16 @@ test "run sim: gilded floor pays 1.5x kill gold" {
     try std.testing.expectEqual(gold + 12, s.gold);
 }
 
+test "run sim: surge grants bonus xp" {
+    var s = Sim.init(95, .warrior);
+    s.floor_mod = .surge;
+    s.enemy_count = 1;
+    s.enemies[0] = enemyFromParts(.{ .kind = 0, .name = "骷髅兵", .pos = .{ .x = 10, .y = 10 }, .hp = 1, .hp_max = 1, .attack = 1, .armor = 0, .speed = 100, .range = 1, .xp = 10 });
+    const before = s.hero.progression.xp;
+    s.killEnemy(0);
+    try std.testing.expectEqual(before + 12, s.hero.progression.xp);
+}
+
 test "run sim: bloodmoon grants bonus xp" {
     var s = Sim.init(96, .warrior);
     s.floor_mod = .bloodmoon;
