@@ -14,6 +14,7 @@ New-Item -ItemType Directory -Force -Path $dist | Out-Null
 
 Copy-Item "zig-out/bin/vx.exe" (Join-Path $dist "vx.exe")
 Copy-Item "README.md" (Join-Path $dist "README.md")
+Copy-Item "CHANGELOG.md" (Join-Path $dist "CHANGELOG.md")
 Copy-Item "assets/CREDITS.md" (Join-Path $dist "CREDITS.md")
 Copy-Item "assets/fonts/OFL.txt" (Join-Path $dist "OFL.txt")
 Set-Content -Path (Join-Path $dist "VERSION.txt") -Value ("vx " + $Version + " / Windows x64")
