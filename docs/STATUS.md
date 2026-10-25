@@ -2,7 +2,7 @@
 
 快照：main 40e5963（2026-10-26）。没有外部团队；"负责人"是当前会话承担的角色帽子，不是虚构的人。
 
-RC /人工剩余步骤见 [RC_STATUS.md](RC_STATUS.md)。
+RC /人工剩余步骤见 [RC_STATUS.md](RC_STATUS.md)；发行顺序见 [ROADMAP.md](ROADMAP.md)。
 
 ## P0
 
