@@ -817,27 +817,7 @@ fn runRunWindow(game: *vx.RunGame, io: std.Io, options: Options) !void {
 
         var input = vx.run_game.Input{};
         if (!slot_frame) {
-            input.step_x = @as(i32, @intFromBool(pin.step_e)) - @as(i32, @intFromBool(pin.step_w));
-            input.step_y = @as(i32, @intFromBool(pin.step_s)) - @as(i32, @intFromBool(pin.step_n));
-            if (pin.talent_1) input.talent = 0;
-            if (pin.talent_2) input.talent = 1;
-            if (pin.talent_3) input.talent = 2;
-            input.confirm = pin.cast and !pause_resumed;
-            input.wait = pin.wait and !pause_resumed;
-            input.target_next = pin.toggle_hero;
-            input.inventory = pin.inventory;
-            input.character = pin.character;
-            input.restart = pin.reset or (pin.pause and !modal_consumed and game.started and (game.sim.state == .dead or game.sim.state == .victory));
-            input.help = pin.help;
-            input.difficulty = pin.difficulty;
-            input.use_item = pin.use_item;
-            input.use_bomb = pin.use_bomb and bomb_ok;
-            input.mouse_x = pin.mouse_x;
-            input.mouse_y = pin.mouse_y;
-            input.click = pin.click;
-            input.stat = pin.stat;
-            input.yaw_delta = pin.yaw_delta;
-            input.zoom_delta = pin.zoom_delta;
+            input = vx.input_map.build(pin, game, bomb_ok, pause_resumed, modal_consumed);
         }
 
         const hp_before = game.sim.hero.vitals.val;
