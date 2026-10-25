@@ -208,6 +208,7 @@ pub const RunGame = struct {
     menu_selection: u8 = 0,
     shop_index: u8 = 0,
     shrine_index: u8 = 0,
+    stat_index: u8 = 0,
     victory_hold: f32 = 0,
     skip_victory_banner: bool = false,
     toast_text: []const u8 = "",
@@ -1374,13 +1375,22 @@ pub const RunGame = struct {
             self.clearAim();
             self.panel = if (self.panel == .character) .none else .character;
         }
-        if (self.panel == .character and input.stat >= 0) {
-            self.spendPendingPoint(@intCast(input.stat));
+        if (self.panel == .character) {
+            if (input.step_y < 0) self.stat_index = (self.stat_index + 5) % 6;
+            if (input.step_y > 0) self.stat_index = (self.stat_index + 1) % 6;
+            if (input.stat >= 0) {
+                self.spendPendingPoint(@intCast(input.stat));
+            } else if (input.confirm) {
+                self.spendPendingPoint(self.stat_index);
+            }
         }
         if (self.panel == .inventory and input.talent >= 0) {
             self.equipBag(@intCast(input.talent));
         }
         if (self.panel == .inventory and input.use_item) {
+            _ = self.usePotion(true);
+        }
+        if (self.panel == .inventory and input.confirm) {
             _ = self.usePotion(true);
         }
 
@@ -2335,6 +2345,7 @@ pub const RunGame = struct {
             .menu_selection = self.menu_selection,
             .shop_index = self.shop_index,
             .shrine_index = self.shrine_index,
+            .stat_index = self.stat_index,
             .victory_hold = self.victory_hold > 0,
             .boss_active = boss_active,
             .boss_hp = boss_hp,
@@ -2623,7 +2634,7 @@ test "run game: P quaffs a potion outside the inventory" {
     try std.testing.expect(g.hud_state.potions > 0);
     const before = g.inventory.count();
 
-    g.update(.{ .use_item = true }, 1.0 / 60.0);
+    g.update(.{ .confirm = true }, 1.0 / 60.0);
     try std.testing.expect(g.sim.hero.vitals.val > 10);
     try std.testing.expectEqual(before - 1, g.inventory.count());
 }
@@ -2837,6 +2848,19 @@ test "run game: shop sells a replacement bomb" {
     try std.testing.expect(!g.shop_open);
 }
 
+test "run game: gamepad character point spend" {
+    const gpa = std.testing.allocator;
+    const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
+    defer g.destroy();
+    g.started = true;
+    g.sim.state = .playing;
+    g.panel = .character;
+    g.sim.hero.progression.pending_points = 1;
+    g.stat_index = 2;
+    g.update(.{ .confirm = true }, 1.0 / 60.0);
+    try std.testing.expectEqual(@as(u8, 0), g.sim.hero.progression.pending_points);
+}
+
 test "run game: B throws a fire bomb" {
     const gpa = std.testing.allocator;
     const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
@@ -3045,7 +3069,7 @@ test "run game: shrine panel consumes a choice once" {
     try std.testing.expect(g.sim.shrine_used);
 }
 
-test "run game: inventory P consumes a healing item" {
+test "run game: inventory A consumes a healing item" {
     const gpa = std.testing.allocator;
     const g = try RunGame.create(gpa, 320, 180, .warrior, 12345);
     defer g.destroy();
