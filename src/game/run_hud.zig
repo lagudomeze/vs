@@ -186,7 +186,7 @@ fn fmt(buf: []u8, comptime f: []const u8, args: anytype) []const u8 {
 
 const menu_title = "选职业";
 const menu_hint = "按 1 / 2 / 3 开始";
-const menu_footer = "1/2/3 选择  D 切换  A 开始  F6 DAILY  F8 SEED  F9 读档  R 重开";
+const menu_footer = "1/2/3 选择  D 切换  A 开始  F6/Y DAILY  F8 SEED  F9 读档  R 重开";
 const talent_label = "天赋";
 const help_title = "操作说明";
 const help_footer = "H CLOSE   PAD A OK  B BACK";
@@ -453,9 +453,9 @@ fn drawMenu(r: *renderer.Renderer, state: State, w: i32, h: i32) void {
     }
 
     const footer_text = if (state.demo)
-        i18n.t("1 选择  A 开始  2/3 DEMO LOCKED  F6 DAILY  F8 SEED  F9 读档  R 重开", "1 SELECT  A START  2/3 DEMO LOCKED  F6 DAILY  F8 NEW SEED  F9 LOAD  R RESTART")
+        i18n.t("1 选择  A 开始  2/3 DEMO LOCKED  F6/Y DAILY  F8 SEED  F9 读档  R 重开", "1 SELECT  A START  2/3 DEMO LOCKED  F6/Y DAILY  F8 NEW SEED  F9 LOAD  R RESTART")
     else
-        i18n.t(menu_footer, "1/2/3 SELECT  D SWITCH  A START  F6 DAILY  F8 NEW SEED  F9 LOAD  R RESTART");
+        i18n.t(menu_footer, "1/2/3 SELECT  D SWITCH  A START  F6/Y DAILY  F8 NEW SEED  F9 LOAD  R RESTART");
     const fw = renderer.Renderer.textWidth(footer_text, 1);
     r.drawText(@divTrunc(w, 2) - @divTrunc(fw, 2), h - 18, footer_text, palette.muted, 1, false);
 }
