@@ -138,6 +138,10 @@ pub fn logLine(line: []const u8, buf: []u8) []const u8 {
     if (std.mem.startsWith(u8, line, "装备读档失败：")) return "GEAR LOAD FAILED";
     if (std.mem.eql(u8, line, "深渊守卫攻击")) return "ABYSS WARDEN ATTACK";
     if (std.mem.eql(u8, line, "背包已满")) return "BAG FULL";
+    if (std.mem.eql(u8, line, "属性点已分配")) return "POINT SPENT";
+    if (std.mem.eql(u8, line, "前方被挡住")) return "BLOCKED";
+    if (std.mem.eql(u8, line, "取消瞄准")) return "AIM CANCELLED";
+    if (std.mem.eql(u8, line, "再按 R 确认重开")) return "PRESS R AGAIN TO RESTART";
     if (std.mem.eql(u8, line, "已存档")) return "SAVED";
     if (std.mem.eql(u8, line, "读档")) return "LOADED";
     if (afterPrefix(line, "获得 ")) |name| return std.fmt.bufPrint(buf, "OBTAINED {s}", .{itemName(name)}) catch line;
@@ -172,6 +176,29 @@ pub fn logLine(line: []const u8, buf: []u8) []const u8 {
     }
     if (afterPrefix(line, "诅咒宝箱 -")) |rest| {
         if (parseU32(rest)) |n| return std.fmt.bufPrint(buf, "CURSED CHEST -{d}", .{n}) catch line;
+    }
+    if (afterPrefix(line, "石魔像 震地 -")) |rest| {
+        if (std.mem.endsWith(u8, rest, " 生命")) {
+            if (parseU32(rest[0 .. rest.len - 7])) |n| return std.fmt.bufPrint(buf, "GOLEM SLAM -{d}", .{n}) catch line;
+        }
+    }
+    if (afterPrefix(line, "幽魂 汲取 -")) |rest| {
+        if (std.mem.endsWith(u8, rest, " 生命")) {
+            if (parseU32(rest[0 .. rest.len - 7])) |n| return std.fmt.bufPrint(buf, "WRAITH DRAIN -{d}", .{n}) catch line;
+        }
+    }
+    if (afterPrefix(line, "深渊守卫 深渊斩 -")) |rest| {
+        if (std.mem.endsWith(u8, rest, " 生命")) {
+            if (parseU32(rest[0 .. rest.len - 7])) |n| return std.fmt.bufPrint(buf, "WARDEN CLEAVE -{d}", .{n}) catch line;
+        }
+    }
+    if (afterPrefix(line, "已保存到槽 ")) |rest| {
+        if (parseU32(rest)) |n| return std.fmt.bufPrint(buf, "SAVED SLOT {d}", .{n}) catch line;
+    }
+    if (afterPrefix(line, "自动存档：第 ")) |rest| {
+        if (std.mem.endsWith(u8, rest, " 层")) {
+            if (parseU32(rest[0 .. rest.len - 4])) |n| return std.fmt.bufPrint(buf, "AUTOSAVE FLOOR {d}", .{n}) catch line;
+        }
     }
     if (afterPrefix(line, "灼烧 -")) |rest| {
         if (parseU32(rest)) |n| return std.fmt.bufPrint(buf, "BURN -{d}", .{n}) catch line;
@@ -254,4 +281,6 @@ test "i18n: battle log lines translate common formats" {
     try std.testing.expectEqualStrings("LOAD FAILED", logLine("读档失败：文件损坏", &buf));
     try std.testing.expectEqualStrings("OBTAINED LEATHER ARMOR", logLine("获得 皮甲", &buf));
     try std.testing.expectEqualStrings("BAG FULL", logLine("背包已满", &buf));
+    try std.testing.expectEqualStrings("GOLEM SLAM -7", logLine("石魔像 震地 -7 生命", &buf));
+    try std.testing.expectEqualStrings("SAVED SLOT 2", logLine("已保存到槽 2", &buf));
 }
